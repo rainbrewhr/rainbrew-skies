@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#7b4bb8">
+<title>Rainbrew Magic Catch | Staff</title>
+<!-- Staff-only page. Open it once with the staff link (or paste the staff code) and this device stays connected. -->
+<style>
+:root{--ink:#3d2566;--bg:#f6f1ff;--card:#fff;--line:#e2d6fb;--btn:#7b4bb8;--btn2:#ff8fcf;--ok:#1f8a57;--warn:#b45309;--bad:#b42318;--soft:#efe6ff}
+@media (prefers-color-scheme:dark){:root{--ink:#f3e8ff;--bg:#1d1433;--card:#2a1d49;--line:#46336f;--btn:#a78bfa;--btn2:#e56bb8;--ok:#6ee7a8;--warn:#fdba74;--bad:#fca5a5;--soft:#35255c}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.35;overscroll-behavior-y:contain}
+#appView{max-width:760px;margin:0 auto;padding:0 12px calc(92px + env(safe-area-inset-bottom,0px))}
+.hdr{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;margin:0 -12px;background:var(--bg);border-bottom:1px solid var(--line)}
+.ht{flex:1;min-width:0}.ht b{display:block;font-size:1.15rem}.meta{font-size:.84rem;opacity:.82}.hdr .meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+h1{font-size:1.4rem;margin:0}h2{font-size:1.02rem;margin:0 0 6px}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid var(--line);white-space:nowrap}
+.ok{color:var(--ok);border-color:var(--ok)}.warnc{color:var(--warn);border-color:var(--warn)}.badc{color:var(--bad);border-color:var(--bad)}.gift{color:var(--btn);border-color:var(--btn)}
+.tabs{display:flex;gap:8px;overflow-x:auto;margin:12px -12px 8px;padding:0 12px;scrollbar-width:none;scroll-snap-type:x proximity}.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;scroll-snap-align:start;padding:11px 16px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;min-height:48px}
+.tab.on{background:linear-gradient(90deg,var(--btn2),var(--btn));color:#fff;border-color:transparent}
+input,select,textarea{font:inherit;font-size:16px;width:100%;padding:13px 14px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-height:48px}
+label{display:block;font-size:.86rem;font-weight:700;margin:12px 0 4px}
+button,.btn{font:inherit;font-weight:700;border:0;border-radius:14px;padding:12px 16px;min-height:50px;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--btn2),var(--btn));text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;touch-action:manipulation}
+button.alt,.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--line)}button.red{background:var(--bad);color:#fff}button:disabled,.btn.dis{opacity:.5;pointer-events:none}
+button.icon{min-width:50px;padding:0;font-size:1.3rem}
+button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible{outline:3px solid var(--btn);outline-offset:2px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px;margin:12px 0}.card.prize{border-color:var(--btn2);box-shadow:0 0 0 3px var(--soft)}
+.head{display:flex;align-items:center;gap:10px}.rank{font-size:1.5rem;min-width:2.2rem;text-align:center}.who{flex:1;min-width:0}.who b{display:block;font-size:1.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score{font-size:1.4rem;font-weight:800}.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;letter-spacing:.05em;word-break:break-all}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.acts>*{flex:1 1 150px}
+.row{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer;min-height:56px}.row .who b{font-size:1rem}
+.banner{margin:10px 0;border-radius:14px;padding:12px 14px;font-weight:600}.banner.bad{background:var(--bad);color:#fff}.banner.warn{background:#fde68a;color:#78350f}.banner.info{background:var(--soft)}
+.banner button{margin-top:8px;background:#fff;color:#222;min-height:44px}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;max-width:520px;margin:0 auto;background:var(--ok);color:#fff;border-radius:14px;padding:12px 16px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.25);text-align:center}#toast.bad{background:var(--bad)}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bottom button{flex:1;border-radius:0;background:transparent;color:var(--ink);flex-direction:column;gap:2px;min-height:62px;font-size:.78rem;opacity:.75}.bottom button b{font-size:1.35rem;line-height:1}.bottom button.on{opacity:1;color:var(--btn);box-shadow:inset 0 3px 0 var(--btn)}
+.modal{position:fixed;inset:0;z-index:80;background:rgba(20,10,40,.6);display:flex;align-items:flex-end;justify-content:center;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}.modal[hidden]{display:none}
+.dlg{background:var(--card);color:var(--ink);border-radius:20px;padding:18px;width:100%;max-width:480px;max-height:86vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.4)}.dlg h2{font-size:1.15rem}.dlg p{margin:8px 0}
+.center{text-align:center}[hidden]{display:none!important}#fatal{position:fixed;left:0;right:0;top:0;z-index:99;background:#b42318;color:#fff;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px;font-weight:700;font-size:.9rem}#boot{padding:40px 18px;text-align:center}.pad{padding:28px 6px}.status{padding:8px 0;border-bottom:1px solid var(--line)}.status:last-child{border:0}
+.lbl{display:flex;justify-content:space-between;gap:8px;align-items:center}
+</style></head><body>
+<div id="fatal" hidden></div>
+<div id="boot"><b>Loading the staff page…</b><p class="meta">If this message stays, your browser could not run the page. Open it in Chrome or Safari from your website address (for example https://yourname.github.io/yourgame/verify.html), not from a downloaded file.</p></div>
+<script>window.addEventListener('error',function(e){var f=document.getElementById('fatal');if(f){f.hidden=false;f.textContent='This page hit a problem: '+(e.message||'unknown error')+(e.lineno?' (line '+e.lineno+')':'')+'. Take a screenshot and send it to the game owner.';}});window.addEventListener('unhandledrejection',function(e){var f=document.getElementById('fatal');if(f){f.hidden=false;f.textContent='This page hit a problem: '+String(e.reason&&e.reason.message||e.reason||'unknown')+'. Take a screenshot and send it to the game owner.';}});</script>
+<main id="app">
+<div id="connectView" hidden></div>
+<div id="appView" hidden>
+  <header class="hdr"><div class="ht"><b>Magic Catch staff</b><span class="meta" id="hsub"></span></div><button class="icon alt" id="refreshBtn" data-act="refresh" aria-label="Refresh">⟳</button></header>
+  <div id="banner"></div>
+  <section id="v-winners">
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <input id="q" type="search" placeholder="Search a code, name or phone number" autocomplete="off" autocapitalize="off" inputmode="search" enterkeyhint="search">
+    <div id="found"></div><div id="list"></div>
+  </section>
+  <section id="v-comp" hidden><div id="boards"></div><div id="compcard"></div></section>
+  <section id="v-tools" hidden><div id="diag"></div><div id="tools"></div></section>
+  <nav class="bottom" id="nav" aria-label="Sections">
+    <button data-act="view" data-code="winners" id="n-winners"><b>🏆</b>Winners</button>
+    <button data-act="view" data-code="comp" id="n-comp"><b>🏁</b>Contest</button>
+    <button data-act="view" data-code="tools" id="n-tools"><b>🛠</b>Tools</button>
+  </nav>
+</div>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true"><div class="dlg" id="dlg"></div></div>
+<div id="toast" hidden role="status"></div>
+</main>
+<script>
+'use strict';
+const STAFF_BUILD = '2.0';
+const SERVER_URL = '';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+const MODES = [['rank', '🏆 Rank'], ['classic', 'Classic'], ['rush', 'Rush'], ['infinite', 'Infinite']], MODE_NAME = { rank: 'Rank', classic: 'Classic', rush: 'Rush', infinite: 'Infinite' };
+const ERRS = { auth: 'That PIN is wrong, or it was changed. Ask the game owner.', locked: 'Too many wrong attempts. Wait 10 minutes.', notfound: 'No score found with that code.', busy: 'The server is busy. Try again in a moment.' };
+const HELP = 'Can’t reach the server. Ask the game owner to check in Apps Script: Deploy → Manage deployments → Edit → “Who has access” must be Anyone, the address must end in /exec, then Version: New version → Deploy.';
+const relCmp = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; } return 0; };   // 7.10 is newer than 7.9
+const app = $('app');
+let conn = LS.get('wg_staff', null);
+if (conn && conn.k && conn.u !== SERVER_URL) { conn = { u: SERVER_URL, k: conn.k }; LS.set('wg_staff', conn); }   // an older staff code may hold an old address: repaired
+const S = { view: 'winners', mode: 'rank', rows: [], players: 0, info: null, season: '', auto: true, q: '', found: null, open: {}, prizes: +LS.get('wg_staff_prizes', 3) || 3, who: LS.get('wg_staff_who', ''), busy: false, updated: 0, loaded: false, error: '', netErr: false, comp: null, status: null, diag: null, form: null, modal: null, toast: '', bad: false };
+
+/* ---------- connect (one time) ---------- */
+function decode(str) {                                    // accepts the staff link, the staff code, or just the staff key
+  str = String(str || '').trim();
+  const m = /[#?&]s=([\w\-=]+)/.exec(str); if (m) str = m[1];
+  try {
+    let b = str.replace(/-/g, '+').replace(/_/g, '/'); while (b.length % 4) b += '=';
+    const j = JSON.parse(atob(b));
+    if (j && j.k) return { u: SERVER_URL || String(j.u || ''), k: String(j.k) };
+  } catch (e) {}
+  if (/^\S{6,64}$/.test(str) && SERVER_URL) return { u: SERVER_URL, k: str };                       // a PIN you chose
+  return null;
+}
+function connect(str) {
+  const c = decode(str);
+  if (!c) { S.error = 'Type your staff PIN (6 or more characters, no spaces).'; render(); return false; }
+  conn = c; LS.set('wg_staff', c); S.error = ''; load(); return true;
+}
+function disconnect() { conn = null; LS.set('wg_staff', null); S.rows = []; S.loaded = false; S.status = null; render(); }
+
+/* ---------- server ---------- */
+async function call(body) {
+  let r; try { r = await fetch(conn.u, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ key: conn.k }, body)) }); } catch (e) { const x = new Error(HELP); x.code = 'net'; throw x; }
+  let j; try { j = await r.json(); } catch (e) { const x = new Error('The server answered with a web page instead of data. In Apps Script set “Who has access” to Anyone and redeploy a New version.'); x.code = 'html'; throw x; }
+  if (!j.ok) { const e = new Error(ERRS[j.err] || ('Error: ' + j.err)); e.code = j.err; throw e; }
+  return j;
+}
+function flash(msg, bad) { S.toast = msg; S.bad = !!bad; renderToast(); clearTimeout(flash.t); flash.t = setTimeout(() => { S.toast = ''; renderToast(); }, 3800); }
+async function load(silent) {
+  if (!conn || S.busy) return; S.busy = true; if (!silent) renderHeader();
+  try {
+    try { const st = await call({ action: 'a_status' }); S.status = st; S.comp = st.comp; } catch (e) { if (e.code === 'auth' || e.code === 'net') throw e; }
+    if (S.mode === 'contest' && !S.comp) S.mode = 'rank';
+    const j = await call(S.mode === 'contest' ? { action: 'a_top', mode: 'rank', season: S.comp.season, limit: 100 } : { action: 'a_top', mode: S.mode, limit: 100 });
+    S.rows = j.rows; S.players = j.players; S.season = j.season; S.info = j.info || null; S.auto = j.auto; S.updated = Date.now(); S.loaded = true; S.error = ''; S.netErr = false;
+  } catch (e) { S.error = e.message; S.netErr = e.code === 'net' || e.code === 'html'; if (e.code === 'auth') { conn = null; LS.set('wg_staff', null); } }
+  S.busy = false; render();
+}
+
+/* ---------- dialogs inside the page (phones and in-app browsers often block pop-ups) ---------- */
+let modalResolve = null;
+function ask(o) {                                           // {title, body, ok, cancel, danger, input:{label,value,placeholder}} -> Promise<{ok, value}>
+  return new Promise(res => { modalResolve = res; S.modal = o; renderModal(); try { history.pushState({ rbm: 1 }, ''); } catch (e) {} });
+}
+function closeModal(result) { const r = modalResolve; modalResolve = null; S.modal = null; renderModal(); if (r) r(result || { ok: false }); }
+
+/* ---------- actions ---------- */
+const norm = c => String(c || '').toUpperCase().replace(/\s/g, '');
+function patchRow(row) { const i = S.rows.findIndex(r => r.code === row.code); if (i >= 0) S.rows[i] = row; if (S.found && S.found.code === row.code) S.found = row; }
+function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Magic Catch (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' at the counter to claim your prize.'; }
+function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') renderComp(); if (v === 'tools') renderTools(); }
+async function act(a, code, extra) {
+  try {
+    if (a === 'view') { try { history.pushState({ rbv: 1 }, ''); } catch (e) {} return setView(code); }
+    if (a === 'mok') { const el = $('mi'); return closeModal({ ok: true, value: el ? el.value : '' }); }
+    if (a === 'mcancel') return closeModal({ ok: false });
+    if (a === 'mode') { S.mode = code; S.found = null; S.q = ''; if ($('q')) $('q').value = ''; S.rows = []; S.loaded = false; S.busy = false; return load(); }
+    if (a === 'refresh') { S.busy = false; return load(); }
+    if (a === 'toggle') { S.open[code] = !S.open[code]; return renderList(); }
+    if (a === 'prizes') { S.prizes = Math.max(1, Math.min(20, S.prizes + (+code))); LS.set('wg_staff_prizes', S.prizes); return renderList(); }
+    if (a === 'disconnect') { const r = await ask({ title: 'Disconnect this device?', body: 'You will need the staff link or code again to connect.', ok: 'Disconnect', danger: true }); return r.ok && disconnect(); }
+    if (a === 'csv') return download();
+    if (a === 'copy') { try { await navigator.clipboard.writeText(extra || ''); flash('Message copied'); } catch (e) { flash('Copy is not available on this device', true); } return; }
+    if (a === 'give' || a === 'void' || a === 'undo') {
+      const r = (S.rows.find(x => x.code === code) || S.found);
+      if (a === 'give') {
+        if (r && r.risk === 'REVIEW') { const w = await ask({ title: '⚠️ Check this score first', body: 'This run was flagged for review (' + why(r) + '). Check it with the owner before handing over a prize. Give the prize anyway?', ok: 'Give anyway', danger: true }); if (!w.ok) return; }
+        const ok = await ask({ title: 'Give the prize?', body: 'Hand over the prize to <b>' + esc(r ? r.name : 'this player') + '</b> (code ' + esc(code) + '). It can only be given once.', ok: '🎁 Give prize' }); if (!ok.ok) return;
+        if (!S.who) { const w2 = await ask({ title: 'Your name', body: 'It is saved with the prize record so everyone knows who handed it over.', input: { label: 'Your name', value: '', placeholder: 'e.g. Ana' }, ok: 'Save' }); S.who = (w2.value || 'staff').trim().slice(0, 12) || 'staff'; LS.set('wg_staff_who', S.who); }
+      }
+      if (a === 'void') { const v = await ask({ title: 'Remove this score?', body: 'It disappears from the leaderboard. You can restore it later in the Sheet.', ok: 'Remove score', danger: true }); if (!v.ok) return; }
+      const j = await call({ action: 'a_mark', code, status: a === 'give' ? 'CLAIMED' : a === 'void' ? 'VOID' : 'OK', by: S.who || 'staff' });
+      patchRow(j.row); if (a === 'void') { S.rows = S.rows.filter(x => x.code !== code); S.found = null; }
+      renderList(); flash(a === 'give' ? '🎁 Prize recorded for ' + j.row.name : a === 'void' ? 'Score removed' : 'Restored'); return;
+    }
+    if (a === 'compsave') return saveComp();
+    if (a === 'compclear') { const r = await ask({ title: 'Remove the competition?', body: 'Its scores stay in the Sheet. Rank goes back to the normal board.', ok: 'Remove', danger: true }); if (!r.ok) return; const j = await call({ action: 'a_comp_clear' }); S.comp = j.comp; if (S.mode === 'contest') S.mode = 'rank'; flash('Competition removed'); return load(); }
+    if (a === 'season') {
+      const n = await ask({ title: 'Start a new board now?', body: 'This starts a <b>fresh, empty board</b> for every mode right now (Rank keeps its competition board while a competition runs). Old scores stay safe in the Sheet. Give the new board a name:', input: { label: 'Board name', value: '', placeholder: 'e.g. Grand Finals' }, ok: 'Start new board' });
+      if (!n.ok || !String(n.value).trim()) return;
+      const j = await call({ action: 'a_season', season: n.value }); flash('New board started: ' + j.season); return load();
+    }
+    if (a === 'autoseason') { const r = await ask({ title: 'Go back to automatic boards?', body: 'Boards will follow the normal weekly schedule again (Monday 12:00 AM, Philippine time).', ok: 'Use automatic' }); if (!r.ok) return; const j = await call({ action: 'a_season', season: '' }); flash('Automatic boards are on'); return load(); }
+    if (a === 'diag') { const j = await call({ action: 'a_diag' }); S.diag = j; renderTools(); return; }
+    if (a === 'diagclose') { S.diag = null; return renderTools(); }
+    if (a === 'adopt') { const r = await ask({ title: 'Show this week\u2019s earlier scores?', body: 'Some scores from <b>this week</b> are filed under the old weekly name, so they are missing from today\u2019s board. This puts them on the current board. Older weeks are not touched, and nothing is deleted.', ok: 'Show them' }); if (!r.ok) return; const j = await call({ action: 'a_adopt' }); flash(j.moved + ' scores are now on the current board'); return act('diag'); }
+    if (a === 'repair') { const j = await call({ action: 'a_repair' }); flash('Repaired ' + j.fixed + ' cells'); return act('diag'); }
+    if (a === 'testconn') { S.busy = false; await load(); if (!S.error) flash('Connected ✓'); return; }
+  } catch (e) { flash(e.message, true); }
+}
+let lookupT = 0;
+function onSearch(v) {
+  S.q = v; S.found = null; renderList();
+  clearTimeout(lookupT);
+  const c = norm(v);
+  if (/^(RB-?)?[0-9A-F]{4}-?[0-9A-F]{4}$/.test(c) && !visible().length) {                      // a full code that isn't in the list: ask the server
+    const full = c.replace(/^RB-?/, '').replace('-', ''), code = 'RB-' + full.slice(0, 4) + '-' + full.slice(4, 8);
+    lookupT = setTimeout(async () => { try { const j = await call({ action: 'a_lookup', code }); S.found = j.row; S.error = ''; } catch (e) { S.error = e.message; } renderList(); renderBanner(); }, 250);
+  }
+}
+function download() {
+  const head = ['Rank', 'Name', 'Mobile', 'Score', 'Code', 'Check', 'Status', 'When'];
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = [head.join(',')].concat(S.rows.map((r, i) => [i + 1, r.name, r.contact, r.score, r.code, r.risk, r.status, r.when].map(q).join(','))).join('\n');
+  try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'winners-' + S.mode + '-' + S.season + '.csv'; a.click(); } catch (e) { flash('Download is not available here', true); }
+  return csv;
+}
+
+/* ---------- competition ---------- */
+const nextHour = () => Math.ceil(Date.now() / 3600e3) * 3600e3;
+function localInput(ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+const when = ms => { try { return new Date(ms).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+const left = ms => { ms = Math.max(0, ms); const q = Math.floor(ms / 1000), d = Math.floor(q / 86400), h = Math.floor(q % 86400 / 3600), m = Math.floor(q % 3600 / 60); return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm'; };
+function compStatus(c) { return !c ? 'No competition is set.' : { upcoming: 'Starts ' + when(c.start) + '.', live: 'LIVE until ' + when(c.end) + '.', closing: 'Ended. Late uploads are accepted until ' + when(c.end + c.grace * 60000) + '.', ended: 'Ended ' + when(c.end) + '. The winners are shown to everyone in the game.' }[c.state]; }
+async function saveComp() {
+  const msg = $('compmsg'), name = $('cn').value.trim(), start = new Date($('cs').value).getTime(), n = +$('cd').value, unit = $('cu').value, grace = +$('cg').value;
+  const bad = t => { msg.innerHTML = '<span style="color:var(--bad)">' + esc(t) + '</span>'; };
+  if (!name) return bad('Give the competition a name.');
+  if (!(start > 0)) return bad('Pick the start date and time.');
+  if (!(n >= 1)) return bad('Say how long it lasts (at least 1).');
+  const end = start + n * (unit === 'hours' ? 3600e3 : 86400e3);
+  msg.textContent = 'Saving…';
+  try { const j = await call({ action: 'a_comp_set', name, start, end, grace: isNaN(grace) ? 15 : grace }); S.comp = j.comp; S.form = null; msg.textContent = ''; flash('Competition saved: ' + name); return load(); }
+  catch (e) { bad(e.message); }
+}
+function compFormHtml() {
+  const c = S.comp;
+  const len = c ? Math.round((c.end - c.start) / 3600e3) : 168, unit = c && len % 24 && len < 24 * 90 ? 'hours' : 'days', num = unit === 'days' ? Math.max(1, Math.round(len / 24)) : Math.max(1, len);
+  return `<div class="card"><h2>🏁 Competition</h2><p class="meta">Rank scores played between the start and the end decide the winners. Players see the countdown in the game and, after the deadline, who won.</p>
+  <p id="compstatus"></p>
+  <label for="cn">Name</label><input id="cn" maxlength="30" value="${esc(c ? c.name : 'Rainbrew Contest')}" autocomplete="off">
+  <label for="cs">Starts</label><input id="cs" type="datetime-local" value="${esc(localInput(c ? c.start : nextHour()))}">
+  <div class="acts"><div><label for="cd">Lasts</label><input id="cd" type="number" inputmode="numeric" min="1" max="90" value="${num}"></div><div><label for="cu">Unit</label><select id="cu"><option value="days"${unit === 'days' ? ' selected' : ''}>days</option><option value="hours"${unit === 'hours' ? ' selected' : ''}>hours</option></select></div></div>
+  <label for="cg">Late uploads still count for (minutes)</label><input id="cg" type="number" inputmode="numeric" min="0" max="240" value="${c ? c.grace : 15}">
+  <p class="meta" id="compmsg"></p>
+  <div class="acts"><button data-act="compsave">Save competition</button><button class="alt" data-act="compclear" id="compclear"${c ? '' : ' hidden'}>Remove it</button></div></div>`;
+}
+
+/* ---------- rendering: each region updates on its own, so inputs and the keyboard are never disturbed ---------- */
+function visible() {
+  const q = S.q.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  const all = S.rows.map((r, i) => ({ r, rank: i + 1 }));
+  if (!q) return all;
+  return all.filter(({ r }) => String(r.name).toLowerCase().includes(q) || String(r.code).toLowerCase().includes(q.replace(/\s/g, '')) || (qd.length >= 3 && String(r.contact).includes(qd)));
+}
+function chips(r) { return (r.status === 'CLAIMED' ? '<span class="chip gift">🎁 Prize given</span> ' : '') + (r.risk === 'REVIEW' ? '<span class="chip warnc">⚠️ Check first</span>' : '<span class="chip ok">✅ Verified</span>'); }
+function why(r) { const n = String(r.note || ''), out = []; if (/uniform-timing/.test(n)) out.push('catch timing was suspiciously uniform'); if (/fast-moves/.test(n)) out.push('it moved faster than a finger can'); return out.length ? out.join(' and ') : 'it was close to a perfect game'; }
+function details(r, rank) {
+  const claimed = r.status === 'CLAIMED', sms = r.contact ? 'sms:' + r.contact + '?&body=' + encodeURIComponent(msgFor(r, rank)) : '';
+  return `<div class="meta" style="margin-top:8px">Code <span class="code">${esc(r.code)}</span> · Mobile <b>${esc(r.contact) || 'not given'}</b> · ${esc(r.when)}${/bosses:/.test(r.note || '') ? ' · ' + esc(String(r.note).replace(/flags:\S+/, '').trim()) : ''}${claimed ? ' · given ' + esc(r.claimedAt) + ' by ' + esc(r.claimedBy) : ''}</div>
+  ${r.risk === 'REVIEW' ? '<div class="meta warnc" style="margin-top:6px">Look at this run before handing over a prize: ' + esc(why(r)) + '.</div>' : ''}
+  <div class="acts"><button data-act="give" data-code="${esc(r.code)}" ${claimed ? 'disabled' : ''}>🎁 ${claimed ? 'Prize given' : 'Give prize'}</button>
+  ${sms ? `<a class="btn alt" href="${esc(sms)}">💬 Text winner</a>` : '<span class="btn alt dis">💬 No number</span>'}
+  <button class="alt" data-act="copy" data-code="x" data-extra="${esc(msgFor(r, rank))}">Copy message</button>
+  ${claimed ? `<button class="alt" data-act="undo" data-code="${esc(r.code)}">Undo</button>` : ''}<button class="alt" data-act="void" data-code="${esc(r.code)}">Remove score</button></div>`;
+}
+function card(r, rank, prize, open) {
+  return `<div class="card${prize ? ' prize' : ''}"><div class="head" ${prize ? '' : `data-act="toggle" data-code="${esc(r.code)}"`}><div class="rank">${['🥇', '🥈', '🥉'][rank - 1] || (rank ? rank + '.' : '🔎')}</div>
+  <div class="who"><b>${esc(r.name)}</b>${chips(r)}${prize && rank ? ` <span class="chip">Prize #${rank}</span>` : ''}</div><div class="score">${esc(r.score)}</div></div>${prize || open ? details(r, rank) : ''}</div>`;
+}
+function renderView() {
+  const on = !!conn;
+  $('connectView').hidden = on; $('appView').hidden = !on;
+  if (!on) { $('connectView').innerHTML = `<div class="pad center"><h1>Rainbrew staff 🦄</h1><p class="meta">Enter your staff PIN. This device then stays signed in until you tap Disconnect.</p>
+    <input id="code" type="password" placeholder="Staff PIN" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    <label class="meta" style="display:flex;gap:8px;align-items:center;justify-content:center;margin:10px 0"><input type="checkbox" id="showpin" style="width:auto;min-height:0"> Show PIN</label>
+    <p class="meta" style="color:var(--bad)">${esc(S.error)}</p><div class="acts"><button data-act="connect">Sign in</button></div>
+    ${location.protocol === 'file:' ? '<div class="banner bad" style="text-align:left">⚠️ You opened this page from a <b>downloaded file</b> on your phone. It cannot reach the server that way. Open it from your website address instead (the GitHub page where you uploaded it).</div>' : ''}
+    <div class="card" style="text-align:left"><h2>Where do I get the PIN?</h2><p class="meta">The game owner chooses it once: in Apps Script, edit the PIN on the marked line of <b>setMyStaffPin</b>, choose that function and press <b>Run</b>. The same PIN then works on every phone and computer. (A staff link or code from <b>showStaffLink</b> also still works: paste it in the box.)</p></div></div>`; return; }
+  ['winners', 'comp', 'tools'].forEach(v => { $('v-' + v).hidden = S.view !== v; $('n-' + v).classList.toggle('on', S.view === v); });
+}
+function renderHeader() {
+  const sub = $('hsub'); if (!sub) return;
+  const st = S.status, label = (S.info && S.info.label) || S.season;
+  sub.textContent = S.busy ? 'Loading…' : (label ? label + ' · ' : '') + S.players + ' players' + (S.updated ? ' · updated ' + Math.max(0, Math.round((Date.now() - S.updated) / 1000)) + 's ago' : '');
+  $('refreshBtn').textContent = S.busy ? '…' : '⟳';
+}
+function renderBanner() {
+  const el = $('banner'); if (!el) return; const out = [], st = S.status;
+  if (S.error) out.push(`<div class="banner bad">${esc(S.error)}${S.netErr ? `<br><button data-act="refresh">Try again</button> <a class="btn" style="background:#fff;color:#222;min-height:44px" href="${esc(SERVER_URL)}?action=ping" target="_blank" rel="noopener">Test the server address</a><div style="font-weight:500;margin-top:8px;font-size:.88rem">Tap “Test the server address”. You should see text starting with <b>{"ok":true</b>. If you see a Google sign-in page or an error, the Apps Script deployment is not set to <b>Who has access: Anyone</b> (or it is not the newest version): Deploy → Manage deployments → Edit → New version → Deploy.</div>` : ''}</div>`);
+  if (st && st.release && st.release !== STAFF_BUILD) out.push(`<div class="banner warn">⚠️ This staff page is v${esc(STAFF_BUILD)} but the server is v${esc(st.release)}. ${relCmp(st.release, STAFF_BUILD) > 0 ? 'Reload this page to get the newest version.' : 'Ask the game owner to update <b>Code.gs</b> and deploy a New version.'}</div>`);
+  el.innerHTML = out.join('');
+}
+function renderTabs() { $('tabs').innerHTML = MODES.concat(S.comp ? [['contest', '🏁 Results']] : []).map(([m, n]) => `<button class="tab${S.mode === m ? ' on' : ''}" role="tab" data-act="mode" data-code="${m}">${n}</button>`).join(''); }
+function renderList() {
+  const vis = visible(), q = S.q.trim();
+  const prizeRows = q ? [] : vis.filter(v => v.rank <= S.prizes), rest = q ? vis : vis.filter(v => v.rank > S.prizes);
+  $('found').innerHTML = S.found ? `<h2 style="margin-top:12px">Found by code</h2>${card(S.found, 0, true)}` : '';
+  $('list').innerHTML = `${prizeRows.length ? `<h2 style="margin-top:12px">Prize winners (top ${S.prizes})</h2>` + prizeRows.map(v => card(v.r, v.rank, true)).join('') : ''}
+  ${rest.length ? `<h2 style="margin-top:12px">${q ? 'Matches' : 'Everyone else'}</h2><div class="card">${rest.map(v => `<div class="row" data-act="toggle" data-code="${esc(v.r.code)}"><div class="rank">${v.rank}.</div><div class="who"><b>${esc(v.r.name)}</b>${chips(v.r)}</div><div class="score">${esc(v.r.score)}</div></div>${S.open[v.r.code] ? details(v.r, v.rank) : ''}`).join('')}</div>` : ''}
+  ${!vis.length && !S.found && S.loaded ? `<div class="card center">${q ? 'No match. If you have a full code, type it in full.' : 'No scores yet on this board.'}</div>` : ''}
+  ${!S.loaded && !S.error ? '<div class="card center meta">Loading the leaderboard…</div>' : ''}
+  <div class="acts"><button class="alt" data-act="prizes" data-code="-1">− prize</button><span class="meta center" style="align-self:center;flex:2">Prizes for the top <b>${S.prizes}</b></span><button class="alt" data-act="prizes" data-code="1">+ prize</button></div>`;
+}
+function renderComp() {
+  const st = S.status, el = $('boards'), cc = $('compcard');
+  if (el) el.innerHTML = `<div class="card"><h2>📅 Boards right now</h2><p class="meta">What players see in the game, read from the same place.</p>${st ? Object.keys(st.seasons).map(m => { const i = st.seasons[m]; return `<div class="status"><div class="lbl"><b>${esc(MODE_NAME[m])}</b><span class="chip ${i.kind === 'competition' ? 'gift' : ''}">${esc(i.kind)}</span></div><div>${esc(i.label)}${i.resetAt ? ' <span class="meta">· resets in ' + esc(left(i.resetAt - st.now)) + '</span>' : ''}</div></div>`; }).join('') : '<p class="meta">Loading…</p>'}
+    <p class="meta">${st ? (st.auto ? 'Boards follow the ' + esc(st.autoKind || 'weekly') + ' schedule automatically (Monday 12:00 AM, Philippine time).' : 'A board named “' + esc(st.manual) + '” was set by hand.') : ''}</p>
+    <div class="acts"><button class="alt" data-act="season">Start a new board now</button>${st && !st.auto ? '<button class="alt" data-act="autoseason">Back to automatic</button>' : ''}</div></div>`;
+  if (cc) { if (!cc.firstChild || cc.dataset.v !== (S.comp ? S.comp.name + S.comp.start + S.comp.end + S.comp.grace : 'none')) { cc.innerHTML = compFormHtml(); cc.dataset.v = S.comp ? S.comp.name + S.comp.start + S.comp.end + S.comp.grace : 'none'; } const cs = $('compstatus'); if (cs) cs.innerHTML = S.comp ? '<b>' + esc(S.comp.name) + '</b><br>' + esc(compStatus(S.comp)) : esc(compStatus(null)); const cl = $('compclear'); if (cl) cl.hidden = !S.comp; }
+}
+const REFUSED = { version: 'the game and the server are on different versions (update both: Code.gs and every file of the game)', contact: 'Rank needs a Philippine mobile number and the player did not give a valid one', closed: 'the competition had already ended', mismatch: 'the score did not match the server\u2019s replay (an out-of-date game, or tampering)', token: 'the session was not valid', expired: 'the session was older than 7 days', device: 'the session belonged to another phone', rate: 'too many tries from one phone', server: 'the server could not save the row (see the problems below)', size: 'the upload was too large', time: 'the run failed the time check', clock: 'the run failed the time check', timing: 'the run failed the replay check', kind: 'the run failed the replay check', order: 'the run failed the replay check', item: 'the run failed the replay check', format: 'the run failed the replay check', afterover: 'the run failed the replay check', events: 'the run was too long to check', name: 'no name was given', used: 'the same session was sent twice', busy: 'the server was busy', mode: 'unknown mode', unknown: 'unknown reason' };
+function ago2(t) { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 1 ? 'just now' : m < 90 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; }
+function diagCard() {
+  const d = S.diag, MN = MODE_NAME, L = [];
+  const where = `<a href="${esc(d.sheetUrl)}" target="_blank" rel="noopener">${esc(d.spreadsheet)}</a> → tab “${esc(d.sheetName)}”`;
+  if (d.release && d.release !== STAFF_BUILD) L.push(`⚠️ Versions differ: staff page v${esc(STAFF_BUILD)}, server v${esc(d.release)}.`);
+  if (!d.rows) L.push('⚠️ <b>No scores have reached this Sheet yet.</b> Players’ scores are not arriving. Check: (1) the game’s <code>API_URL</code> is the Web app address ending in <code>/exec</code>; (2) in the game, Settings → Check the server says the game and server match; (3) Deploy → Manage deployments → Who has access = Anyone; (4) you are looking at the Sheet named above (the one where <code>setup</code> was run).');
+  if (d.write) L.push(d.write.ok ? `✅ The script can write to the Sheet${d.runsAs ? ' (it runs as ' + esc(d.runsAs) + ')' : ''}.` : `⚠️ <b>The script cannot write to the Sheet</b>: ${esc(d.write.msg)}. This is the usual reason plays are not recorded. In Apps Script open <b>Deploy → Manage deployments → Edit</b>: <b>Execute as</b> must be <b>Me</b> (not “User accessing the web app”) and <b>Who has access</b> must be <b>Anyone</b>; choose <b>Version: New version → Deploy</b>. Also make sure the Sheet is not protected.`);
+  if (d.refreshTrigger === false) L.push('⚠️ The 1-minute board refresh is not installed, so a leaderboard can take a few seconds the first time. In Apps Script run <b>installTriggers</b> once.');
+  if (d.submits) {
+    const ref = Object.keys(d.submits.refused || {}), since = d.submits.since ? ' (since ' + ago2(d.submits.since) + ')' : '';
+    if (!d.submits.ok && !ref.length) L.push('⚠️ <b>No score upload has reached the server recently.</b> Either nobody finished a ranked game, or the phones are not sending: check the game’s <code>API_URL</code> and Settings → Check the server.');
+    else L.push(`📥 Recent uploads${since}: <b>${d.submits.ok}</b> accepted${ref.length ? '; <b>refused</b>: ' + ref.map(k => `${d.submits.refused[k]}× ${esc(REFUSED[k] || k)}`).join('; ') : ''}.`);
+  }
+  if (d.fails && d.fails.length) L.push('Recent problems: ' + d.fails.slice(-5).map(f => `${ago2(f.t)} · ${esc(f.w)}${f.x ? ' (' + esc(f.x) + ')' : ''}: ${esc(f.m)}`).join(' | '));
+  Object.keys(d.boards).forEach(m => {
+    const others = d.groups.filter(g => g.mode === m && g.season !== String(d.seasons[m]) && g.status !== 'VOID' && g.status !== 'TEST');
+    if (d.boards[m] > 0) L.push(`✅ <b>${MN[m]}</b>: the board shows season “${esc(d.seasons[m])}” with <b>${d.boards[m]}</b> player${d.boards[m] === 1 ? '' : 's'}.`);
+    else if (others.length) L.push(`⚠️ <b>${MN[m]}</b> is empty because the board shows season “${esc(d.seasons[m])}”, but the Sheet holds ${others.map(o => o.n + ' score' + (o.n === 1 ? '' : 's') + ' under “' + esc(o.season) + '”').join(', ')}. A new season or competition starts a fresh board; the older scores are safe in the Sheet.`);
+    else L.push(`ℹ️ <b>${MN[m]}</b>: no scores yet this season (“${esc(d.seasons[m])}”).`);
+  });
+  if (d.legacy) L.push(`⚠️ <b>${d.legacy} score${d.legacy === 1 ? '' : 's'} played this week ${d.legacy === 1 ? 'is' : 'are'} filed under the old weekly name</b> (from before the update), so ${d.legacy === 1 ? 'it is' : 'they are'} missing from today’s board. <button class="alt" data-act="adopt">Show them on the board</button>`);
+  if (d.oddSeasons) L.push(`⚠️ <b>${d.oddSeasons} rows have a season that Google Sheets turned into a date or number</b> (for example a season named “10-15” or “2026-10”). The game now reads these correctly, but you can fix the cells for good: <button class="alt" data-act="repair">Repair now</button>`);
+  if (d.hidden.TEST || d.hidden.VOID) L.push(`ℹ️ Hidden on purpose: ${d.hidden.TEST} test row${d.hidden.TEST === 1 ? '' : 's'} (load test) and ${d.hidden.VOID} removed by staff.`);
+  if (d.compState !== 'none') L.push(`🏁 Competition “${esc(d.compName)}” is <b>${esc(d.compState)}</b>. ${d.compState === 'upcoming' ? 'Rank shows the normal weekly board until it starts.' : 'Rank shows its own board, and keeps showing the final standings after the deadline until you remove the competition.'}`);
+  if (d.recent.length) L.push('Newest scores in the Sheet: ' + d.recent.map(r => `${esc(r.name)} (${esc(MN[r.mode] || r.mode)}, ${esc(r.score)}, “${esc(r.season)}”${r.status && r.status !== 'OK' ? ', ' + esc(r.status) : ''})`).join('; '));
+  return `<div class="card"><h2>Leaderboard check</h2><p class="meta">Scores are stored in ${where} (${d.rows} rows). Server <b>${esc(d.server || '')}</b> · v${esc(d.release || '?')} · rules ${esc(d.rules)}.</p>${L.map(x => `<p style="margin:8px 0">${x}</p>`).join('')}<div class="acts"><button class="alt" data-act="diag">Check again</button><button class="alt" data-act="diagclose">Close</button></div></div>`;
+}
+function renderTools() {
+  const st = S.status;
+  $('diag').innerHTML = S.diag ? diagCard() : '';
+  $('tools').innerHTML = `<div class="card"><h2>Tools</h2>
+    <div class="acts"><button data-act="diag">🔍 Why is a board empty?</button><button class="alt" data-act="csv">⬇ Winners list (CSV)</button></div>
+    <p class="meta" style="margin-top:12px">Connected to server <b>${esc(st ? st.server : '…')}</b> (…${esc(SERVER_URL.slice(-14))}) · code v${esc(st ? st.release : '…')} · staff page v${esc(STAFF_BUILD)} · rules ${esc(st ? st.rules : '…')}</p>
+    <div class="acts"><button class="alt" data-act="testconn">Test the connection</button><button class="alt" data-act="disconnect">Disconnect this device</button></div></div>`;
+}
+function renderModal() {
+  const m = S.modal, box = $('modal'); if (!box) return;
+  box.hidden = !m; document.body.style.overflow = m ? 'hidden' : '';
+  if (!m) { $('dlg').innerHTML = ''; return; }
+  $('dlg').innerHTML = `<h2>${esc(m.title)}</h2><p>${m.body || ''}</p>${m.input ? `<label for="mi">${esc(m.input.label || '')}</label><input id="mi" value="${esc(m.input.value || '')}" placeholder="${esc(m.input.placeholder || '')}" autocomplete="off">` : ''}
+    <div class="acts"><button class="${m.danger ? 'red' : ''}" data-act="mok">${esc(m.ok || 'OK')}</button><button class="alt" data-act="mcancel">${esc(m.cancel || 'Cancel')}</button></div>`;
+  const i = $('mi'); if (i && i.focus) { try { i.focus(); } catch (e) {} }
+}
+function renderToast() { const t = $('toast'); if (!t) return; t.hidden = !S.toast; t.className = S.bad ? 'bad' : ''; t.textContent = S.toast; }
+function render() { renderView(); if (!conn) return; renderHeader(); renderBanner(); renderTabs(); renderList(); renderComp(); renderTools(); renderToast(); }
+
+/* ---------- events ---------- */
+app.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const a = b.dataset.act;
+  if (a === 'connect') { const el = $('code'); connect(el ? el.value : ''); return; }
+  act(a, b.dataset.code, b.dataset.extra);
+});
+app.addEventListener('input', e => { if (e.target.id === 'q') onSearch(e.target.value); });
+app.addEventListener('change', e => { if (e.target.id === 'showpin') { const c = $('code'); if (c) c.type = e.target.checked ? 'text' : 'password'; } });
+app.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'code') connect(e.target.value);
+  if (e.key === 'Enter' && e.target.id === 'mi') act('mok');
+  if (e.key === 'Escape' && S.modal) closeModal({ ok: false });
+});
+window.addEventListener('popstate', () => { if (S.modal) { closeModal({ ok: false }); return; } if (conn && S.view !== 'winners') setView('winners'); });   // the phone's back button closes a dialog or goes back, instead of leaving the page
+
+/* ---------- start ---------- */
+(function init() {
+  const h = location.hash || '';
+  if (/[#&]s=/.test(h)) { const c = decode(h); if (c) { conn = c; LS.set('wg_staff', c); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }   // the code never stays in the address bar
+  const boot = $('boot'); if (boot) boot.hidden = true;
+  render();
+  if (conn) load();
+  setInterval(() => { if (conn && !document.hidden && !S.busy && !S.modal) load(true); }, 30000);
+})();
+window.__v = { S, act, load, decode, download, render, onSearch, visible, ask, closeModal };
+</script></body></html>
