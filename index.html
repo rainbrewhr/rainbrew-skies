@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#151238">
+<title>Unicorn Skies</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0a24; overflow: hidden; color: #fff;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #game { display: block; width: 100vw; height: 100vh; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box;
+    background: rgba(8, 6, 30, .74); z-index: 10; }
+  .overlay.hidden { display: none; }
+  .panel { width: 100%; max-width: 560px; max-height: 100%; overflow: auto; box-sizing: border-box; padding: 16px;
+    background: linear-gradient(#26215e, #141236); border: 2px solid #6f62d8; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  h1 { margin: 0; font-size: 26px; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+  h2 { margin: 4px 0 10px; font-size: 15px; font-weight: 600; text-align: center; opacity: .8; }
+  .wallet { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 20px; font-weight: 800; margin: 8px 0 2px; }
+  .gem { display: inline-block; width: 13px; height: 13px; transform: rotate(45deg); border-radius: 2px;
+    background: linear-gradient(135deg, #e9fbff, #49c6ff 55%, #1d5fd0); box-shadow: 0 0 8px #49c6ff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+  .card { position: relative; padding: 8px; text-align: center; border-radius: 16px;
+    background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.12); }
+  .card.selected { border-color: #ffd24a; box-shadow: 0 0 0 3px rgba(255,210,74,.3); }
+  .card .pic { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+  .card.locked .pic { filter: grayscale(1) brightness(.45); }
+  .card .pic.missing { background: repeating-linear-gradient(45deg, #2b2660 0 8px, #221d50 8px 16px); border-radius: 12px; }
+  .badge { position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 8px; background: #000a; letter-spacing: .5px; }
+  .name { font-weight: 800; margin-top: 4px; }
+  .el { font-size: 12px; font-weight: 700; }
+  .stats { font-size: 11px; opacity: .75; min-height: 2.6em; margin: 2px 0 6px; }
+  button { font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 9px 12px; cursor: pointer; width: 100%;
+    color: #1a1240; background: #ffd24a; }
+  button.sec { background: rgba(255,255,255,.14); color: #fff; }
+  button.poor { background: rgba(255,255,255,.12); color: #ffb3b3; }
+  button:disabled { opacity: .55; cursor: default; }
+  .big { font-size: 19px; padding: 14px; text-transform: uppercase; letter-spacing: 1px; background: linear-gradient(#ffe27a, #ffb627); }
+  .msg { min-height: 1.4em; text-align: center; font-size: 14px; color: #ffd2d2; margin: 6px 0; }
+  .msg.good { color: #b8ffcf; }
+  .row { display: flex; gap: 8px; margin-top: 8px; }
+  .small { font-size: 12px; opacity: .7; text-align: center; margin-top: 10px; }
+  .res { text-align: center; font-size: 18px; line-height: 1.7; }
+  .res b { font-size: 30px; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Unicorn Skies game"></canvas>
+
+<!-- the shop and character selection menu -->
+<div id="shop" class="overlay">
+  <div class="panel">
+    <h1>Unicorn Skies</h1>
+    <h2>Choose your fighter</h2>
+    <div class="wallet"><span class="gem"></span><span id="gemCount">0</span> gems</div>
+    <div id="shopMsg" class="msg"></div>
+    <div id="grid" class="grid"></div>
+    <button id="startBtn" class="big">Start run</button>
+    <div class="row"><button id="resetBtn" class="sec">Reset progress</button></div>
+    <div class="small">Drag to fly. Your unicorn shoots by itself. Collect gems to unlock new unicorns. A boss waits every 5th level.</div>
+  </div>
+</div>
+
+<!-- the results after a run -->
+<div id="results" class="overlay hidden">
+  <div class="panel">
+    <h1>Run over</h1>
+    <div class="res" id="resText"></div>
+    <div class="row"><button id="againBtn" class="big">Play again</button></div>
+    <div class="row"><button id="toShopBtn" class="sec">Characters and shop</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================================
+   1. THE CHARACTERS
+   Paths are relative to this file: keep the images in an "assets" folder next to index.html.
+   price 0 + unlockedByDefault true = the starting unicorn.
+   ===================================================================================== */
+const CHARACTERS = [
+  { id: 'frost',   name: 'Frost Unicorn',  element: 'Ice',    src: 'assets/frost_unicorn.png',  price: 0,    unlockedByDefault: true,
+    color: '#8fe0ff', fireDelay: 0.17, damage: 1, lanes: 2, pierce: false, desc: 'Twin ice bolts' },
+  { id: 'solar',   name: 'Solar Blaze',    element: 'Fire',   src: 'assets/solar_blaze.png',    price: 100,  unlockedByDefault: false,
+    color: '#ff8a3a', fireDelay: 0.12, damage: 1, lanes: 2, pierce: false, desc: 'Rapid twin fire bolts' },
+  { id: 'void',    name: 'Void Shadow',    element: 'Shadow', src: 'assets/void_shadow.png',    price: 250,  unlockedByDefault: false,
+    color: '#c77dff', fireDelay: 0.17, damage: 2, lanes: 2, pierce: true,  desc: 'Bolts pierce through enemies' },
+  { id: 'golden',  name: 'Golden Sun',     element: 'Light',  src: 'assets/golden_sun.png',     price: 500,  unlockedByDefault: false,
+    color: '#ffd24a', fireDelay: 0.15, damage: 1, lanes: 3, pierce: false, desc: 'Triple sun beams' },
+  { id: 'emerald', name: 'Emerald Nature', element: 'Nature', src: 'assets/emerald_nature.png', price: 1000, unlockedByDefault: false,
+    color: '#5cf08f', fireDelay: 0.13, damage: 2, lanes: 3, pierce: false, desc: 'Strong triple thorn bolts' }
+];
+
+/* =====================================================================================
+   2. SAVING AND THE SHOP (no screen code here: this part only manages gems and unlocks)
+   Everything is kept in localStorage under one key, so it survives closing the browser.
+   ===================================================================================== */
+const SAVE_KEY = 'unicornSkies.save.v1';
+const store = {                                              // private browsing or blocked storage: the game still works, it just doesn't remember
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+};
+const charById = id => CHARACTERS.find(c => c.id === id) || null;
+function defaultSave() {
+  const free = CHARACTERS.filter(c => c.unlockedByDefault).map(c => c.id);
+  return { gems: 0, unlocked: free, selected: free[0] || CHARACTERS[0].id, best: 0 };
+}
+function loadSave() {
+  const s = defaultSave();
+  try {
+    const d = JSON.parse(store.get(SAVE_KEY) || 'null');
+    if (d && typeof d === 'object') {
+      if (Number.isFinite(d.gems) && d.gems >= 0) s.gems = Math.floor(d.gems);
+      if (Number.isFinite(d.best) && d.best >= 0) s.best = Math.floor(d.best);
+      if (Array.isArray(d.unlocked)) for (const id of d.unlocked) if (charById(id) && !s.unlocked.includes(id)) s.unlocked.push(id);   // unknown ids are ignored
+      if (s.unlocked.includes(d.selected)) s.selected = d.selected;
+    }
+  } catch (e) { /* a damaged save: start fresh */ }
+  return s;
+}
+let save = loadSave();
+function saveGame() { return store.set(SAVE_KEY, JSON.stringify(save)); }
+const isUnlocked = id => save.unlocked.includes(id);
+function buyCharacter(id) {
+  const c = charById(id);
+  if (!c) return { ok: false, reason: 'unknown' };
+  if (isUnlocked(id)) return { ok: false, reason: 'owned' };
+  if (save.gems < c.price) return { ok: false, reason: 'gems', need: c.price - save.gems };
+  save.gems -= c.price; save.unlocked.push(id); save.selected = id; saveGame();
+  return { ok: true };
+}
+function selectCharacter(id) { if (!isUnlocked(id)) return false; save.selected = id; saveGame(); return true; }
+function addGems(n) { save.gems += Math.max(0, Math.floor(n)); saveGame(); }
+function resetProgress() { save = defaultSave(); saveGame(); }
+/* ===== END SAVING AND THE SHOP ===== */
+
+/* =====================================================================================
+   3. THE SHOP / SELECTION MENU (an HTML overlay above the canvas)
+   ===================================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+let resetArmed = 0;
+function renderShop(msg, good) {
+  $('gemCount').textContent = save.gems;
+  $('shopMsg').textContent = msg || ''; $('shopMsg').className = 'msg' + (good ? ' good' : '');
+  $('grid').innerHTML = CHARACTERS.map(c => {
+    const own = isUnlocked(c.id), sel = save.selected === c.id, afford = save.gems >= c.price;
+    const btn = own ? (sel ? '<button disabled>Selected</button>' : `<button data-action="select" data-id="${c.id}">Select</button>`)
+                    : `<button class="${afford ? '' : 'poor'}" data-action="buy" data-id="${c.id}">Unlock · ${c.price} gems</button>`;
+    return `<div class="card${own ? '' : ' locked'}${sel ? ' selected' : ''}">
+      ${own ? '' : '<span class="badge">LOCKED</span>'}
+      <img class="pic" src="${esc(c.src)}" alt="${esc(c.name)}" onerror="this.classList.add('missing');this.removeAttribute('src')">
+      <div class="name">${esc(c.name)}</div><div class="el" style="color:${c.color}">${esc(c.element)}</div>
+      <div class="stats">${esc(c.desc)}</div>${btn}</div>`;
+  }).join('');
+  $('startBtn').textContent = 'Start run with ' + charById(save.selected).name;
+  $('resetBtn').textContent = resetArmed ? 'Tap again to erase everything' : 'Reset progress';
+}
+$('grid').addEventListener('click', e => {
+  const b = e.target.closest('[data-action]'); if (!b) return;
+  const id = b.dataset.id, c = charById(id);
+  if (b.dataset.action === 'buy') {
+    const r = buyCharacter(id);
+    if (r.ok) renderShop(c.name + ' unlocked and selected!', true);
+    else if (r.reason === 'gems') renderShop('You need ' + r.need + ' more gems for ' + c.name + '.');
+    else renderShop();
+  } else if (b.dataset.action === 'select') { selectCharacter(id); renderShop(c.name + ' is ready to fly.', true); }
+});
+$('startBtn').addEventListener('click', startRun);
+$('resetBtn').addEventListener('click', () => {
+  if (resetArmed && Date.now() - resetArmed < 4000) { resetArmed = 0; resetProgress(); renderShop('Progress erased.', true); }
+  else { resetArmed = Date.now(); renderShop('This erases your gems and unlocked unicorns.'); }
+});
+$('againBtn').addEventListener('click', startRun);
+$('toShopBtn').addEventListener('click', openShop);
+function openShop() { state = 'menu'; $('results').classList.add('hidden'); $('shop').classList.remove('hidden'); renderShop(); }
+
+/* =====================================================================================
+   4. THE GAME: a vertical shooter scrolling from bottom to top
+   The world is always 360 x 640 units, scaled to fit any screen.
+   ===================================================================================== */
+const W = 360, H = 640, LEVEL_SEC = 20, BOSS_EVERY = 5;
+const cv = $('game'), ctx = cv.getContext('2d');
+let K = 1, OX = 0, OY = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth, h = window.innerHeight;
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  K = Math.min(w / W, h / H); OX = (w - W * K) / 2; OY = (h - H * K) / 2;
+}
+window.addEventListener('resize', resize); resize();
+
+const IMG = {};                                                  // the character pictures, loaded once
+for (const c of CHARACTERS) { const im = new Image(); im.src = c.src; IMG[c.id] = im; }
+const imgReady = im => im && im.complete && im.naturalWidth > 0;
+
+// calm magical places: each boss leads to the next one
+const THEMES = [
+  { name: 'Starlit Sky',    sky: ['#0c1440', '#1d3a78', '#3b6fb0'], cloud: 'rgba(170,200,255,.10)', star: '#ffffff' },
+  { name: 'Aurora Peaks',   sky: ['#07172e', '#0f4a5a', '#2f8f86'], cloud: 'rgba(120,255,210,.10)', star: '#d9fff4' },
+  { name: 'Sunset Clouds',  sky: ['#3a1f5c', '#a24a7a', '#f2a066'], cloud: 'rgba(255,220,200,.12)', star: '#fff2d9' },
+  { name: 'Crystal Nebula', sky: ['#120a2e', '#3b1f6e', '#7a4ab0'], cloud: 'rgba(210,170,255,.10)', star: '#f2e6ff' },
+  { name: 'Enchanted Wood', sky: ['#081d16', '#14432e', '#3d7a4a'], cloud: 'rgba(170,255,190,.08)', star: '#e9ffe0' }
+];
+const STARS = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, z: .3 + Math.random() * .7 }));
+const CLOUDS = Array.from({ length: 6 }, (_, i) => ({ x: Math.random() * W, y: i * 120, r: 50 + Math.random() * 60 }));
+
+let state = 'menu', G = null, lastTs = 0, scroll = 0;
+const input = { down: false, x: W / 2, y: H - 140 };
+
+function startRun() {
+  const ch = charById(save.selected) || CHARACTERS[0];
+  G = { ch, t: 0, score: 0, gems: 0, lives: 3, inv: 0, level: 1, levelT: 0, px: W / 2, py: H - 140, vx: 0,
+        fireT: 0, shots: [], enemies: [], orbs: [], drops: [], parts: [], waveT: 1.2, boss: null,
+        power: 0, banner: 'LEVEL 1', bannerT: 2, kills: 0 };
+  input.x = G.px; input.y = G.py;
+  $('shop').classList.add('hidden'); $('results').classList.add('hidden');
+  state = 'play';
+}
+function endRun() {
+  state = 'over';
+  addGems(G.gems);                                              // the gems from this run go into the saved wallet
+  const newBest = G.score > save.best; if (newBest) { save.best = G.score; saveGame(); }
+  $('resText').innerHTML = `Score<br><b>${G.score.toLocaleString()}</b><br>${newBest ? 'New best!' : 'Best ' + save.best.toLocaleString()}<br>
+    <span class="gem"></span> +${G.gems} gems (you have ${save.gems})<br>Reached level ${G.level}`;
+  $('results').classList.remove('hidden');
+}
+
+/* ---------- spawning ---------- */
+function spawnRow() {
+  const lv = G.level, n = 5, gap = Math.floor(Math.random() * n), hp = 1 + Math.floor(lv / 3);
+  for (let i = 0; i < n; i++) {
+    if (i === gap && lv < 8) continue;                           // a gap to fly through (it closes in later levels)
+    const kind = Math.random() < Math.min(.15 + lv * .04, .5) ? 'bat' : 'wisp';
+    G.enemies.push({ kind, x: 36 + i * 72, y: -30, vy: 70 + lv * 6, hp: kind === 'bat' ? hp + 1 : hp, max: kind === 'bat' ? hp + 1 : hp, r: 18, ph: Math.random() * 6, hit: 0 });
+  }
+  G.waveT = Math.max(1.0, 2.3 - lv * 0.1);
+}
+function spawnBoss() {
+  const k = G.level / BOSS_EVERY, hp = 70 + 45 * (k - 1);
+  G.boss = { x: W / 2, y: -90, hp, max: hp, t: 0, fireT: 1.5, k, hit: 0 };
+  G.banner = 'BOSS!'; G.bannerT = 2.2;
+}
+function drop(x, y, isBoss) {
+  if (isBoss) { for (let i = 0; i < 25; i++) G.drops.push({ kind: 'gem', x: x + (Math.random() - .5) * 120, y: y + (Math.random() - .5) * 60, vy: 60 + Math.random() * 80 }); return; }
+  const r = Math.random();
+  if (r < 0.35) G.drops.push({ kind: 'gem', x, y, vy: 90 });
+  else if (r < 0.40) G.drops.push({ kind: 'power', x, y, vy: 80 });
+}
+function burst(x, y, col, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 40 + Math.random() * 160; G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: .5 + Math.random() * .4, col }); } }
+
+/* ---------- one moment of the world ---------- */
+function update(dt) {
+  scroll += dt * (state === 'play' ? 60 : 20);
+  if (state !== 'play' || !G) return;
+  G.t += dt; G.levelT += dt;
+  if (G.inv > 0) G.inv -= dt; if (G.power > 0) G.power -= dt; if (G.bannerT > 0) G.bannerT -= dt;
+  // levels: every LEVEL_SEC seconds; every BOSS_EVERY-th level is a boss level that ends when the boss is beaten
+  if (G.level % BOSS_EVERY === 0) { if (!G.boss && !G.bossDone) spawnBoss(); }
+  else if (G.levelT >= LEVEL_SEC) { G.level++; G.levelT = 0; G.bossDone = false; G.banner = G.level % BOSS_EVERY === 0 ? 'BOSS LEVEL ' + G.level : 'LEVEL ' + G.level; G.bannerT = 2; }
+  // the unicorn follows the finger (limited speed, so it glides)
+  const tx = Math.max(24, Math.min(W - 24, input.x)), ty = Math.max(160, Math.min(H - 40, input.y));
+  const nx = G.px + (tx - G.px) * Math.min(1, dt * 14), ny = G.py + (ty - G.py) * Math.min(1, dt * 14);
+  G.vx = (nx - G.px) / Math.max(dt, 1e-3); G.px = nx; G.py = ny;
+  // straight shots
+  G.fireT -= dt;
+  if (G.fireT <= 0) {
+    const ch = G.ch, lanes = ch.lanes + (G.power > 0 ? 2 : 0), spread = 13;
+    for (let i = 0; i < lanes; i++) G.shots.push({ x: G.px + (i - (lanes - 1) / 2) * spread, y: G.py - 34, dmg: ch.damage, pierce: ch.pierce, hitIds: [] });
+    G.fireT = ch.fireDelay;
+  }
+  for (const s of G.shots) s.y -= 620 * dt;
+  // enemies
+  if (!G.boss) { G.waveT -= dt; if (G.waveT <= 0 && G.level % BOSS_EVERY !== 0) spawnRow(); }
+  for (const e of G.enemies) { e.y += e.vy * dt; e.ph += dt * 3; if (e.kind === 'bat') e.x += Math.sin(e.ph) * 40 * dt; if (e.hit > 0) e.hit -= dt; }
+  // the boss
+  const b = G.boss;
+  if (b) {
+    b.t += dt; if (b.hit > 0) b.hit -= dt;
+    if (b.y < 120) b.y += 80 * dt; else b.x = W / 2 + Math.sin(b.t * .8) * 110;
+    b.fireT -= dt;
+    if (b.y >= 120 && b.fireT <= 0) {
+      const enraged = b.hp < b.max / 3, n = enraged ? 5 : 3;
+      for (let i = 0; i < n; i++) { const a = Math.atan2(G.py - b.y, G.px - b.x) + (i - (n - 1) / 2) * .22, sp = 150 + 12 * b.k; G.orbs.push({ x: b.x, y: b.y + 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp }); }
+      b.fireT = enraged ? 0.8 : 1.25;
+    }
+  }
+  for (const o of G.orbs) { o.x += o.vx * dt; o.y += o.vy * dt; }
+  for (const d of G.drops) {
+    const dx = G.px - d.x, dy = G.py - d.y, dist = Math.hypot(dx, dy);
+    if (dist < 90) { d.x += dx / dist * 260 * dt; d.y += dy / dist * 260 * dt; } else d.y += d.vy * dt;   // gems are pulled in when close
+  }
+  // hits: shots on enemies and the boss
+  for (const s of G.shots) {
+    for (const e of G.enemies) {
+      if (e.hp <= 0 || s.dead || s.hitIds.includes(e)) continue;
+      if (Math.abs(s.x - e.x) < e.r + 4 && Math.abs(s.y - e.y) < e.r + 10) {
+        e.hp -= s.dmg; e.hit = .08; s.hitIds.push(e); if (!s.pierce) s.dead = true;
+        if (e.hp <= 0) { G.score += e.kind === 'bat' ? 30 : 20; G.kills++; burst(e.x, e.y, G.ch.color, 10); drop(e.x, e.y); }
+      }
+    }
+    if (b && !s.dead && b.y > 40 && Math.abs(s.x - b.x) < 56 && Math.abs(s.y - b.y) < 50) {
+      b.hp -= s.dmg; b.hit = .06; s.dead = true; G.score += 2;
+      if (b.hp <= 0) { G.score += 1000 * b.k; burst(b.x, b.y, '#ffd24a', 40); drop(b.x, b.y, true); G.boss = null; G.bossDone = true; G.orbs = [];
+        G.level++; G.levelT = 0; G.banner = 'BOSS DEFEATED!'; G.bannerT = 2.4; }
+    }
+  }
+  // being hit: enemies, orbs and the boss cost a life
+  const hurt = () => { if (G.inv > 0) return; G.lives--; G.inv = 1.6; burst(G.px, G.py, '#ff6b8a', 16); if (G.lives <= 0) endRun(); };
+  for (const e of G.enemies) if (e.hp > 0 && Math.hypot(e.x - G.px, e.y - G.py) < e.r + 14) { e.hp = 0; burst(e.x, e.y, '#ffffff', 8); hurt(); }
+  for (const o of G.orbs) if (!o.dead && Math.hypot(o.x - G.px, o.y - G.py) < 18) { o.dead = true; hurt(); }
+  if (G.boss && Math.hypot(G.boss.x - G.px, G.boss.y - G.py) < 60) hurt();
+  if (state !== 'play') return;
+  // pick-ups
+  for (const d of G.drops) if (Math.hypot(d.x - G.px, d.y - G.py) < 26) { d.dead = true; if (d.kind === 'gem') { G.gems++; G.score += 10; } else { G.power = 8; G.banner = 'POWER UP!'; G.bannerT = 1.2; } }
+  for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= dt; }
+  // tidy up
+  G.shots = G.shots.filter(s => !s.dead && s.y > -20);
+  G.enemies = G.enemies.filter(e => e.hp > 0 && e.y < H + 40);
+  G.orbs = G.orbs.filter(o => !o.dead && o.y < H + 20 && o.y > -20 && o.x > -20 && o.x < W + 20);
+  G.drops = G.drops.filter(d => !d.dead && d.y < H + 30);
+  G.parts = G.parts.filter(p => p.l > 0);
+}
+
+/* ---------- drawing (shapes only: it looks the same on every device) ---------- */
+function themeNow() { return THEMES[Math.floor(((G ? G.level : 1) - 1) / BOSS_EVERY) % THEMES.length]; }
+function drawBackground() {
+  const T = themeNow(), g = ctx.createLinearGradient(0, 0, 0, H);
+  T.sky.forEach((c, i) => g.addColorStop(i / (T.sky.length - 1), c));
+  ctx.fillStyle = g; ctx.fillRect(-W, -H, W * 3, H * 3);
+  for (const c of CLOUDS) {                                        // soft, slow clouds
+    const y = (c.y + scroll * .25) % (H + 200) - 100;
+    ctx.fillStyle = T.cloud; ctx.beginPath(); ctx.ellipse(c.x, y, c.r, c.r * .45, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = T.star;
+  for (const s of STARS) { const y = (s.y + scroll * s.z) % H; ctx.globalAlpha = .3 + .6 * s.z; ctx.fillRect(s.x, y, 1.6 * s.z + .4, 1.6 * s.z + .4); }
+  ctx.globalAlpha = 1;
+}
+function drawWisp(e) {
+  const bob = Math.sin(e.ph) * 3, x = e.x, y = e.y + bob, r = e.r;
+  ctx.fillStyle = e.hit > 0 ? '#ffffff' : '#e9ecff'; ctx.strokeStyle = '#2a2560'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x - r, y + r); ctx.lineTo(x - r, y); ctx.bezierCurveTo(x - r, y - r * 1.33, x + r, y - r * 1.33, x + r, y); ctx.lineTo(x + r, y + r);
+  for (let i = 0; i < 4; i++) ctx.quadraticCurveTo(x + r - (i + .5) * r / 2, y + r - 7, x + r - (i + 1) * r / 2, y + r);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#2a2560'; ctx.beginPath(); ctx.ellipse(x - 6, y - 2, 2.8, 4.2, 0, 0, 6.3); ctx.ellipse(x + 6, y - 2, 2.8, 4.2, 0, 0, 6.3); ctx.fill();
+}
+function drawBat(e) {
+  const x = e.x, y = e.y, f = Math.sin(e.ph * 3) * 6;
+  ctx.fillStyle = e.hit > 0 ? '#ffffff' : '#6a4bd8'; ctx.strokeStyle = '#1d1446'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 16, y - 14 - f, x - 30, y - 4 - f); ctx.quadraticCurveTo(x - 20, y + 2, x - 12, y + 8);
+  ctx.quadraticCurveTo(x, y + 14, x + 12, y + 8); ctx.quadraticCurveTo(x + 20, y + 2, x + 30, y - 4 - f); ctx.quadraticCurveTo(x + 16, y - 14 - f, x, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x - 4, y + 2, 2, 0, 6.3); ctx.arc(x + 4, y + 2, 2, 0, 6.3); ctx.fill();
+}
+function drawBoss(b) {
+  const x = b.x, y = b.y, enraged = b.hp < b.max / 3;
+  ctx.fillStyle = enraged ? 'rgba(255,60,60,.25)' : 'rgba(150,110,255,.22)'; ctx.beginPath(); ctx.arc(x, y, 80, 0, 6.3); ctx.fill();
+  ctx.fillStyle = b.hit > 0 ? '#ffffff' : (enraged ? '#8a1f4a' : '#3b2a8a'); ctx.strokeStyle = '#120a30'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.ellipse(x, y, 58, 46, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.moveTo(x - 34, y - 38); ctx.lineTo(x - 24, y - 66); ctx.lineTo(x - 10, y - 44); ctx.lineTo(x, y - 72); ctx.lineTo(x + 10, y - 44); ctx.lineTo(x + 24, y - 66); ctx.lineTo(x + 34, y - 38); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = enraged ? '#ff5050' : '#ffe27a'; ctx.beginPath(); ctx.ellipse(x - 20, y - 6, 9, 11, 0, 0, 6.3); ctx.ellipse(x + 20, y - 6, 9, 11, 0, 0, 6.3); ctx.fill();
+  ctx.fillStyle = '#120a30'; ctx.beginPath(); ctx.arc(x - 20, y - 4, 4, 0, 6.3); ctx.arc(x + 20, y - 4, 4, 0, 6.3); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x - 22, y + 20); ctx.quadraticCurveTo(x, y + (enraged ? 8 : 30), x + 22, y + 20); ctx.lineWidth = 4; ctx.stroke();
+}
+function drawGem(x, y, s) {
+  const g = ctx.createLinearGradient(x - s, y - s, x + s, y + s); g.addColorStop(0, '#e9fbff'); g.addColorStop(.55, '#49c6ff'); g.addColorStop(1, '#1d5fd0');
+  ctx.fillStyle = g; ctx.strokeStyle = '#0d2a6a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * .8, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * .8, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+function drawHeart(x, y, s, full) {
+  ctx.fillStyle = full ? '#ff5c8a' : 'rgba(255,255,255,.25)';
+  ctx.beginPath(); ctx.moveTo(x, y + s * .9); ctx.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s, x, y - s * .35); ctx.bezierCurveTo(x + s * .6, y - s, x + s * 1.4, y - s * .1, x, y + s * .9); ctx.fill();
+}
+function text(t, x, y, size, col, align) {
+  ctx.font = '800 ' + size + 'px system-ui, -apple-system, "Segoe UI", sans-serif'; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = Math.max(3, size / 5); ctx.strokeStyle = 'rgba(10,6,40,.85)'; ctx.strokeText(t, x, y); ctx.fillStyle = col || '#fff'; ctx.fillText(t, x, y);
+}
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#0b0a24'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(DPR * K, 0, 0, DPR * K, DPR * OX, DPR * OY);
+  drawBackground();
+  if (!G) { const im = IMG[save.selected]; if (imgReady(im)) ctx.drawImage(im, W / 2 - 70, H - 260 + Math.sin(scroll / 25) * 8, 140, 140); return; }
+  for (const d of G.drops) { if (d.kind === 'gem') drawGem(d.x, d.y, 8); else { ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(d.x, d.y, 11, 0, 6.3); ctx.fill(); text('P', d.x, d.y + 1, 13, '#1a1240'); } }
+  for (const e of G.enemies) e.kind === 'bat' ? drawBat(e) : drawWisp(e);
+  if (G.boss) drawBoss(G.boss);
+  ctx.fillStyle = '#ff5c8a'; for (const o of G.orbs) { ctx.beginPath(); ctx.arc(o.x, o.y, 7, 0, 6.3); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(o.x, o.y, 3, 0, 6.3); ctx.fill(); ctx.fillStyle = '#ff5c8a'; }
+  for (const s of G.shots) { ctx.fillStyle = G.ch.color; ctx.fillRect(s.x - 3, s.y - 10, 6, 20); ctx.fillStyle = '#ffffff'; ctx.fillRect(s.x - 1, s.y - 8, 2, 16); }
+  // the unicorn: its picture, a soft glow in its element colour, a gentle tilt, and a blink while safe after a hit
+  if (!(G.inv > 0 && Math.floor(G.t * 12) % 2)) {
+    ctx.globalAlpha = .28; ctx.fillStyle = G.ch.color; ctx.beginPath(); ctx.arc(G.px, G.py, 40, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1;
+    const im = IMG[G.ch.id], S = 96;
+    ctx.save(); ctx.translate(G.px, G.py); ctx.rotate(Math.max(-.25, Math.min(.25, G.vx / 1600)));
+    if (imgReady(im)) ctx.drawImage(im, -S / 2, -S / 2, S, S);
+    else { ctx.fillStyle = G.ch.color; ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(18, 18); ctx.lineTo(-18, 18); ctx.closePath(); ctx.fill(); }   // if the picture is missing
+    ctx.restore();
+  }
+  for (const p of G.parts) { ctx.globalAlpha = Math.max(0, Math.min(1, p.l * 2)); ctx.fillStyle = p.col; ctx.fillRect(p.x - 2, p.y - 2, 4, 4); } ctx.globalAlpha = 1;
+  // the score bar
+  text(G.score.toLocaleString(), 12, 24, 22, '#ffe27a', 'left');
+  drawGem(W - 70, 24, 9); text(String(G.gems), W - 56, 24, 18, '#bfefff', 'left');
+  for (let i = 0; i < 3; i++) drawHeart(18 + i * 22, 52, 8, i < G.lives);
+  text((G.boss ? 'BOSS · ' : 'LEVEL ') + G.level, W / 2, 24, 14, '#ffffff'); text(themeNow().name, W / 2, 41, 10, 'rgba(255,255,255,.75)');
+  if (G.boss) { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(W / 2 - 100, 54, 200, 9); ctx.fillStyle = G.boss.hp < G.boss.max / 3 ? '#ff4a4a' : '#ffd24a'; ctx.fillRect(W / 2 - 100, 54, 200 * Math.max(0, G.boss.hp) / G.boss.max, 9); }
+  if (G.power > 0) text('POWER ' + Math.ceil(G.power), W - 12, 52, 12, '#ffd24a', 'right');
+  if (G.bannerT > 0) { ctx.globalAlpha = Math.min(1, G.bannerT * 2); text(G.banner, W / 2, H * .38, 34, '#ffd24a'); ctx.globalAlpha = 1; }
+  if (state === 'pause') { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 0, W, H); text('PAUSED', W / 2, H / 2 - 10, 34); text('Tap to continue', W / 2, H / 2 + 26, 16); }
+}
+
+/* ---------- input: drag to fly (the unicorn stays above your finger), or arrow keys ---------- */
+const toWorld = e => ({ x: (e.clientX - OX) / K, y: (e.clientY - OY) / K });
+cv.addEventListener('pointerdown', e => { if (state === 'pause') { state = 'play'; return; } if (state !== 'play') return; input.down = true; const p = toWorld(e); input.x = p.x; input.y = p.y - 70; });
+cv.addEventListener('pointermove', e => { if (!input.down || state !== 'play') return; const p = toWorld(e); input.x = p.x; input.y = p.y - 70; });
+window.addEventListener('pointerup', () => { input.down = false; });
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.key] = true; if ((e.key === 'p' || e.key === 'Escape') && (state === 'play' || state === 'pause')) state = state === 'play' ? 'pause' : 'play'; });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') state = 'pause'; });
+
+/* ---------- the loop ---------- */
+function frame(ts) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, Math.max(0, (ts - lastTs) / 1000 || 0)); lastTs = ts;
+  if (state === 'play' && G) {
+    if (keys.ArrowLeft || keys.a) input.x = G.px - 40; if (keys.ArrowRight || keys.d) input.x = G.px + 40;
+    if (keys.ArrowUp || keys.w) input.y = G.py - 40;  if (keys.ArrowDown || keys.s) input.y = G.py + 40;
+  }
+  update(dt); draw();
+}
+renderShop();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
