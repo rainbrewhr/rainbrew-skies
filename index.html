@@ -123,8 +123,8 @@ small.foot{display:block;margin-top:12px;opacity:.7;font-size:.72rem}
 <button id="skipdemo" hidden>Skip ▶</button>
 <script>
 'use strict';
-/* ===== SIM v3 — the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 3;
+/* ===== SIM v4 — the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
+var SIM_VERSION = 4;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
 var LEVEL_STEPS = 600, BOSS_EVERY = 5, BOSS_MAX = 1800;           // a level lasts 20 s; every 5th level is a boss; a boss not beaten in 60 s flies away
@@ -144,17 +144,19 @@ var UNICORNS = {                                                  // shooting: s
 };
 var FOOD = {                                                      // Rainbrew treats: points, and the power some of them give
   fries: { p: 10 }, salad: { p: 15, pw: 'slow' }, chicken: { p: 25, pw: 'pierce' }, pizza: { p: 20, pw: 'lanes' }, burger: { p: 25, pw: 'strong' },
-  coffee: { p: 30, pw: 'rapid' }, tea: { p: 20, pw: 'shield' }, matcha: { p: 20, pw: 'shield' }, pasta: { p: 25, pw: 'double' }, icecream: { p: 25, pw: 'magnet' }
+  coffee: { p: 30, pw: 'rapid' }, tea: { p: 20, pw: 'shield' }, matcha: { p: 20, pw: 'shield' }, pasta: { p: 25, pw: 'double' }, icecream: { p: 25, pw: 'magnet' },
+  donut: { p: 25, pw: 'buddy' }, smoothie: { p: 25, pw: 'freeze' }, croissant: { p: 20, pw: 'wide' }, cake: { p: 35, pw: 'gold' }, cookie: { p: 20, pw: 'thunder' }   // new: two little helpers, freeze time, wide beams, triple points, a lightning strike
 };
-var FOOD_KEYS = ['fries', 'salad', 'chicken', 'pizza', 'burger', 'coffee', 'tea', 'matcha', 'pasta', 'icecream'];
+var FOOD_KEYS = ['fries', 'salad', 'chicken', 'pizza', 'burger', 'coffee', 'tea', 'matcha', 'pasta', 'icecream', 'donut', 'smoothie', 'croissant', 'cake', 'cookie'];
+var FREEZE_STEPS = 120;                                           // freeze lasts 4 s
 var ENEMIES = {                                                   // Halloween creatures: each one drops a treat
-  ghost:   { hp: 1, pts: 20,  r: 17, from: 1, drops: ['fries', 'salad', 'tea', 'pizza'] },
-  bat:     { hp: 1, pts: 30,  r: 15, from: 2, drops: ['fries', 'chicken', 'coffee', 'icecream'] },
-  pumpkin: { hp: 3, pts: 50,  r: 19, from: 3, drops: ['pizza', 'burger', 'pasta', 'coffee', 'salad'] },
-  witch:   { hp: 5, pts: 100, r: 19, from: 4, drops: ['matcha', 'burger', 'pasta', 'icecream', 'coffee'] }
+  ghost:   { hp: 1, pts: 20,  r: 17, from: 1, drops: ['fries', 'salad', 'tea', 'pizza', 'cookie', 'croissant'] },
+  bat:     { hp: 1, pts: 30,  r: 15, from: 2, drops: ['fries', 'chicken', 'coffee', 'icecream', 'smoothie', 'donut'] },
+  pumpkin: { hp: 3, pts: 50,  r: 19, from: 3, drops: ['pizza', 'burger', 'pasta', 'coffee', 'salad', 'donut', 'cake', 'croissant'] },
+  witch:   { hp: 5, pts: 100, r: 19, from: 4, drops: ['matcha', 'burger', 'pasta', 'icecream', 'coffee', 'smoothie', 'cake', 'cookie'] }
 };
 var BOSS_KINDS = ['dragon', 'griffin', 'kraken', 'phoenix', 'hydra'];
-var POWERS = ['rapid', 'lanes', 'strong', 'double', 'magnet', 'pierce', 'slow'];
+var POWERS = ['rapid', 'lanes', 'strong', 'double', 'magnet', 'pierce', 'slow', 'freeze', 'wide', 'buddy', 'gold'];
 
 var PI = 3.141592653589793, TWO_PI = 6.283185307179586;
 function SIN(a) { a = a - TWO_PI * Math.floor(a / TWO_PI); var s = 1; if (a > PI) { a -= PI; s = -1; } var p = a * (PI - a); return s * 16 * p / (5 * PI * PI - 4 * p); }   // plain arithmetic: identical on every phone and on the server
@@ -167,12 +169,12 @@ function newGame(seed, mode, uni) {
   var M = MODES[mode] || MODES.classic, u = UNICORNS[uni] ? uni : 'frost', rs = mkRng(seed);
   return { v: SIM_VERSION, mode: MODES[mode] ? mode : 'classic', uni: u, M: M, U: M.fair ? UNICORNS.frost : UNICORNS[u], rs: rs, rd: mkRng((seed ^ 0x9E3779B9) >>> 0), keepEv: false, ev: [],
     t: 0, over: 0, reason: '', px: W / 2, py: H - 150, pdx: 0, pdy: 0, lives: M.inf ? 0 : M.lives, score: 0, combo: 0, maxCombo: 0,
-    inv: 0, shield: 0, star: 0, magic: 0, pw: { rapid: 0, lanes: 0, strong: 0, double: 0, magnet: 0, pierce: 0, slow: 0 }, extraLanes: 0, fireCd: 0,
+    inv: 0, shield: 0, star: 0, magic: 0, pw: { rapid: 0, lanes: 0, strong: 0, double: 0, magnet: 0, pierce: 0, slow: 0, freeze: 0, wide: 0, buddy: 0, gold: 0 }, extraLanes: 0, fireCd: 0,
     level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 45, boss: null, bossT: 0, bombs: 0, bombsUsed: 0,
-    nextLogo: SPS * (40 + Math.floor(rs() * 25)), nextSpider: SPS * (22 + Math.floor(rs() * 10)),
+    nextLogo: SPS * (70 + Math.floor(rs() * 30)), nextSpider: SPS * (22 + Math.floor(rs() * 10)),
     en: [], bl: [], sh: [], it: [], sp: [], foods: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, spiders: 0, missed: 0 };
 }
-function mult(G) { return Math.min(8, 1 + Math.floor(G.combo / 5)) * (G.pw.double > 0 || G.magic > 0 ? 2 : 1); }   // x2 every 5 in a row, up to x8; double points doubles it
+function mult(G) { var c = Math.min(8, 1 + Math.floor(G.combo / 5)); if (G.magic > 0) return c * 3; return c * (G.pw.double > 0 ? 2 : 1) * (G.pw.gold > 0 ? 3 : 1); }   // x2 every 5 in a row, up to x8; double x2, golden cake x3, Rainbrew Magic x3 on everything
 function bump(G) { G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo; }
 function bossLevel(G) { return G.M.boss && G.level % BOSS_EVERY === 0; }
 
@@ -207,39 +209,45 @@ function spawnSpider(G) {                                       // a spider drop
   G.sp.push({ x: x, y: -24, st: 'warn', t: 0, hp: 1, hf: 0 }); G.spiders++; E(G, 'spiderwarn', x, 0);   // (its web protects it from shots)
   G.nextSpider = G.t + Math.floor(SPS * (20 + Math.floor(G.rs() * 12)) / G.M.diff);
 }
-function spawnLogo(G) { var left = G.rs() < 0.5; mkItem(G, 'logo', left ? -30 : W + 30, 170 + Math.floor(G.rs() * 220), left ? 1.5 : -1.5, 0); G.nextLogo = G.t + SPS * (60 + Math.floor(G.rs() * 35)); E(G, 'logo', 0, 0); }
+function spawnLogo(G) { var left = G.rs() < 0.5; mkItem(G, 'logo', left ? -30 : W + 30, 170 + Math.floor(G.rs() * 220), left ? 1.5 : -1.5, 0); G.nextLogo = G.t + SPS * (110 + Math.floor(G.rs() * 40)); E(G, 'logo', 0, 0); }   // rare: about once every two minutes
 
 /* ---------------- the boss ---------------- */
 function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = 140 + 70 * G.stage;
-  G.phase = 'boss'; G.bossT = 0; G.boss = { kind: kind, x: W / 2, y: -90, hp: hp, max: hp, r: 44, hf: 0, lv: 0, n: 0 };
+  G.phase = 'boss'; G.bossT = 0; G.boss = { kind: kind, x: W / 2, y: -90, hp: hp, max: hp, r: 44, hf: 0, lv: 0, n: 0, inn: 0, t2: 0, tele: 0, dying: 0 };
   E(G, 'boss', kind, G.stage);
 }
 function orb(G, x, y, a, sp) { G.bl.push({ x: x, y: y, vx: COS(a) * sp, vy: SIN(a) * sp, r: 6 }); }
 function aimAt(G, x, y) { var dx = G.px - x, dy = G.py - y; return dy > 0 ? PI / 2 + (dx / (Math.abs(dx) + dy)) * 0.9 : PI / 2 + (dx > 0 ? 0.9 : -0.9); }   // an angle towards the unicorn, arithmetic only
 function updateBoss(G) {
   var b = G.boss; G.bossT++; if (b.hf > 0) b.hf--;
-  var T = G.bossT, lvl = b.hp * 3 <= b.max ? 2 : b.hp * 3 <= b.max * 2 ? 1 : 0;
+  var lvl = b.hp * 3 <= b.max ? 2 : b.hp * 3 <= b.max * 2 ? 1 : 0;
   if (lvl > b.lv) { b.lv = lvl; E(G, lvl === 1 ? 'angry' : 'enraged', b.kind, 0); }
+  if (!b.inn) { b.y += Math.max(0.8, (150 - b.y) * 0.06); if (b.y >= 149.5) { b.y = 150; b.inn = 1; } return; }   // it glides in and slows down gently
+  b.t2++; var T = b.t2;
   var rate = lvl === 2 ? 0.55 : lvl === 1 ? 0.75 : 1, sp = Math.min(5.5, 2.6 + 0.2 * G.stage) * (1 + 0.12 * lvl) * (G.pw.slow > 0 ? 0.6 : 1);
   function iv(n) { return Math.max(3, Math.floor(n * rate)); }
-  if (b.y < 150) { b.y += 2; return; }
-  b.x = W / 2 + 105 * SIN(T * 0.025 * (1 + 0.3 * lvl) + G.stage); b.y = 150 + 6 * SIN(T * 0.05);
-  if (T < 60) return;
-  var i, a, fired = 0;
-  if (b.kind === 'dragon') { if (T % iv(40) === 0) { for (i = -2; i <= 2 + (lvl > 1 ? 1 : 0); i++) orb(G, b.x, b.y + 30, PI / 2 + i * 0.22, sp); fired = 1; } }
-  else if (b.kind === 'griffin') { if (T % iv(30) === 0) { a = aimAt(G, b.x, b.y); for (i = -1; i <= 1; i++) orb(G, b.x, b.y + 30, a + i * 0.14, sp * 1.1); fired = 1; } }
-  else if (b.kind === 'kraken') { if (T % iv(55) === 0) { var n = 10 + 2 * lvl; for (i = 0; i < n; i++) orb(G, b.x, b.y, i * TWO_PI / n + T * 0.01, sp * 0.8); fired = 1; } }
-  else if (b.kind === 'phoenix') { if (T % iv(120) < 60 && T % iv(4) === 0) { orb(G, b.x, b.y + 30, PI / 2 + 0.9 * SIN(T * 0.05), sp); fired = T % 20 === 0; } }
-  else { if (T % iv(14) === 0) { var hx = b.x + ((b.n % 3) - 1) * 34; b.n++; orb(G, hx, b.y - 20, aimAt(G, hx, b.y - 20), sp); fired = b.n % 3 === 0; } }
+  var tx = W / 2 + 105 * SIN(T * 0.025 * (1 + 0.3 * lvl) + G.stage), ty = 150 + 6 * SIN(T * 0.05);
+  b.x += (tx - b.x) * 0.08; b.y += (ty - b.y) * 0.08;                // it follows its path smoothly: no jumps
+  var per = 0, i, a, fired = 0;
+  if (b.kind === 'dragon') { per = iv(40); if (T >= 60 && T % per === 0) { for (i = -2; i <= 2 + (lvl > 1 ? 1 : 0); i++) orb(G, b.x, b.y + 30, PI / 2 + i * 0.22, sp); fired = 1; } }
+  else if (b.kind === 'griffin') { per = iv(30); if (T >= 60 && T % per === 0) { a = aimAt(G, b.x, b.y); for (i = -1; i <= 1; i++) orb(G, b.x, b.y + 30, a + i * 0.14, sp * 1.1); fired = 1; } }
+  else if (b.kind === 'kraken') { per = iv(55); if (T >= 60 && T % per === 0) { var n = 10 + 2 * lvl; for (i = 0; i < n; i++) orb(G, b.x, b.y, i * TWO_PI / n + T * 0.01, sp * 0.8); fired = 1; } }
+  else if (b.kind === 'phoenix') { per = iv(120); if (T >= 60 && T % per < 60 && T % iv(4) === 0) { orb(G, b.x, b.y + 30, PI / 2 + 0.9 * SIN(T * 0.05), sp); fired = T % 20 === 0; } }
+  else { per = iv(14); if (T >= 60 && T % per === 0) { var hx = b.x + ((b.n % 3) - 1) * 34; b.n++; orb(G, hx, b.y - 20, aimAt(G, hx, b.y - 20), sp); fired = b.n % 3 === 0; } }
+  b.tele = (b.kind !== 'hydra' && T >= 40 && per - (T % per) <= 14) ? 1 : 0;   // for the screen: the boss glows just before a volley, so you can read it
   if (fired) E(G, 'bossatk', b.kind, 0);
+}
+function startDying(G) {                                          // a slow, dramatic defeat instead of a sudden pop
+  G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.inv = Math.max(G.inv, 150);
+  E(G, 'bossdying', G.boss.kind, G.stage);
 }
 function endBoss(G, beaten) {
   var b = G.boss; G.bl = []; G.phase = 'clear'; G.clearT = 90; G.boss = null;
   if (beaten) {
     G.score += 1500 * (G.stage + 1); G.bosses++; G.bombs = Math.min(3, G.bombs + 1);
     for (var j = 0; j < 20; j++) mkItem(G, 'gem', 40 + Math.floor(G.rd() * (W - 80)), b.y - 20 - j * 6, 0, 2 + G.rd());
-    for (j = 0; j < 8; j++) mkItem(G, FOOD_KEYS[Math.floor(G.rd() * 10)], 40 + Math.floor(G.rd() * (W - 80)), b.y - j * 10, 0, 2.2);
+    for (j = 0; j < 8; j++) mkItem(G, FOOD_KEYS[Math.floor(G.rd() * FOOD_KEYS.length)], 40 + Math.floor(G.rd() * (W - 80)), b.y - j * 10, 0, 2.2);
     E(G, 'bossdead', b.kind, G.stage);
   } else E(G, 'bossflee', b.kind, 0);
 }
@@ -247,7 +255,9 @@ function endBoss(G, beaten) {
 /* ---------------- the unicorn's straight shots ---------------- */
 function fire(G) {
   var lanes = G.U.lanes + (G.pw.lanes > 0 ? G.extraLanes : 0) + (G.magic > 0 ? 2 : 0), dmg = G.U.dmg + (G.pw.strong > 0 ? 1 : 0), pierce = Math.max(G.U.pierce, G.pw.pierce > 0 ? 3 : 0);
-  for (var i = 0; i < lanes; i++) G.sh.push({ x: G.px + (i - (lanes - 1) / 2) * 12, y: G.py - 34, dmg: dmg, pierce: pierce });   // every line goes straight up
+  var w = G.pw.wide > 0 ? 11 : 4;
+  for (var i = 0; i < lanes; i++) G.sh.push({ x: G.px + (i - (lanes - 1) / 2) * 12, y: G.py - 34, dmg: dmg, pierce: pierce, w: w });   // every line goes straight up
+  if (G.pw.buddy > 0) { G.sh.push({ x: G.px - 46, y: G.py - 14, dmg: 1, pierce: 0, w: w }); G.sh.push({ x: G.px + 46, y: G.py - 14, dmg: 1, pierce: 0, w: w }); }   // two little helpers shoot straight up beside you
   E(G, 'shoot', 0, 0);
 }
 
@@ -266,18 +276,25 @@ function useBomb(G) {
   if (G.boss && G.boss.y > 20) { G.boss.hp -= Math.ceil(G.boss.max * 0.1); G.boss.hf = 3; if (G.boss.hp < 0) G.boss.hp = 0; }
   E(G, 'bomb', G.px, G.py);
 }
+function thunder(G) {                                              // a lightning strike: every creature on screen is hit hard
+  for (var i = 0; i < G.en.length; i++) { var e = G.en[i]; if (e.hp > 0) { e.hp -= 3; e.hf = 3; if (e.hp <= 0) killEnemy(G, e); } }
+  if (G.boss && G.boss.hp > 0 && G.boss.y > 30) { G.boss.hp -= Math.ceil(G.boss.max * 0.03); G.boss.hf = 3; if (G.boss.hp < 0) G.boss.hp = 0; }
+  E(G, 'thunder', 0, 0);
+}
 function rainbrewMagic(G) {                                      // the rare Rainbrew logo: a magical screen, every power, a rain of treats
   G.surges++; G.magic = 210; G.inv = Math.max(G.inv, 210); clearScreen(G);
   for (var i = 0; i < POWERS.length; i++) G.pw[POWERS[i]] = Math.max(G.pw[POWERS[i]], 210);
   G.extraLanes = 2;
   if (G.boss) { G.boss.hp -= Math.ceil(G.boss.max * 0.12); if (G.boss.hp < 0) G.boss.hp = 0; }
-  G.score += 1500 * (G.stage + 1); E(G, 'magic', 0, 0);
+  G.score += 3000 * (G.stage + 1); E(G, 'magic', 0, 0);                // a lot of points, and everything is worth x3 while it lasts
 }
 function collect(G, it) {
   var k = it.k, F = FOOD[k];
   if (F) {
     bump(G); var pts = F.p * mult(G); G.score += pts; G.foods++; E(G, 'food', it.x, it.y, k);
     if (F.pw === 'shield') { G.shield = 1; E(G, 'power', 'shield', 0); }
+    else if (F.pw === 'thunder') { thunder(G); E(G, 'power', 'thunder', 0); }
+    else if (F.pw === 'freeze') { G.pw.freeze = FREEZE_STEPS; E(G, 'power', 'freeze', 0); }
     else if (F.pw) { if (F.pw === 'lanes') G.extraLanes = Math.min(2, (G.pw.lanes > 0 ? G.extraLanes : 0) + 1); G.pw[F.pw] = POWER_STEPS; E(G, 'power', F.pw, 0); }
   }
   else if (k === 'gem') { G.gems++; G.score += 5; E(G, 'gem', it.x, it.y); }
@@ -298,7 +315,7 @@ function stepGame(G, dx, dy, bomb) {
   if (G.inv > 0) G.inv--; if (G.star > 0) G.star--; if (G.magic > 0) G.magic--;
   for (i = 0; i < POWERS.length; i++) { k = POWERS[i]; if (G.pw[k] > 0) { G.pw[k]--; if (k === 'lanes' && G.pw[k] === 0) G.extraLanes = 0; } }
   if (G.t >= M.maxSec * SPS) { G.over = 1; G.reason = 'time'; return; }
-  var slow = G.pw.slow > 0 ? 0.5 : 1;
+  var slow = G.pw.freeze > 0 ? 0 : G.pw.slow > 0 ? 0.5 : 1;
   // levels and bosses
   if (G.phase === 'wave') {
     G.levelT++;
@@ -308,23 +325,25 @@ function stepGame(G, dx, dy, bomb) {
       if (!bossLevel(G)) { G.waveT--; if (G.waveT <= 0) spawnWave(G); }
     }
   } else if (G.phase === 'boss') {
-    updateBoss(G);
-    if (G.boss && G.boss.hp <= 0) endBoss(G, true); else if (G.bossT > BOSS_MAX) endBoss(G, false);
+    if (G.pw.freeze > 0) { if (G.boss.hf > 0) G.boss.hf--; } else updateBoss(G);
+    if (G.boss.hp <= 0) startDying(G); else if (G.bossT > BOSS_MAX) endBoss(G, false);
+  } else if (G.phase === 'dying') {
+    if (G.boss.hf > 0) G.boss.hf--; G.clearT--; if (G.clearT <= 0) endBoss(G, true);
   } else if (G.phase === 'clear') {
     G.clearT--; if (G.clearT <= 0) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.waveT = 40; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
   }
-  if (G.t >= G.nextSpider && G.magic === 0 && G.level + G.stage >= 2) spawnSpider(G);
+  if (G.t >= G.nextSpider && G.magic === 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnSpider(G);
   if (G.t >= G.nextLogo && G.phase !== 'clear') spawnLogo(G);
-  if (G.magic > 0 && G.magic % 6 === 0) mkItem(G, FOOD_KEYS[Math.floor(G.rd() * 10)], 20 + Math.floor(G.rd() * (W - 40)), -12, 0, 3);   // the magic treat rain
+  if (G.magic > 0) { G.score += 6 * (G.stage + 1); if (G.magic % 8 === 0) mkItem(G, FOOD_KEYS[Math.floor(G.rd() * FOOD_KEYS.length)], 20 + Math.floor(G.rd() * (W - 40)), -12, 0, 3); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 90 * (G.stage + 1)); }   // the sparkle trail pays out, and a rain of treats falls
   // shooting
   G.fireCd--; if (G.fireCd <= 0) { fire(G); G.fireCd = Math.max(2, G.pw.rapid > 0 || G.magic > 0 ? Math.ceil(G.U.cd * 0.6) : G.U.cd); }
   // movement
   for (i = 0; i < G.sh.length; i++) G.sh[i].y -= 20;
   for (i = 0; i < G.bl.length; i++) { b = G.bl[i]; b.x += b.vx * slow; b.y += b.vy * slow; }
   for (i = 0; i < G.en.length; i++) {
-    e = G.en[i]; e.t++; if (e.hf > 0) e.hf--; var ox = e.x, oy = e.y;
+    e = G.en[i]; if (slow > 0) e.t++; if (e.hf > 0) e.hf--; var ox = e.x, oy = e.y;
     e.y += e.vy * slow; if (e.sway) e.x = e.x0 + e.sway * SIN(e.t * 0.05);
-    if (e.k === 'witch' && e.y > 60 && e.y < 320 && e.t % 75 === 0) orb(G, e.x, e.y + 14, aimAt(G, e.x, e.y), 3.2 * slow);
+    if (slow > 0 && e.k === 'witch' && e.y > 60 && e.y < 320 && e.t % 75 === 0) orb(G, e.x, e.y + 14, aimAt(G, e.x, e.y), 3.2 * slow);
     e.dx = e.x - ox; e.dy = e.y - oy;
   }
   for (i = 0; i < G.sp.length; i++) {
@@ -346,10 +365,10 @@ function stepGame(G, dx, dy, bomb) {
     s = G.sh[i]; if (s.dead) continue;
     for (j = 0; j < G.en.length; j++) {
       e = G.en[j]; if (e.hp <= 0 || s.hit === e) continue;
-      if (Math.abs(s.x - e.x) < e.r + 4 && Math.abs(s.y - e.y) < e.r + 12) { e.hp -= s.dmg; e.hf = 3; s.hit = e; E(G, 'hit', s.x, s.y); if (e.hp <= 0) killEnemy(G, e); if (s.pierce > 0) s.pierce--; else { s.dead = 1; break; } }
+      if (Math.abs(s.x - e.x) < e.r + s.w && Math.abs(s.y - e.y) < e.r + 12) { e.hp -= s.dmg; e.hf = 3; s.hit = e; E(G, 'hit', s.x, s.y); if (e.hp <= 0) killEnemy(G, e); if (s.pierce > 0) s.pierce--; else { s.dead = 1; break; } }
     }
     if (s.dead) continue;
-    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 56 && Math.abs(s.y - b.y) < 50) { b.hp -= s.dmg; b.hf = 3; G.score += 2; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); }
+    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 52 + s.w && Math.abs(s.y - b.y) < 50) { b.hp -= s.dmg; b.hf = 3; G.score += 2; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); }
   }
   // getting hurt: creatures, orbs, spiders and their webs, the boss
   for (j = 0; j < G.en.length && !G.over; j++) { e = G.en[j]; if (e.hp <= 0) continue; var cx = e.x - G.px, cy = e.y - G.py, cr = e.r + PR; if (cx * cx + cy * cy <= cr * cr) { var safe = G.inv > 0 || G.star > 0 || G.magic > 0; hurt(G); if (!safe || G.star > 0 || G.magic > 0) { e.hp = 0; E(G, 'crash', e.x, e.y); if (G.star > 0 || G.magic > 0) killEnemy(G, e); } } }
@@ -404,7 +423,7 @@ const RULES_VERSION = SIM_VERSION;                                              
 const CONFIG = {
   GAME_NAME: 'Rainbrew Magic Catch',   // the name of the game
   SHARE_URL: '',   // optional: the public address of the game for invites. Leave empty to use the address the game is opened from.
-  API_URL: 'https://script.google.com/macros/s/AKfycbxslDtAN2GsYII01RoemTYzvucsgK6wDBKodVhmfXh1BP5uYggbnUfKSMiJvzsOjS_z/exec',   // the web-app address of the Apps Script server (ends in /exec). Leave empty to play offline (local scores only).
+  API_URL: '',   // the web-app address of the Apps Script server (ends in /exec). Leave empty to play offline (local scores only).
   PRIZE_TEXT: 'Top pilots earn recognition and rewards. Ranked flights get a verification code to show staff.',
   VERSION: '2.0'
 };
@@ -619,6 +638,19 @@ const SFX2 = {
   f_matcha:   c => { tone(1047 + c * 20, .2, 'sine', .07); tone(1319, .25, 'sine', .05, 0, .06); },
   f_pasta:    c => { tone(300 + c * 15, .18, 'sine', .09, 520); tone(520, .12, 'sine', .05, 300, .12); },
   f_icecream: c => arp([784 + c * 20, 988 + c * 20, 1175 + c * 20], .1, 'triangle', .07, .05),
+  f_donut:    c => { tone(660 + c * 20, .09, 'triangle', .1); tone(880 + c * 20, .09, 'triangle', .08, 0, .06); tone(1100, .1, 'sine', .05, 0, .12); },
+  f_smoothie: c => { noise(.12, 1800, 700, .07); tone(500 + c * 20, .16, 'sine', .08, 760); },
+  f_croissant:c => { noise(.1, 4000, 2500, .09); tone(480 + c * 20, .09, 'square', .04); },
+  f_cake:     c => arp([523 + c * 15, 659 + c * 15, 784 + c * 15, 1047 + c * 15], .09, 'triangle', .08, .05),
+  f_cookie:   c => { noise(.07, 2800, 1400, .1); tone(400 + c * 20, .08, 'square', .05); },
+  p_buddy: () => arp([784, 988, 1175], .12, 'sine', .06, .06),
+  p_freeze: () => { noise(.5, 6000, 2000, .07, 0, 'highpass'); tone(1568, .4, 'sine', .05, 392); },
+  p_wide: () => tone(220, .25, 'triangle', .08, 660),
+  p_gold: () => arp([1047, 1319, 1568, 2093], .1, 'triangle', .07, .06),
+  p_thunder: () => {},
+  thunder: () => { noise(.5, 3000, 150, .2, 0, 'lowpass'); tone(70, .45, 'sawtooth', .15, 35); },
+  sparkle: () => { tone(2093, .06, 'sine', .04); tone(2637, .06, 'sine', .03, 0, .05); },
+  bossdying: () => { noise(1.2, 800, 60, .16, 0, 'lowpass'); tone(200, 1.2, 'sawtooth', .1, 40); },
   gem: () => { tone(1760, .08, 'sine', .06); tone(2349, .1, 'sine', .05, 0, .05); },
   miss: () => tone(300, .15, 'sine', .05, 180),
   // creatures
@@ -819,6 +851,42 @@ const BOSS_ART = {
   }
 };
 
+/* ---------------- more Rainbrew treats ---------------- */
+ART.donut = g => {
+  ell(g, 0, 4, 40, 36); shape(g, grad(g, 0, -32, 0, 40, ['#f2b366', '#d98a3a']));
+  ell(g, 0, -2, 38, 32); shape(g, grad(g, 0, -34, 0, 30, ['#ff9fcb', '#ff5fa2']));
+  ell(g, 0, -2, 12, 10); g.fillStyle = '#d98a3a'; g.fill(); g.strokeStyle = INK; g.lineWidth = 3; g.stroke();
+  [[-22, -18, .5, '#fff'], [18, -22, -.4, '#ffe066'], [26, -2, .9, '#69db7c'], [-26, 6, -.8, '#4dabf7'], [-8, 16, .3, '#fff'], [10, 14, -.6, '#ffe066']].forEach(([x, y, r, c]) => { g.save(); g.translate(x, y); g.rotate(r); rrect(g, -6, -2.2, 12, 4.4, 2); g.fillStyle = c; g.fill(); g.restore(); });
+  shine(g, -20, -20, 8, 4, -.6);
+};
+ART.smoothie = g => {
+  g.beginPath(); g.moveTo(-26, -20); g.lineTo(26, -20); g.lineTo(20, 40); g.quadraticCurveTo(0, 46, -20, 40); g.closePath(); shape(g, grad(g, 0, -20, 0, 44, ['#ffc9e6', '#ff7ab8']));
+  g.beginPath(); g.moveTo(-23, 6); g.lineTo(23, 6); g.lineTo(20, 40); g.quadraticCurveTo(0, 46, -20, 40); g.closePath(); g.fillStyle = grad(g, 0, 6, 0, 44, ['#9ae6b4', '#3fb98a']); g.fill();
+  rrect(g, -30, -30, 60, 12, 6); shape(g, '#ffffff'); rrect(g, 8, -52, 7, 30, 3); shape(g, '#ff5a8a', 3); ell(g, 0, -14, 6, 6); shape(g, '#e2304a', 2.5); shine(g, -14, -2, 4, 12, 0);
+};
+ART.croissant = g => {
+  g.beginPath(); g.moveTo(-42, 14); g.bezierCurveTo(-46, -22, -14, -38, 0, -34); g.bezierCurveTo(14, -38, 46, -22, 42, 14); g.bezierCurveTo(36, 22, 28, 12, 24, 6); g.bezierCurveTo(14, 18, -14, 18, -24, 6); g.bezierCurveTo(-28, 12, -36, 22, -42, 14); g.closePath(); shape(g, grad(g, 0, -36, 0, 22, ['#ffd27a', '#e0953a']));
+  g.strokeStyle = 'rgba(150,80,20,.7)'; g.lineWidth = 2.5; g.lineCap = 'round'; [-24, -9, 9, 24].forEach((x, i) => { g.beginPath(); g.moveTo(x, -30 + Math.abs(x) * .3); g.quadraticCurveTo(x * 1.1, -10, x * .9, 8 + (i % 2) * 2); g.stroke(); });
+  shine(g, -12, -22, 10, 4, -.2);
+};
+ART.cake = g => {
+  g.beginPath(); g.moveTo(-36, -8); g.lineTo(36, -8); g.lineTo(36, 30); g.lineTo(-36, 30); g.closePath(); shape(g, grad(g, 0, -8, 0, 30, ['#ffe9c0', '#f2c486']));
+  rrect(g, -38, 6, 76, 9, 3); shape(g, '#c0503a', 3);
+  g.beginPath(); g.moveTo(-38, -10); g.lineTo(38, -10); for (let i = 0; i <= 7; i++) g.quadraticCurveTo(38 - i * 11 - 5.5, i % 2 ? 6 : -2, 38 - (i + 1) * 11, -10); g.closePath(); shape(g, '#ff9fcb', 3);
+  ell(g, 0, -24, 8, 8); shape(g, '#e2304a', 2.5); g.strokeStyle = '#4a8a3a'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -31); g.quadraticCurveTo(4, -42, 11, -42); g.stroke(); shine(g, -3, -26, 2.5, 2, 0);
+};
+ART.cookie = g => {
+  ell(g, 0, 2, 38, 36); shape(g, grad(g, -20, -30, 20, 34, ['#e8b472', '#b87a3a']));
+  [[-14, -14, 6], [10, -18, 5.5], [20, 2, 6], [-22, 8, 5], [-2, 4, 6.5], [8, 22, 5.5], [-14, 24, 4.5]].forEach(([x, y, r]) => { ell(g, x, y, r, r * .85, x * .05); g.fillStyle = '#5a3320'; g.fill(); });
+  g.beginPath(); g.arc(30, -24, 14, 0, 6.3); g.fillStyle = 'rgba(0,0,0,0)'; shine(g, -18, -18, 8, 4, -.6);
+};
+ART.buddy = g => {                                                 // a tiny flying helper
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 10, -2); g.quadraticCurveTo(s * 44, -34, s * 46, -6); g.quadraticCurveTo(s * 34, 6, s * 10, 8); g.closePath(); shape(g, grad(g, 0, -30, 0, 8, ['#ffffff', '#b9dcff']), 3); }
+  ell(g, 0, 4, 20, 22); shape(g, grad(g, 0, -18, 0, 26, ['#ffffff', '#e0d8ff']));
+  g.beginPath(); g.moveTo(-4, -16); g.lineTo(4, -16); g.lineTo(0, -36); g.closePath(); shape(g, '#ffd23f', 2.5);
+  ell(g, -7, 2, 3.2, 4.4); g.fillStyle = INK; g.fill(); ell(g, 7, 2, 3.2, 4.4); g.fill();
+};
+
 /* ============ the field, pictures and effects ============ */
 const cv = $('c'), ctx = cv.getContext('2d'), ov = $('ov'), box = $('box');
 const FW = 360, FH = 640;                                                       // the field is always 360 x 640 "units", scaled to fit any screen
@@ -851,8 +919,9 @@ const COL = ['#ff6b6b', '#ffa94d', '#ffe066', '#69db7c', '#4dabf7', '#9775fa', '
 const BOSS_NAME = { dragon: 'CRYSTAL DRAGON', griffin: 'GOLDEN GRIFFIN', kraken: 'DEEP KRAKEN', phoenix: 'EMBER PHOENIX', hydra: 'STORM HYDRA' };
 const ORB_COL = { dragon: '#5fe0b0', griffin: '#ffcf4a', kraken: '#b47aff', phoenix: '#ff7a2a', hydra: '#5fc8ff' };
 const KCOL = { ghost: '#e6e0ff', bat: '#a58cff', pumpkin: '#ffb066', witch: '#7fd88a' };
-const POW_ICON = { rapid: 'coffee', lanes: 'pizza', strong: 'burger', double: 'pasta', magnet: 'icecream', pierce: 'chicken', slow: 'salad' };
-const POW_NAME = { rapid: 'RAPID FIRE', lanes: 'MORE SHOT LINES', strong: 'STRONGER SHOTS', double: 'DOUBLE POINTS', magnet: 'TREAT MAGNET', pierce: 'PIERCING SHOTS', slow: 'SLOW CREATURES', shield: 'SHIELD', star: 'STAR POWER' };
+const POW_ICON = { rapid: 'coffee', lanes: 'pizza', strong: 'burger', double: 'pasta', magnet: 'icecream', pierce: 'chicken', slow: 'salad', buddy: 'donut', freeze: 'smoothie', wide: 'croissant', gold: 'cake' };
+const POW_COL = { rapid: '#ffb347', lanes: '#ff7a7a', strong: '#ff9a3c', double: '#ffd23f', magnet: '#ff8fd0', pierce: '#7fe0ff', slow: '#8fd8a0', freeze: '#9be7ff', wide: '#9affc0', buddy: '#d7a8ff', gold: '#ffe066', shield: '#8fe0ff', thunder: '#fff27a', star: '#ffd23f', bomb: '#ff6a6a' };
+const POW_NAME = { rapid: 'RAPID FIRE', lanes: 'MORE SHOT LINES', strong: 'STRONGER SHOTS', double: 'DOUBLE POINTS', magnet: 'TREAT MAGNET', pierce: 'PIERCING SHOTS', slow: 'SLOW CREATURES', buddy: 'LITTLE HELPERS', freeze: 'FREEZE', wide: 'WIDE BEAMS', gold: 'GOLDEN x3', thunder: 'LIGHTNING STRIKE', shield: 'SHIELD', star: 'STAR POWER' };
 ART.star = g => { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 19 : 42; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); shape(g, grad(g, 0, -42, 0, 40, ['#fff7c0', '#ffd23f', '#f0a020'])); shine(g, -8, -14, 7, 4, -.5); };
 ART.bomb = g => { ell(g, 0, 8, 32, 32); shape(g, grad(g, 0, -24, 0, 40, ['#5a5f8a', '#23264a'])); rrect(g, -9, -30, 18, 12, 3); shape(g, '#8a8fb0', 3); g.beginPath(); g.moveTo(0, -30); g.quadraticCurveTo(10, -46, 20, -40); g.strokeStyle = INK; g.lineWidth = 3.5; g.stroke(); ell(g, 21, -41, 6, 6); g.fillStyle = '#ffd23f'; g.fill(); shine(g, -10, -4, 8, 5, -.6); };
 /* ---------- the five magical places (a new one after each boss, faded in smoothly) ---------- */
@@ -887,7 +956,7 @@ function drawPlace(i, a) {
   ctx.globalAlpha = 1;
 }
 /* ---------- particles, floating numbers, messages ---------- */
-let ps = [], pops = [], flash = '', flashT = 0, shake = 0, hurtT = 0, bossBanner = { txt: '', l: 0 }, banner = { txt: '', sub: '', l: 0 }, bombFx = { t: 0, x: 0, y: 0 };
+let sparks = [], trail = [], thunderT = 0, magicFx = { t: 0 }, bossShow = 0, ps = [], pops = [], flash = '', flashT = 0, shake = 0, hurtT = 0, bossBanner = { txt: '', l: 0 }, banner = { txt: '', sub: '', l: 0 }, bombFx = { t: 0, x: 0, y: 0 };
 function burst(x, y, c, n) { n = cfg.quality === 'low' ? Math.ceil((n || 12) / 3) : (n || 12); for (let i = 0; i < n && ps.length < 260; i++) { const a = Math.random() * 6.283, v = 40 + Math.random() * 170; ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, l: .5 + Math.random() * .4, c: c || COL[i % 7], s: 1.5 + Math.random() * 2.5 }); } }
 function pop(x, y, txt, col) { if (pops.length < 16) pops.push({ x, y, txt, l: .9, col: col || '#ffffff' }); }
 function say(s, d) { flash = s; flashT = d || 1.3; }
@@ -900,6 +969,27 @@ function TW(txt, x, y, o) {
   o = o || {}; const max = o.max || 300, size = o.size || 16; ctx.font = 'bold ' + size * 1.06 + 'px Impact, "Arial Black", system-ui, sans-serif';
   if (ctx.measureText(txt).width <= max) { T(txt, x, y, o); return; }
   const w = txt.split(' '), h = Math.ceil(w.length / 2); T(w.slice(0, h).join(' '), x, y - size * .6, o); T(w.slice(h).join(' '), x, y + size * .6, o);
+}
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+function sparkle4(x, y, r, col, a) {                              // a four-point sparkle
+  ctx.globalAlpha = a == null ? 1 : a; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.quadraticCurveTo(x + r * .16, y - r * .16, x + r, y); ctx.quadraticCurveTo(x + r * .16, y + r * .16, x, y + r); ctx.quadraticCurveTo(x - r * .16, y + r * .16, x - r, y); ctx.quadraticCurveTo(x - r * .16, y - r * .16, x, y - r); ctx.fill(); ctx.globalAlpha = 1;
+}
+function spark(x, y, vx, vy, l, col, r) { if (sparks.length < 160) sparks.push({ x, y, vx, vy, l, l0: l, col, r }); }
+function drawPowerOrb(x, y, col, key, size) {                      // every power-up glows inside its own circle with lights circling it
+  const t = now / 1000, pulse = 1 + .08 * Math.sin(t * 5), g = ctx.createRadialGradient(x, y, 4, x, y, 36 * pulse);
+  g.addColorStop(0, rgba(col, .75)); g.addColorStop(.6, rgba(col, .26)); g.addColorStop(1, rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 36 * pulse, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.2)'; ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 21, 0, 6.283); ctx.fill(); ctx.stroke();
+  for (let i = 0; i < 8; i++) { const a = t * 2.2 + i * .785; ctx.fillStyle = i % 2 ? '#ffffff' : col; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 28, y + Math.sin(a) * 28, i % 2 ? 1.7 : 2.6, 0, 6.283); ctx.fill(); }
+  art(key, x, y + 1, size || 26, { rot: key === 'star' ? t * 2 : 0 });
+}
+function drawLogoItem(x, y) {                                      // the rare Rainbrew logo: a golden glow, a circle of sparkles, a halo
+  const t = now / 1000, p = 1 + .06 * Math.sin(t * 4), g = ctx.createRadialGradient(x, y, 6, x, y, 76 * p);
+  g.addColorStop(0, 'rgba(255,236,150,.85)'); g.addColorStop(.55, 'rgba(255,200,90,.3)'); g.addColorStop(1, 'rgba(255,200,90,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 76 * p, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 35, 0, 6.283); ctx.fill(); ctx.stroke();
+  if (ready(LI)) { const w = 58 * p; ctx.drawImage(LI, x - w / 2, y - w * .43, w, w * .86); }
+  ctx.strokeStyle = 'rgba(255,236,160,.75)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 48, 0, 6.283); ctx.stroke();
+  for (let i = 0; i < 10; i++) { const a = t * 1.5 + i * .628; sparkle4(x + Math.cos(a) * 48, y + Math.sin(a) * 48, 5 + (i % 3) * 2.4, i % 2 ? '#fff6c8' : '#ffd23f', .55 + .45 * Math.sin(t * 7 + i * 1.7)); }
+  for (let i = 0; i < 6; i++) { const a = -t * 2.2 + i * 1.047; sparkle4(x + Math.cos(a) * 60, y + Math.sin(a) * 60, 3 + (i % 2) * 2, COL[i], .5 + .5 * Math.sin(t * 9 + i)); }
 }
 /* ---------- the world ---------- */
 function drawSpider(sp) {
@@ -924,39 +1014,53 @@ function drawSpider(sp) {
 function drawWorld(al) {
   const g = G;
   for (const it of g.it) {
-    const x = it.x + it.dx * al, y = it.y + it.dy * al;
-    if (it.k === 'logo') { const p = 1 + .07 * Math.sin(now / 130); if (ready(LI)) { const w = 76 * p; ctx.drawImage(LI, x - w / 2, y - w * .43, w, w * .86); } for (let k = 0; k < 4; k++) { const a = now / 300 + k * 1.57; art('star', x + Math.cos(a) * 46, y + Math.sin(a) * 46, 12); } continue; }
-    art(it.k, x, y, it.k === 'gem' ? 20 : it.k === 'star' || it.k === 'bomb' ? 28 : 32, { rot: it.k === 'star' ? now / 400 : 0 });
+    const x = it.x + it.dx * al, y = it.y + it.dy * al, F = FOOD[it.k];
+    if (it.k === 'logo') { drawLogoItem(x, y); continue; }
+    if (F && F.pw) drawPowerOrb(x, y, POW_COL[F.pw], it.k, 27);                  // power-ups glow in a circle
+    else if (it.k === 'star' || it.k === 'bomb') drawPowerOrb(x, y, POW_COL[it.k], it.k, 24);
+    else art(it.k, x, y, it.k === 'gem' ? 20 : 32, {});
   }
-  for (const e of g.en) art(e.k, e.x + e.dx * al, e.y + e.dy * al, e.k === 'ghost' ? 40 : 46, { frame: Math.floor(e.t / 4) % 4, flash: e.hf > 0 });
+  for (const e of g.en) { const ex = e.x + e.dx * al, ey = e.y + e.dy * al; art(e.k, ex, ey, e.k === 'ghost' ? 40 : 46, { frame: Math.floor(e.t / 4) % 4, flash: e.hf > 0 }); if (g.pw.freeze > 0) { ctx.fillStyle = 'rgba(170,230,255,.42)'; ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ex, ey, e.r + 5, 0, 6.283); ctx.fill(); ctx.stroke(); } }
   for (const sp of g.sp) drawSpider(sp);
   if (g.boss) {
-    const b = g.boss; ctx.save(); ctx.translate(b.x, b.y); ctx.scale(1.4, 1.4);
-    if (b.lv) { ctx.globalAlpha = .16 + .1 * Math.sin(now / (b.lv === 2 ? 60 : 120)); ctx.fillStyle = '#ff4a4a'; ctx.beginPath(); ctx.arc(0, 0, 66, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; }
+    const b = g.boss, oc2 = ORB_COL[b.kind], dk = b.dying ? 1 - g.clearT / 48 : 0, entering = !b.inn;
+    const bx = b.x + (b.dying ? Math.sin(now / 28) * 4 * (1 - dk) : 0), by = b.y;
+    if (b.tele) { const q = .45 + .3 * Math.sin(now / 45); ctx.strokeStyle = oc2; ctx.globalAlpha = q; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(bx, by, 74 + 9 * Math.sin(now / 55), 0, 6.283); ctx.stroke(); ctx.globalAlpha = q * .35; ctx.fillStyle = oc2; ctx.beginPath(); ctx.arc(bx, by, 72, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; }   // it charges up before a volley
+    ctx.save(); ctx.translate(bx, by); const sc = 1.4 * (entering ? .9 + .1 * Math.min(1, (by + 90) / 240) : 1) * (b.tele ? 1 + .035 * Math.sin(now / 45) : 1) * (1 - dk * .25); ctx.scale(sc, sc);
+    ctx.globalAlpha = entering ? .85 : b.dying ? Math.max(.1, (1 - dk) * (Math.floor(now / 55) % 2 ? .6 : 1)) : 1;
+    if (b.lv && !b.dying) { ctx.globalAlpha *= .2 + .1 * Math.sin(now / (b.lv === 2 ? 60 : 120)); ctx.fillStyle = '#ff4a4a'; ctx.beginPath(); ctx.arc(0, 0, 66, 0, 6.283); ctx.fill(); ctx.globalAlpha = entering ? .85 : 1; }
     BOSS_ART[b.kind](ctx, now / 1000);
-    if (b.hf > 0) { ctx.globalAlpha = .12; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 46, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; }
-    ctx.restore();
+    if (b.hf > 0) { ctx.globalAlpha = .12; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 46, 0, 6.283); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.restore();
   }
   const oc = g.boss ? ORB_COL[g.boss.kind] : '#ff7a9a';
   for (const o of g.bl) { const x = o.x + o.vx * al, y = o.y + o.vy * al; ctx.fillStyle = oc; ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.283); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x - 2, y - 2, 2.2, 0, 6.283); ctx.fill(); }
   const ch = charById(g.uni) || CHARACTERS[0], sc = g.magic > 0 ? COL[Math.floor(now / 80) % 7] : ch.color;
-  for (const s of g.sh) { const y = s.y - 20 * al; ctx.fillStyle = sc; ctx.beginPath(); ctx.ellipse(s.x, y, 3.2, 10, 0, 0, 6.283); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(s.x, y - 1, 1.3, 6, 0, 0, 6.283); ctx.fill(); }   // straight beams
+  for (const s of g.sh) { const y = s.y - 20 * al, rx = s.w > 5 ? 6.5 : 3.2; ctx.fillStyle = sc; ctx.beginPath(); ctx.ellipse(s.x, y, rx, 10, 0, 0, 6.283); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(s.x, y - 1, rx * .4, 6, 0, 0, 6.283); ctx.fill(); }   // straight beams
 }
 function drawPlayer(al) {
   const g = G, x = g.px + g.pdx * al, y = g.py + g.pdy * al;
   if (g.inv > 0 && g.star === 0 && g.magic === 0 && Math.floor(now / 90) % 2) return;
-  if (g.magic > 0) for (let i = 0; i < 6; i++) { ctx.globalAlpha = .5 - i * .07; ctx.fillStyle = COL[(Math.floor(now / 60) + i) % 7]; ctx.beginPath(); ctx.arc(x - g.pdx * i * .6, y + 30 + i * 9, 8 - i, 0, 6.283); ctx.fill(); }
-  ctx.globalAlpha = 1;
+  if (trail.length > 1) {                                           // a ribbon of rainbow light that follows the unicorn, with sparkles
+    for (let i = 0; i < trail.length; i++) { const q = trail[i], k = i / trail.length; ctx.globalAlpha = k * .75; ctx.fillStyle = COL[(i + Math.floor(now / 70)) % 7]; ctx.beginPath(); ctx.arc(q.x, q.y, 3 + k * 9, 0, 6.283); ctx.fill(); if (i % 3 === 0) sparkle4(q.x + Math.sin(now / 90 + i) * 9, q.y, 3 + k * 5, '#ffffff', k); }
+    ctx.globalAlpha = 1;
+  }
   if (g.star > 0) { ctx.strokeStyle = 'rgba(255,220,90,' + (.6 + .3 * Math.sin(now / 60)).toFixed(2) + ')'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, 42, 0, 6.283); ctx.stroke(); }
   if (g.shield) { ctx.strokeStyle = 'rgba(160,230,255,.85)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 40, 0, 6.283); ctx.stroke(); }
   if (g.pw.magnet > 0 && g.magic === 0) { ctx.strokeStyle = 'rgba(255,170,220,.22)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, 130, 0, 6.283); ctx.stroke(); }
+  if (g.pw.buddy > 0) for (const sd of [-1, 1]) art('buddy', x + sd * 46, y + 6 + Math.sin(now / 200 + sd) * 4, 30);   // the two little helpers
   const im = UIMG[g.uni], S = 92;
   ctx.save(); ctx.translate(x, y); ctx.rotate(Math.max(-.22, Math.min(.22, g.pdx * .03)));
   if (ready(im)) ctx.drawImage(im, -S / 2, -S / 2, S, S); else { ctx.fillStyle = (charById(g.uni) || CHARACTERS[0]).color; ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(18, 18); ctx.lineTo(-18, 18); ctx.closePath(); ctx.fill(); }
   ctx.restore();
 }
 function drawMagic() {                                            // Rainbrew Magic: the whole screen turns magical
-  const g = G; if (!(g.magic > 0)) return;
+  const g = G;
+  for (const p of sparks) sparkle4(p.x, p.y, p.r * (.4 + .6 * p.l / p.l0), p.col, Math.min(1, p.l * 3));
+  if (magicFx.t > 0) { const k = 1 - magicFx.t; for (let i = 0; i < 3; i++) { ctx.strokeStyle = COL[(i * 2) % 7]; ctx.globalAlpha = (1 - k) * .8; ctx.lineWidth = 10 * (1 - k) + 2; ctx.beginPath(); ctx.arc(g.px, g.py, 10 + k * 520 - i * 36, 0, 6.283); ctx.stroke(); } ctx.globalAlpha = 1; }
+  if (thunderT > 0) { ctx.fillStyle = 'rgba(255,250,200,' + (thunderT * 1.4).toFixed(2) + ')'; ctx.fillRect(-20, -20, FW + 40, FH + 40); ctx.strokeStyle = 'rgba(255,255,255,' + Math.min(1, thunderT * 4).toFixed(2) + ')'; ctx.lineWidth = 3; for (let b = 0; b < 4; b++) { let bx = 50 + b * 85, by = 0; ctx.beginPath(); ctx.moveTo(bx, by); for (let k = 0; k < 7; k++) { bx += (((b * 7 + k * 13) % 5) - 2) * 9; by += 95; ctx.lineTo(bx, by); } ctx.stroke(); } }
+  if (g.pw.freeze > 0) { ctx.strokeStyle = 'rgba(155,231,255,' + (.45 + .2 * Math.sin(now / 150)).toFixed(2) + ')'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, FW - 10, FH - 10); }
+  if (!(g.magic > 0)) return;
   const a = Math.min(1, g.magic / 30);
   ctx.globalAlpha = .15 * a;
   for (let i = 0; i < 7; i++) { ctx.fillStyle = COL[i]; const y0 = ((i * 110 + now / 6) % (FH + 220)) - 110; ctx.beginPath(); ctx.moveTo(-20, y0); ctx.quadraticCurveTo(FW / 2, y0 - 70, FW + 20, y0); ctx.lineTo(FW + 20, y0 + 26); ctx.quadraticCurveTo(FW / 2, y0 - 44, -20, y0 + 26); ctx.closePath(); ctx.fill(); }
@@ -981,9 +1085,9 @@ function drawHud() {
   T(g.boss ? BOSS_NAME[g.boss.kind] : (M.boss && g.level % BOSS_EVERY === 0 ? 'BOSS LEVEL' : 'LEVEL ' + g.level), FW / 2, 20, { size: 13 });
   T(PLACES[placeOf()].name + ' · ' + MODE_NAME[mode], FW / 2, 36, { size: 10, fill: 'rgba(255,255,255,.8)', w: 3 });
   ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(FW - 22, 58, 13, 0, 6.283); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(FW - 27, 52, 3.5, 12); ctx.fillRect(FW - 20.5, 52, 3.5, 12);   // pause
-  let ix = 14; for (const k in POW_ICON) if (g.pw[k] > 0 && ix < 230) { art(POW_ICON[k], ix + 8, 68, 17); ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(ix, 79, 16, 3); ctx.fillStyle = '#ffe27a'; ctx.fillRect(ix, 79, 16 * Math.min(1, g.pw[k] / POWER_STEPS), 3); ix += 21; }
+  let ix = 14; for (const k in POW_ICON) if (g.pw[k] > 0 && ix < 230) { art(POW_ICON[k], ix + 8, 68, 17); ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(ix, 79, 16, 3); ctx.fillStyle = '#ffe27a'; ctx.fillRect(ix, 79, 16 * Math.min(1, g.pw[k] / (k === 'freeze' ? FREEZE_STEPS : POWER_STEPS)), 3); ix += 21; }
   if (g.star > 0) { art('star', ix + 8, 68, 17); ix += 21; } if (g.shield) art('tea', ix + 8, 68, 17);
-  if (g.boss && g.boss.y > 20) { const b = g.boss; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(FW / 2 - 100, 48, 200, 8); ctx.fillStyle = b.lv === 2 ? '#ff4a4a' : b.lv ? '#ff9a3c' : '#7fe0b0'; ctx.fillRect(FW / 2 - 100, 48, 200 * Math.max(0, b.hp) / b.max, 8); }
+  if (g.boss && g.boss.y > 20) { const b = g.boss; ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(FW / 2 - 100, 48, 200, 8); ctx.fillStyle = b.lv === 2 ? '#ff4a4a' : b.lv ? '#ff9a3c' : '#7fe0b0'; ctx.fillRect(FW / 2 - 100, 48, 200 * Math.max(0, bossShow) / b.max, 8); }
   drawBombBtn(g);
 }
 function drawOverlays() {
@@ -1091,13 +1195,16 @@ function handleEvents() {
     else if (n === 'spiderwarn') { sfx('spiderwarn'); say('A spider! Move!', 1.2); }
     else if (n === 'spider') sfx('spider');
     else if (n === 'logo') { say('A Rainbrew logo is flying in! Catch it!', 2.6); sfx('logo'); }
-    else if (n === 'magic') { sfx('magic'); magicVoice(night); shake = .4; vib(200); banner = { txt: 'RAINBREW MAGIC!', sub: 'Catch the treat rain!', l: 2.6 }; award('magic'); for (let k = 0; k < 40; k++) burst(g.px, g.py, COL[k % 7], 1); }
+    else if (n === 'magic') { sfx('magic'); magicVoice(false); magicFx = { t: 1 }; for (let k = 0; k < 70; k++) { const an = k * .37, v = 80 + (k % 7) * 40; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .8 + (k % 5) * .15, COL[k % 7], 5 + (k % 4) * 2); } shake = .4; vib(200); banner = { txt: 'RAINBREW MAGIC!', sub: 'Catch the treat rain!', l: 2.6 }; award('magic'); for (let k = 0; k < 40; k++) burst(g.px, g.py, COL[k % 7], 1); }
     else if (n === 'boss') { bsay(BOSS_NAME[a] + '!', 2.8); sfx('b_' + a); }
     else if (n === 'bossatk') { if (now - lastAtk > 250) { lastAtk = now; sfx('a_' + a); } }
     else if (n === 'angry' || n === 'enraged') { bsay(n === 'angry' ? 'IT IS ANGRY!' : 'IT IS ENRAGED!', 2); sfx('b_' + a); shake = .35; vib(100); }
-    else if (n === 'bossdead') { award('boss'); if (b >= 4) award('all5'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('win'); for (let k = 0; k < 50; k++) burst(FW / 2, 150, COL[k % 7], 1); }
+    else if (n === 'thunder') { thunderT = .4; shake = .3; sfx('thunder'); }
+    else if (n === 'sparkle') { pop(a, b - 34, '+' + c, '#ffe27a'); sfx('sparkle'); }
+    else if (n === 'bossdying') { bsay(BOSS_NAME[a] + ' IS FALLING!', 1.6); sfx('bossdying'); shake = .5; vib(120); }
+    else if (n === 'bossdead') { award('boss'); if (b >= 4) award('all5'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('win'); for (let k = 0; k < 60; k++) { const an = k * .37, v = 60 + (k % 6) * 35; spark(FW / 2, 150, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 4) * .2, COL[k % 7], 5 + (k % 3) * 2); } placeFrom = placeTo; placeTo = (b + 1) % PLACES.length; placeMix = 0; }   // the next place starts fading in right away
     else if (n === 'bossflee') bsay('The ' + BOSS_NAME[a].toLowerCase() + ' flew away!', 2.6);
-    else if (n === 'stage') { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; banner = { txt: PLACES[placeTo].name.toUpperCase(), sub: 'A new magical place', l: 3 }; sfx('stage'); if (a >= 2) award('place3'); }
+    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } banner = { txt: PLACES[placeTo].name.toUpperCase(), sub: 'A new magical place', l: 3 }; sfx('stage'); if (a >= 2) award('place3'); }
     else if (n === 'level') say(g.M.boss && a % BOSS_EVERY === 0 ? 'Boss level!' : 'Level ' + a, 1.3);
   }
   g.ev.length = 0;
@@ -1129,6 +1236,10 @@ skipBtn.addEventListener('click', () => demoEnd());
 function update(dt) {
   bgT += dt * (G && G.surge > 0 ? 2.4 : 1) * (st === 'pause' ? 0 : 1);
   if (placeMix < 1) placeMix = Math.min(1, placeMix + dt / 2.5);                 // the new place fades in over 2.5 seconds
+  if (thunderT > 0) thunderT -= dt; if (magicFx.t > 0) magicFx.t -= dt * .9;
+  for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.l -= dt; if (p.l <= 0) { sparks.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy *= .985; }
+  if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
+  if (G && G.magic > 0 && st === 'play') { trail.push({ x: G.px - G.pdx * .5, y: G.py + 30 }); if (trail.length > 28) trail.shift(); if (Math.random() < .9) spark(G.px + (Math.random() - .5) * 26, G.py + 22, (Math.random() - .5) * 50, 20 + Math.random() * 60, .7, COL[Math.floor(Math.random() * 7)], 4 + Math.random() * 4); } else if (trail.length) trail.shift();
   if (bombFx.t > 0) bombFx.t -= dt; if (flashT > 0) flashT -= dt; if (shake > 0) shake -= dt; if (hurtT > 0) hurtT -= dt; if (bossBanner.l > 0) bossBanner.l -= dt; if (banner.l > 0) banner.l -= dt;
   for (let i = ps.length - 1; i >= 0; i--) { const p = ps[i]; p.l -= dt; if (p.l <= 0) { ps.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; }
   for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.l -= dt; p.y -= 44 * dt; if (p.l <= 0) pops.splice(i, 1); }
@@ -1723,13 +1834,14 @@ function how() {
     <div class="step"><i class="ic ic-catch"></i><b>Catch</b>Creatures drop Rainbrew treats: fly under them</div>
     <div class="step"><i class="ic ic-dodge"></i><b>Dodge</b>Creatures, orbs and spiders cost a heart</div>
   </div>
-  <p class="note">The rare <b>Rainbrew logo</b> drifts in from the side. Catch it for <b>Rainbrew Magic</b>: a magical screen, every power and a rain of treats!</p>
+  <p class="note">The rare <b>Rainbrew logo</b> drifts in from the side. It is rare! Catch it for <b>Rainbrew Magic</b>: a magical screen, a sparkling trail, every power, a rain of treats and a lot of points!</p>
   <button class="sec" data-a="demo">Watch the demo</button>
   <details><summary>Treats and powers</summary><ul>
     <li><b>Coffee</b> rapid fire · <b>Pizza</b> one more straight shot line (up to two) · <b>Burger</b> stronger shots</li>
     <li><b>Chicken</b> piercing shots · <b>Salad</b> slows the creatures · <b>Ice cream</b> treat magnet · <b>Pasta</b> double points</li>
     <li><b>Tea</b> or <b>matcha</b> a shield that blocks one hit · <b>Star</b> a few seconds of invincibility · <b>Bomb</b> wipes the screen (tap the bomb button)</li>
-    <li>Fries give points. Catch treats and hit creatures in a row for a combo: x2 every 5, up to x8. A treat that falls away breaks the combo.</li>
+    <li>New: <b>Donut</b> two little helpers shoot beside you · <b>Smoothie</b> freezes everything for 4 seconds · <b>Croissant</b> wide beams · <b>Cake</b> golden triple points · <b>Cookie</b> a lightning strike</li>
+    <li>Power-ups glow inside a coloured circle: catch the glowing ones! Fries give points. Catch treats and hit creatures in a row for a combo: x2 every 5, up to x8. A treat that falls away breaks the combo.</li>
   </ul></details>
   <details><summary>Creatures, bosses and modes</summary><ul>
     <li>Ghosts from level 1, bats from 2, pumpkins (tougher) from 3, witches (they shoot) from 4.</li>
