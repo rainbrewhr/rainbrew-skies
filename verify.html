@@ -67,7 +67,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
 <script>
 'use strict';
 const STAFF_BUILD = '2.0';
-const SERVER_URL = '';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
+const SERVER_URL = 'https://script.google.com/macros/s/AKfycbxslDtAN2GsYII01RoemTYzvucsgK6wDBKodVhmfXh1BP5uYggbnUfKSMiJvzsOjS_z/exec';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
