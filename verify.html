@@ -66,12 +66,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
 </main>
 <script>
 'use strict';
-const STAFF_BUILD = '3.0';
+const STAFF_BUILD = '3.1';
 const SERVER_URL = 'https://script.google.com/macros/s/AKfycbxslDtAN2GsYII01RoemTYzvucsgK6wDBKodVhmfXh1BP5uYggbnUfKSMiJvzsOjS_z/exec';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
-const MODES = [['rank', '🏆 Rank'], ['classic', 'Classic'], ['rush', 'Rush'], ['infinite', 'Infinite']], MODE_NAME = { rank: 'Rank', classic: 'Classic', rush: 'Rush', infinite: 'Infinite' };
+const MODES = [['rank', 'Ranked'], ['classic', 'Classic']], MODE_NAME = { rank: 'Ranked', classic: 'Classic', rush: 'Rush', infinite: 'Infinite' };
 const ERRS = { auth: 'That PIN is wrong, or it was changed. Ask the game owner.', locked: 'Too many wrong attempts. Wait 10 minutes.', notfound: 'No score found with that code.', busy: 'The server is busy. Try again in a moment.' };
 const HELP = 'Can’t reach the server. Ask the game owner to check in Apps Script: Deploy → Manage deployments → Edit → “Who has access” must be Anyone, the address must end in /exec, then Version: New version → Deploy.';
 const relCmp = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; } return 0; };   // 7.10 is newer than 7.9
