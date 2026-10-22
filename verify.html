@@ -46,7 +46,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
 <main id="app">
 <div id="connectView" hidden></div>
 <div id="appView" hidden>
-  <header class="hdr"><div class="ht"><b>Magic Catch staff</b><span class="meta" id="hsub"></span></div><button class="icon alt" id="refreshBtn" data-act="refresh" aria-label="Refresh">⟳</button></header>
+  <header class="hdr"><div class="ht"><b>Rainbrew Sky staff</b><span class="meta" id="hsub"></span></div><button class="icon alt" id="refreshBtn" data-act="refresh" aria-label="Refresh">⟳</button></header>
   <div id="banner"></div>
   <section id="v-winners">
     <div class="tabs" id="tabs" role="tablist"></div>
@@ -66,7 +66,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
 </main>
 <script>
 'use strict';
-const STAFF_BUILD = '3.1';
+const STAFF_BUILD = '3.2';
 const SERVER_URL = 'https://script.google.com/macros/s/AKfycbxslDtAN2GsYII01RoemTYzvucsgK6wDBKodVhmfXh1BP5uYggbnUfKSMiJvzsOjS_z/exec';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -128,7 +128,7 @@ function closeModal(result) { const r = modalResolve; modalResolve = null; S.mod
 /* ---------- actions ---------- */
 const norm = c => String(c || '').toUpperCase().replace(/\s/g, '');
 function patchRow(row) { const i = S.rows.findIndex(r => r.code === row.code); if (i >= 0) S.rows[i] = row; if (S.found && S.found.code === row.code) S.found = row; }
-function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Magic Catch (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' at the counter to claim your prize.'; }
+function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Rainbrew Satch (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' at the counter to claim your prize.'; }
 function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') renderComp(); if (v === 'tools') renderTools(); }
 async function act(a, code, extra) {
   try {
