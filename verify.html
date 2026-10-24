@@ -66,7 +66,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
 </main>
 <script>
 'use strict';
-const STAFF_BUILD = '4.9';
+const STAFF_BUILD = '5.0';
 const SERVER_URL = 'https://script.google.com/macros/s/AKfycbxslDtAN2GsYII01RoemTYzvucsgK6wDBKodVhmfXh1BP5uYggbnUfKSMiJvzsOjS_z/exec';                         // the game's own server address: the staff page always talks to the same server as the game                                // must match the game and Code.gs: a different number is shown as a warning
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
