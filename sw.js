@@ -1,8 +1,8 @@
 /* Rainbrew Sky: service worker. Lets the game open with no connection.
    Network first (so updates always arrive), cached copy as the offline fallback.
    It never touches the leaderboard server, and never caches the staff page. */
-const CACHE = 'rainbrew-sky-v5-0';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-64.png', './img/frost_unicorn.png', './img/solar_blaze.png', './img/void_shadow.png', './img/golden_sun.png', './img/emerald_nature.png'];
+const CACHE = 'rainbrew-sky-v5-1';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-64.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {})))).catch(() => {}));   // one missing file must not stop the rest
