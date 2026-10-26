@@ -751,7 +751,7 @@ html,body{background:#1a1040!important}
 <script>
 'use strict';
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 32;
+var SIM_VERSION = 33;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
@@ -759,19 +759,19 @@ var LEVEL_STEPS = 660, BOSS_EVERY = 5, BOSS_MAX = 3900;           // a level las
 var OC_STEPS = 240, POWER_STEPS = 300, COFFEE_STEPS = 240, PR = 12;
 var ELEM_MAX = 100, ELEM_KILL = 0.5;                                // every defeated creature charges Rainbrew Power by 0.5%: 200 defeats = a full bar
 var MODES = {
-  rank:    { ranked: 1, lives: 3, maxSec: 10800, diff: 1.25, boss: 1, ramp: 1, hype: 1, fair: 1 },   // fair: every unicorn uses its equal base kit and no upgrades, because gems live on each phone and the server cannot check what was bought   // the weekly ranked flight: the same course for everyone; it gets harder with time and builds a hype before every boss
-  classic: { ranked: 1, lives: 5, maxSec: 10800, diff: 0.65, boss: 1, ramp: 0, hype: 0, easy: 1 }    // casual: smooth, even waves; a new course every flight
+  rank:    { ranked: 1, lives: 3, maxSec: 10800, diff: 1.5, boss: 1, ramp: 1, hype: 1, fair: 1 },   // fair: every unicorn uses its equal base kit and no upgrades, because gems live on each phone and the server cannot check what was bought   // the weekly ranked flight: the same course for everyone; it gets harder with time and builds a hype before every boss
+  classic: { ranked: 1, lives: 5, maxSec: 10800, diff: 0.75, boss: 1, ramp: 0, hype: 0, easy: 1 }    // casual: smooth, even waves; a new course every flight
 };
 var BASE = {                                                      // the equal "base kit" of each unicorn: its own beam style and skill, about 11-15 damage a second (used in Ranked, so prizes are fair)
   frost:   { cd: 5, lanes: 2, dmg: 1, pierce: 0 },                // twin beams
-  solar:   { cd: 2, lanes: 1, dmg: 1, pierce: 0 },                // a rapid stream down one narrow line
+  solar:   { cd: 3, lanes: 1, dmg: 1, pierce: 0 },                // a rapid stream down one narrow line
   void:    { cd: 8, lanes: 1, dmg: 3, pierce: 2 },                // slow, heavy, piercing shots
   emerald: { cd: 9, lanes: 2, dmg: 2, pierce: 0 },                // two strong beams
   golden:  { cd: 7, lanes: 3, dmg: 1, pierce: 0 }                 // a wide three-beam fan
 };
 var UNICORNS = {                                                  // the full kit (Classic): it grows with the tier and the price. Golden Sun is the ultimate: everything, at its maximum
   frost:   { tier: 1, cd: 5, lanes: 2, dmg: 1,   pierce: 0, helpers: 0, shield0: 0 },
-  solar:   { tier: 2, cd: 2, lanes: 1, dmg: 1.1, pierce: 0, helpers: 0, shield0: 0 },
+  solar:   { tier: 2, cd: 3, lanes: 1, dmg: 0.9, pierce: 0, helpers: 0, shield0: 0 },
   void:    { tier: 3, cd: 7, lanes: 1, dmg: 4,   pierce: 3, helpers: 0, shield0: 0 },
   emerald: { tier: 4, cd: 8, lanes: 3, dmg: 2,   pierce: 0, helpers: 0, shield0: 0 },
   golden:  { tier: 5, cd: 6, lanes: 3, dmg: 2,   pierce: 1, helpers: 1, shield0: 1 }
@@ -967,7 +967,7 @@ function cometBurst(G) {                                           // a shower o
   G.pw.coffee = COFFEE_STEPS * (G.wc.boost2 ? 2 : 1); E(G, 'cmkill', c.x, c.y);
 }
 function nextStage(G) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.waveT = 40; G.cometLv = 2 + (G.rs() < 0.5 ? 0 : 1); G.cm = null; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
-function bossHP(s) { s = Math.max(0, s); var i = s % 8, c = Math.floor(s / 8); return 700 + 100 * i + c * (500 + 50 * i); }   // base health: Matcha Dragon 700, then 1200 on the second run
+function bossHP(s) { s = Math.max(0, s); var i = s % 8, c = Math.floor(s / 8); return 900 + 120 * i + c * (700 + 90 * i); }   // base health: Matcha Dragon 900, then 1600 on the second run (must match the game)
 function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = Math.ceil(bossHP(G.stage) * (G.M && G.M.easy ? 0.6 : 1) * (1 + 1.5 * wcPower(G)));   // endurance fights: bosses have 2.6 times their old life
   G.bossHit = 0;
@@ -1024,15 +1024,24 @@ function bossMove(G, b, lvl, sp) {                                 // every boss
     if (m % 3 === 0) { var d2 = b.n++ % 2 ? -1 : 1; beamH(G, 'gaze', PI / 2 - 0.9 * d2, 1.8 * d2 / 70, 15, 36, 70, 1); return 150 * rate; }
     a = aimAt(G, b.x, b.y); for (i = -3; i <= 3; i++) orb(G, b.x, b.y + 20, a + i * 0.2, sp * 0.9); if (m % 3 === 2) for (i = 0; i < 10; i++) orb(G, b.x, b.y, i * TWO_PI / 10 + 0.2, sp * 0.65); return 80 * rate;
   }
-  if (k === 'cerberus') {                                          // its three heads breathe fire down their own lanes, one after another
-    if (m % 3 !== 1) { var hs = [b.x - 74, b.x, b.x + 74]; var ord = (b.n++ % 2) ? [0, 1, 2] : [2, 1, 0]; for (i = 0; i < 3; i++) colH(G, 'flame', clamp(Math.round(hs[ord[i]]), 30, W - 30), 130, H, 24, 20, 17, i * 15); return 112 * rate; }
-    a = aimAt(G, b.x, b.y); if (b.n++ % 3 === 0) { for (i = -2; i <= 2; i++) orb(G, b.x, b.y + 20, a + i * 0.22, sp * 0.8, 6, 'c_frost'); return 74 * rate; }   /* frost fan */
-    if (b.n % 3 === 1) { for (i = 0; i < 8; i++) orb(G, b.x, b.y + 20, i * TWO_PI / 8 + 0.2, sp * 0.75, 6, 'c_fire'); return 70 * rate; }   /* fire ring */
-    for (i = 0; i < 3; i++) { orb(G, b.x - 30, b.y + 20, a - 0.06, sp * 1.0, 6, 'c_poison'); orb(G, b.x + 30, b.y + 20, a + 0.06, sp * 1.0, 6, 'c_poison'); } return 62 * rate;   /* poison darts */
+  if (k === 'cerberus') {                                          // three heads, three powers: the left head breathes FIRE, the middle head FROST, the right head POISON
+    var hx = [b.x - 74, b.x, b.x + 74], hord = (Math.floor(m / 3) % 2) ? [0, 1, 2] : [2, 1, 0], hd;
+    if (m % 3 === 0) { for (i = 0; i < 3; i++) colH(G, 'flame', clamp(Math.round(hx[hord[i]]), 30, W - 30), 130, H, 24, 20, 17, i * 15); return 112 * rate; }   // all three heads breathe down their lanes
+    hd = b.n++ % 3; a = aimAt(G, hx[hd], b.y);
+    if (hd === 0) { for (i = 0; i < 8 + 2 * lvl; i++) orb(G, hx[0], b.y + 20, i * TWO_PI / (8 + 2 * lvl) + 0.2, sp * 0.8, 6, 'c_fire'); }              // fire head: a ring of embers
+    else if (hd === 1) { for (i = -2; i <= 2; i++) orb(G, hx[1], b.y + 20, a + i * 0.22, sp * 0.85, 6, 'c_frost'); }                                  // frost head: an icy fan
+    else { for (i = 0; i < 4 + lvl; i++) orb(G, hx[2], b.y + 20, a + (i - 1.5) * 0.08, sp * (0.9 + 0.12 * i), 6, 'c_poison'); }                       // poison head: a volley of fast darts
+    return 62 * rate;
   }
   /* cyclops */                                                    // boulders fall (with markers), then a huge club slam down the middle of where you stand
   if (m % 3 !== 1) { n = 4 + lvl; for (i = 0; i < n; i++) dropH(G, 'rock', 30 + Math.floor(G.rs() * (W - 60)), 26, i * 8, 17); return 100 * rate; }
   colH(G, 'slam', clamp(Math.round(G.px), 50, W - 50), 0, H, 62, 38, 12, 0); for (i = 0; i < 12; i++) orb(G, b.x, b.y + 30, i * TWO_PI / 12 + 0.2, sp * 0.7); return 108 * rate;
+}
+function bossExtra(G, b, cyc, sp) {                               // extra boss skills: each time the bosses come round again they learn another attack
+  var a = aimAt(G, b.x, b.y), i;
+  for (i = -1; i <= 1; i++) orb(G, b.x, b.y + 24, a + i * 0.16, sp * 0.95);
+  if (cyc >= 1) for (i = 0; i < 8; i++) orb(G, b.x, b.y + 24, i * TWO_PI / 8 + 0.35, sp * 0.7);
+  if (cyc >= 2) colH(G, 'slam', clamp(Math.round(G.px), 40, W - 40), 0, H, 40, 36, 10, 0);
 }
 function updateBoss(G) {
   var b = G.boss; G.bossT++; if (b.hf > 0) b.hf--;
@@ -1049,6 +1058,7 @@ function updateBoss(G) {
   }
   b.ph += 0.025 * (1 + 0.25 * lvl); var tx = W / 2 + 105 * SIN(b.ph + G.stage), ty = 168 + 6 * SIN(T * 0.05), ease = 0.08 * (T < 30 ? T / 30 : 1);
   b.x += (tx - b.x) * ease; b.y += (ty - b.y) * ease;              // it follows its path smoothly
+  b.xs = (b.xs || 0) - 1; if (b.xs <= 0 && T >= 150) { b.xs = Math.max(100, 240 - 35 * Math.floor(G.stage / 8)); bossExtra(G, b, Math.floor(G.stage / 8), sp); }
   b.cd--; b.tele = (b.cd <= 16 && b.cd > 0 && T > 40) ? 1 : 0;
   if (b.cd <= 0 && T >= 60) { b.cd = Math.floor(bossMove(G, b, lvl, sp) * (1 - 0.22 * ramp(G)) * (lvl === 2 ? 0.8 : 1)); E(G, 'bossatk', b.kind, 0); }
 }
@@ -1423,8 +1433,10 @@ function loadShop() {
 let shop = loadShop();
 const saveShop = () => LS.set('us_shop', shop);
 const owns = id => shop.owned.includes(id);
+function tierGate(c) { if (!c || c.tier <= 2) return 0; const need = c.tier - 1; return CHARACTERS.some(k => k.tier === need && owns(k.id)) ? 0 : need; }   // Tier 3 needs Tier 2, Tier 4 needs Tier 3, and so on
 function buyUnicorn(id) {
   const c = charById(id); if (!c) return { ok: false, reason: 'unknown' }; if (owns(id)) return { ok: false, reason: 'owned' };
+  if (tierGate(c)) return { ok: false, reason: 'tier', need: tierGate(c) };
   if (shop.gems < c.price) return { ok: false, reason: 'gems', need: c.price - shop.gems };
   shop.gems -= c.price; shop.owned.push(id); saveShop(); cfg.uni = id; saveCfg(); return { ok: true };
 }
@@ -3755,7 +3767,7 @@ function enqueue(p) { try { if (navigator.storage && navigator.storage.persist) 
 async function trySubmit(p, budgetMs, onBusy) {
   const t0 = Date.now(); let i = 0, netFails = 0, last = { ok: false, err: 'net' };
   while (Date.now() - t0 < budgetMs) {
-    try { last = await api('POST', null, p, 20000); if (last && (last.ok || ['busy', 'server', 'rate'].indexOf(last.err) < 0)) return last; last = last || { ok: false, err: 'net' }; } catch (e) { last = { ok: false, err: 'net' }; }
+    try { last = await api('POST', null, p, 120000); if (last && (last.ok || ['busy', 'server', 'rate'].indexOf(last.err) < 0)) return last; last = last || { ok: false, err: 'net' }; } catch (e) { last = { ok: false, err: 'net' }; }
     if (last.err === 'net' && (phoneSaysOffline() || ++netFails >= 2)) break;       // one lost reply is retried at once; two in a row (or a phone that says it is offline): save the score and upload it later
     if (onBusy) onBusy(Math.round((Date.now() - t0) / 1000));
     await sleep(300 + Math.random() * Math.min(8000, 1000 * Math.pow(2, i++)));
@@ -3875,8 +3887,8 @@ async function installApp() {
   : `<ol class="steps"><li><b>Android (Chrome):</b> tap the <b>⋮</b> menu, then <b>Install app</b> (or <b>Add to Home screen</b>).</li><li><b>Samsung Internet:</b> tap the menu, then <b>Add page to</b> → <b>Home screen</b>.</li><li><b>Computer (Chrome or Edge):</b> click the install icon at the right of the address bar.</li></ol>`}`, 'install', 'menu');
 }
 function buyAsk(id) {
-  const c = charById(id); if (!c || owns(id)) return; const have = shop.gems, ok = have >= c.price, d = document.createElement('div'); d.className = 'buyov';
-  d.innerHTML = `<div class="buybox" role="dialog" aria-modal="true"><img src="${esc(c.src)}" alt=""><h3>Unlock ${esc(c.name)}?</h3><p class="bp"><i class="gem"></i>${fmt(c.price)}</p><p class="bm">${ok ? 'You have ' + fmt(have) + ' gems. You will have ' + fmt(have - c.price) + ' left.' : 'You need ' + fmt(c.price - have) + ' more gems.'}</p>${ok ? '<button class="by">Buy</button>' : ''}<button class="bn">${ok ? 'Not now' : 'OK'}</button></div>`;
+  const c = charById(id); if (!c || owns(id)) return; const gate = tierGate(c), have = shop.gems, ok = !gate && have >= c.price, d = document.createElement('div'); d.className = 'buyov';
+  d.innerHTML = `<div class="buybox" role="dialog" aria-modal="true"><img src="${esc(c.src)}" alt=""><h3>Unlock ${esc(c.name)}?</h3><p class="bp"><i class="gem"></i>${fmt(c.price)}</p><p class="bm">${gate ? 'Buy a Tier ' + gate + ' unicorn first, then you can unlock this one.' : ok ? 'You have ' + fmt(have) + ' gems. You will have ' + fmt(have - c.price) + ' left.' : 'You need ' + fmt(c.price - have) + ' more gems.'}</p>${ok ? '<button class="by">Buy</button>' : ''}<button class="bn">${ok ? 'Not now' : 'OK'}</button></div>`;
   document.body.appendChild(d); const close = () => d.remove(); d.querySelector('.bn').onclick = close; d.onclick = e => { if (e.target === d) close(); };
   const by = d.querySelector('.by'); if (by) by.onclick = () => { close(); const r = buyUnicorn(id); if (r.ok) { cfg.uni = id; saveCfg(); shopFocus = id; shopMsg = c.name + ' is yours!'; shopGood = true; award('shop'); sfx('win'); } if (curScr === 'menu') homeRefresh(); else if (curScr === 'setup') setupScreen(); else unicornsScreen(); };
 }
@@ -4063,7 +4075,7 @@ const validPH = s => { const d = String(s || '').replace(/\D/g, ''); return /^09
 const ERR = { device: 'This score was played on a different phone, so it can’t be submitted from this one. Play again.', mode: 'This mode doesn’t record scores.', server: 'The server could not save your score right now. It keeps trying.', size: 'This run is too large to upload.', events: 'This run is too long to check.', kind: 'The run did not pass the server’s check.', order: 'The run did not pass the server’s check.', item: 'The run did not pass the server’s check.', format: 'The run did not pass the server’s check.', afterover: 'The run did not pass the server’s check.', time: 'The run did not pass the server’s check.', closed: 'The competition has ended, so this score arrived too late to count.', contact: 'Rank needs a Philippine mobile number (like 0917 123 4567) so staff can reach winners.', mismatch: 'The score didn’t match the server’s check.', timing: 'The run timing looked invalid.', clock: 'The run was longer than the time that passed.', used: 'This run was already submitted.', rate: 'Too many submissions. Try again in a bit.', expired: 'This session expired. Play again to get a new one.', name: 'Please enter a name.', token: 'This run could not be verified.', version: 'The game or the scoreboard was updated while you played, so this run could not be counted. Reload the page and play again: your next run will count.' };
 async function sendRun(r, nm, ct, onBusy) {                                      // returns {status:'ok'|'queued'|'refused', res, p}
   const p = { action: 'submit', token: r.token, did, name: nm, contact: ct, score: r.score, tEnd: r.tEnd, tr: r.tr, sk: r.sk || '', cd: r.cd || '', rv: r.rv || '', up: r.up || '', uni: r.uni, mode: r.mode, v: SIM_VERSION };
-  const res = await trySubmit(p, 20000, onBusy);   // safe to repeat: the server returns the same code for the same run
+  const res = await trySubmit(p, 150000, onBusy);   // safe to repeat: the server returns the same code for the same run
   if (res.ok) { r.done = 1; unsentDel(r); saveTicket(res, p); return { status: 'ok', res, p }; }
   if (['net', 'busy', 'server', 'rate'].indexOf(res.err) >= 0) { enqueue(p); unsentDel(r); return { status: 'queued', res, p }; }   // saved on the device, uploads automatically later
   if (res.err === 'version') { pool = {}; poolSave(); setTimeout(() => refill(mode, true), 400); }          // saved sessions from before an update: replace them so the NEXT run counts
@@ -4348,6 +4360,7 @@ let shopFocus = '';
 function shopBuy(id) {
   const r = buyUnicorn(id), c = charById(id); shopFocus = id;
   if (r.ok) { shopMsg = c.name + ' is yours!'; shopGood = true; award('shop'); sfx('win'); }
+  else if (r.reason === 'tier') shopMsg = 'Buy a Tier ' + r.need + ' unicorn first.';
   else if (r.reason === 'gems') shopMsg = 'You need ' + fmt(r.need) + ' more gems for ' + c.name + '.';
   if (curScr === 'setup') setupScreen(); else unicornsScreen();
 }
@@ -4538,7 +4551,7 @@ function howGuide(start) {                                           // a visual
     slide('Power-ups', `<div class="hwgrid">${HW_PW.concat([['mystery', 'Mystery box', 'Rare and glowing: a small gem prize, a full Rainbrew Power bar, a shield, or a gamble.'], ['overcharge', 'Overload', '100 defeats in a row without a hit fill the bar: four extra rainbow beams and 50% more damage for 8 seconds. Hitting a boss charges the bar too. Creatures its beams defeat are worth half the points.']]).map(p => `<div class="hwcell">${cv(p[0], 38)}<div><b>${p[1]}</b><span>${p[2]}</span></div></div>`).join('')}</div>`),
     ...[['a', 'Small creatures', 'Quick and easy. They come in big groups.'], ['b', 'Tough creatures', 'Big and sturdy. They take lots of hits.'], ['c', 'Shooters', 'They stop and shoot at you. Beat them fast!']].map(([role, title, tip]) => { const ks = Object.keys(ENEMIES).filter(k => ENEMIES[k].role === role), top = Math.max(...Object.keys(ENEMIES).map(k => ENEMIES[k].hp)); return slide(title, `<p class="meta hwnote">${tip}</p><div class="hwtip">Health = damage needed to defeat · ${myDmgTxt()}</div><div class="hwgrid">${ks.map(k => { const hp = ENEMIES[k].hp, pct = Math.max(14, Math.round(100 * Math.sqrt(hp / top))); return `<div class="hwcell hwcr">${cv(k, 40)}<div><b>${KIND_NAME[k] || k}</b><span class="hpb"><i style="width:${pct}%"></i></span><span class="hits">${hp} damage</span></div></div>`; }).join('')}</div>`); }),
     slide('Weapon levels', row(cv('core', 44), 'Star Cores', 'Beat the boss of every second Level (2, 4, 6...) and a glowing Star Core falls early in the next Level: catch it! Each one upgrades your shooting for the rest of the flight, up to level 5.') + [1, 2, 3, 4, 5].map(l => row(wlIcon(l), WL_NAMES[l], ['', '+10% damage and brighter beams.', 'Two little star bolts angle out beside your beams.', 'Beams pierce one more creature and you shoot faster.', '+25% damage in all, and a blazing rainbow comet tail.', 'Four star bolts, the strongest piercing and the fastest shooting.'][l])).join('')),
-    slide('The bosses', '<p class="meta">Level 1 = the first run of 8 bosses, Level 2 = the second run, Level 3 = the third. Health is base health (Classic bosses are a bit softer).</p>' + Object.entries(ENV).map(([k, v]) => row(`<canvas class="hwi" data-boss="${k}" width="88" height="88" style="width:44px;height:44px"></canvas>`, BOSS_NAME[k] || k, v.n + ': ' + v.d + '. Health: Level 1 = ' + bossHP(BOSS_KINDS.indexOf(k)) + ', Level 2 = ' + bossHP(BOSS_KINDS.indexOf(k) + 8) + ', Level 3 = ' + bossHP(BOSS_KINDS.indexOf(k) + 16))).join('') + row(`<img src="${LOGO}" alt="">`, 'Rainbrew logo', 'Very rare: grab it for Rainbrew Magic, a few seconds of flying fast.')),
+    slide('The bosses', '<p class="meta">Level 1 = the first run of 8 bosses, Level 2 = the second run, and so on. Bosses learn new attacks at Level 1, 2 and 3, and Cerberus uses fire, frost and poison. Health is base health (Classic bosses are a bit softer).</p>' + Object.entries(ENV).map(([k, v]) => row(`<canvas class="hwi" data-boss="${k}" width="88" height="88" style="width:44px;height:44px"></canvas>`, BOSS_NAME[k] || k, v.n + ': ' + v.d + '. Health: Level 1 = ' + bossHP(BOSS_KINDS.indexOf(k)) + ', Level 2 = ' + bossHP(BOSS_KINDS.indexOf(k) + 8) + ', Level 3 = ' + bossHP(BOSS_KINDS.indexOf(k) + 16) + ', Level 4 = ' + bossHP(BOSS_KINDS.indexOf(k) + 24))).join('') + row(`<img src="${LOGO}" alt="">`, 'Rainbrew logo', 'Very rare: grab it for Rainbrew Magic, a few seconds of flying fast.')),
     slide('Wild Cards: Common and Uncommon', cardRows([0, 1])),
     slide('Wild Cards: Rare and Super Rare', cardRows([2, 3])),
     slide('See it in action', `<div class="hwdemo"><img src="${LOGO}" alt=""><button data-a="demo">${bi('play')}Watch the demo</button><p class="meta">A unicorn flies from Phase 1 all the way to the boss.</p></div>`)];
