@@ -21,6 +21,17 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 
 
 
+## Rainbrew Power and Unicorn Power (new, sim version 34)
+* **Unicorn Power** is the old "Rainbrew Power": the button that fills as you defeat creatures (0.5% each) and wipes the screen. It only changed its name.
+* **Rainbrew Power** replaces the flying Rainbrew logo. It is a fixed button (the new Rainbrew picture) **under the Unicorn Power button**, usable **only in boss fights, once per boss**, once the boss has arrived. It glows with a rainbow ring and says **HOLD!** when ready; before a boss it is dim (**BOSS ONLY**) and after use it says **USED**.
+  * **Hold** it (finger, or the **R** key on a computer): the world, the boss and its attacks run at 20% speed, the screen dims slightly, and a rainbow ring fills around your unicorn (you can still fly at full speed to line up and dodge). Longest hold: 2.5 seconds.
+  * **Let go**: the colour comes back with a flash, a rainbow wash and shockwaves, the boss loses **15% to 25% of its health** (the longer you held, the more), the screen is cleared, and for **8 seconds** you are untouchable, every power is on, gems rain down and your attack goes **fast** (hyper-fire).
+  * It also counts for the "Rainbrew Power" badge (the old "Rainbrew Magic" badge).
+* **Fair and checked:** the game records when you held the button (`rb`, like the Unicorn Power presses) and the server replays it, so a score that used it is verified like any other.
+* **To tune it**, change these in **both** `index.html` and `Code.gs` (the "SIM" block must stay identical) and raise `SIM_VERSION`: `RB_MAX` (longest hold, in steps; 30 steps = 1 second), `RB_SLOW` (world speed while held, 0.2 = 20%), the damage in `rainbrewPower()` (`0.15 + 0.10 * t`), `G.magic` and `G.hyper` (the 8-second rush, 240 steps).
+* **Deploy carefully:** the rules version is now **34**. A game and a server on different versions refuse each other's Ranked scores, and a refused score is not kept. So do it at a quiet time, in this order: (1) merge the game; (2) **right away** paste the new `Code.gs` into Apps Script and deploy a **New version** (GitHub Pages takes a minute or two to publish, so the server will be ready first); (3) players with the old page open will see an "update" notice and need to reload. Runs recorded on version 33 and not yet uploaded cannot be uploaded any more.
+* The `benchmark()` recorded flight was regenerated for version 34.
+
 ## Privacy, consent and moderation (new)
 *(A draft to help with the Philippine Data Privacy Act, RA 10173. It is not legal advice: please have a Philippine lawyer review `privacy.html` and these steps.)*
 * **Privacy Notice and Game Rules:** `privacy.html` (linked from the registration screen and the game footer). Search it for **CONFIRM**: add a contact e-mail and the person responsible for privacy, confirm the retention period and reply time, and confirm with DTI or your lawyer whether each prize contest needs a permit.
@@ -38,7 +49,7 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 * **No new verification:** circles and events are only a filter over the same verified Ranked scores (same shared weekly course, same replay check). They cannot create or change a score. Phone numbers are never shown.
 * **Privacy:** a circle is private: it has no public list and is found only with its code. Players see names and scores of members only.
 * **Sheets:** the server creates two new tabs the first time they are needed: **Circles** and **Members**. Do not rename them.
-* **Deploy order (important):** 1) paste the new `Code.gs` into Apps Script and choose **Deploy > Manage deployments > Edit > New version**; 2) then upload the game (`index.html`, `Rainbrew_Sky.html`) and `verify.html`. The sim version stays **33** and the release stays **5.0**, so nothing else changes and older copies of the game keep working. A game that is newer than the server shows "Circles are not available on the server yet".
+* **Deploy order (important):** 1) paste the new `Code.gs` into Apps Script and choose **Deploy > Manage deployments > Edit > New version**; 2) then upload the game (`index.html`, `Rainbrew_Sky.html`) and `verify.html`. (When circles and events were added the sim version stayed 33 and the release stays **5.0**; the sim version is now 34, see above.) A game that is newer than the server shows "Circles are not available on the server yet".
 * **Links:** a link like `https://YOUR-SITE/?circle=K7M2QX` opens the game and offers to join that circle after the player registers.
 
 ## What changed in 5.1
