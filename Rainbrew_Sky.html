@@ -758,13 +758,14 @@ html,body{background:#1a1040!important}
 <script>
 'use strict';
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 34;
+var SIM_VERSION = 35;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
 var LEVEL_STEPS = 660, BOSS_EVERY = 5, BOSS_MAX = 3900;           // a level lasts 22 s; every 5th level is a boss; a boss not beaten in 130 s flies away
 var OC_STEPS = 240, POWER_STEPS = 300, COFFEE_STEPS = 240, PR = 12;
-var RB_MAX = 75, RB_SLOW = 0.2;                                  // RAINBREW POWER (the fixed button, boss fights only): hold it for up to 2.5 s; while held the world runs at 20% speed (you still move at full speed); let go and it hits
+var RB_DMG = 0.22;                                               // RAINBREW POWER (the fixed button, boss fights only, once per boss): one tap = an instant, huge hit (22% of the boss's health), then a fast surge
+var FC_MAX = 120, FC_SLOW = 0.25, FC_AFTER = 90, FC_LAST = 0.5;   // FOCUS (hold still anywhere): up to 4 s of slowed time (the world at 25% speed); after you let go it stays slowed for 3 s, easing back to normal; the energy refills in 16 s
 var ELEM_MAX = 100, ELEM_KILL = 0.5;                                // every defeated creature charges Rainbrew Power by 0.5%: 200 defeats = a full bar
 var MODES = {
   rank:    { ranked: 1, lives: 3, maxSec: 10800, diff: 1.5, boss: 1, ramp: 1, hype: 1, fair: 1 },   // fair: every unicorn uses its equal base kit and no upgrades, because gems live on each phone and the server cannot check what was bought   // the weekly ranked flight: the same course for everyone; it gets harder with time and builds a hype before every boss
@@ -844,7 +845,7 @@ function newGame(seed, mode, uni, up) {
     level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, boss: null, bossT: 0, powGiven: 0,
     wl: 0, coreOwed: 0, nh: 0, oc: 0, ocs: 0, cc: 0, bp: 0, boxes: 0, jinx: 0, bossHit: 0, flaw: 0, flawless: 0,       // streak (kills without a hit), Overcharged, close calls, most beams at once, mystery boxes, risk debuff, flawless boss wins
     nextIce: SPS * (22 + Math.floor(rs() * 8)),
-    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbHold: 0, rbAcc: 0, rbUsed: 0 };
+    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbUsed: 0, fcE: FC_MAX, fcOn: 0, fcAfter: 0, fcAcc: 0 };
 }
 function bossLevel(G) { return G.M.boss && G.level % BOSS_EVERY === 0; }
 
@@ -979,7 +980,7 @@ function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = Math.ceil(bossHP(G.stage) * (G.M && G.M.easy ? 0.6 : 1) * (1 + 1.5 * wcPower(G)));   // endurance fights: bosses have 2.6 times their old life
   G.bossHit = 0;
   G.phase = 'boss'; G.bossT = 0; G.hz = []; G.boss = { kind: kind, x: W / 2, y: -90, hp: hp, max: hp, r: 44, hf: 0, lv: 0, n: 0, inn: 0, t2: 0, tele: 0, dying: 0, ph: 0, cd: 80, m: 0, mode: 0, md: 0, lx: 0 };
-  G.rbReady = 1; G.rbHold = 0; G.rbAcc = 0;                      // every boss fight starts with Rainbrew Power ready (one use per fight)
+  G.rbReady = 1; G.oc = 0;                                       // every boss fight starts with Rainbrew Power ready (one use per fight); Overload is for creatures only
   E(G, 'boss', kind, G.stage);
 }
 function orb(G, x, y, a, sp, r, k) { G.bl.push({ x: x, y: y, vx: COS(a) * sp, vy: SIN(a) * sp, r: r || 6, k: k }); }   // k: the creature that fired it (its colour is the shot's colour)
@@ -1071,11 +1072,11 @@ function updateBoss(G) {
   if (b.cd <= 0 && T >= 60) { b.cd = Math.floor(bossMove(G, b, lvl, sp) * (1 - 0.22 * ramp(G)) * (lvl === 2 ? 0.8 : 1)); E(G, 'bossatk', b.kind, 0); }
 }
 function startDying(G) {                                          // a slow, dramatic defeat instead of a sudden pop
-  G.rbReady = 0; G.rbHold = 0; G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
+  G.rbReady = 0; G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
   E(G, 'bossdying', G.boss.kind, G.stage);
 }
 function endBoss(G, beaten) {
-  var b = G.boss; G.bl = []; G.hz = []; G.boss = null; G.rbReady = 0; G.rbHold = 0;
+  var b = G.boss; G.bl = []; G.hz = []; G.boss = null; G.rbReady = 0;
   if (beaten) {                                                    // the defeat animation is over: go straight to the Wild Cards (no diamond shower: the cards are the reward)
     G.score += 400 * (G.stage + 1); G.bosses++; if (G.stage % 2 === 1 && G.wl < WL_MAX) G.coreOwed = 1;   /* beating the boss of every second Level (2, 4, 6...) earns a Star Core */ if (!G.bossHit) { G.flaw = 1; G.flawless++; E(G, 'flawless', b.kind, 0); }   // beat it without a single hit: a Prismatic Wild Card is guaranteed
     G.phase = 'cards'; G.cardRe = 0; G.cdCur = ''; drawCards(G);
@@ -1113,7 +1114,7 @@ function hurt(G) {
   G.lives--; E(G, 'hurt', G.lives, 0);
   if (G.lives <= 0) { G.over = 1; G.reason = 'lives'; }
 }
-function startOc(G) { if (G.nh >= 100 && G.oc <= 0) { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
+function startOc(G) { if (G.nh >= 100 && G.oc <= 0 && G.phase === 'wave') { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
 function killEnemy(G, e) { var pts = ENEMIES[e.k].pts * mult(G) * (e.ovHit ? 0.3 : 1);   /* creatures the Overload beams touched are worth 30%: the extra firepower must not inflate the score */ pts = Math.max(1, Math.round(pts)); G.score += pts; G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo; G.comboT = 90; G.kills++; dropGems(G, e.k, e.x, e.y); dropHeart(G, e.k, e.x, e.y); dropWeapon(G, e.k, e.x, e.y); dropMystery(G, e.k, e.x, e.y); if (!e.ocHit && G.oc <= 0) { G.nh++; startOc(G); } var was = G.elem; if (G.ultT <= 0) G.elem = Math.min(ELEM_MAX, G.elem + (ELEM_KILL + G.wc.ult) * (G.env === 'hydra' ? 1 - 0.75 * G.es : 1)); if (G.ultT <= 0 && was < ELEM_MAX && G.elem >= ELEM_MAX) E(G, 'ultready', 0, 0); E(G, 'kill', e.x, e.y, e.k); }
 function damage(G, e, d) { e.hp -= d; e.hf = 3; G.hitsDealt++; E(G, 'hit', e.x, e.y, e.k); if (e.hp <= 0) killEnemy(G, e); }   // every hit scores a little; a defeat scores a lot
 function clearScreen(G) { var i; for (i = 0; i < G.en.length; i++) G.score += ENEMIES[G.en[i].k].pts; G.en = []; G.bl = []; G.ice = []; G.hz = []; }
@@ -1172,13 +1173,13 @@ function ultStep(G) {
   G.ultT--; if (G.ultT <= 0) G.ultK = '';
 }
 function skillStep(G) { if (G.hyper > 0) G.hyper--; if (G.magnetT > 0) G.magnetT--; ultStep(G); }
-function rainbrewPower(G, t) {                                   // RAINBREW POWER, let go: a huge hit on the boss (the longer you held, the bigger), the screen is cleared, 8 s untouchable with every power on, a rain of gems, and FAST fire
+function rainbrewPower(G) {                                      // RAINBREW POWER: an instant, huge hit on the boss, the screen is cleared, 8 s untouchable with every power on, a rain of gems, and a FAST surge of fire
   var b = G.boss, dmg = 0;
   G.surges++; G.rbUsed++; G.magic = 240; G.inv = Math.max(G.inv, 240); clearScreen(G);
   for (var i = 0; i < POWERS.length; i++) G.pw[POWERS[i]] = Math.max(G.pw[POWERS[i]], 240);
   G.hyper = Math.max(G.hyper, 240);
-  if (b) { dmg = Math.ceil(b.max * (0.15 + 0.10 * t)); b.hp -= dmg; if (b.hp < 0) b.hp = 0; b.hf = 6; }
-  G.score += 300 * (G.stage + 1); E(G, 'rbrel', t, dmg);
+  if (b) { dmg = Math.ceil(b.max * RB_DMG); b.hp -= dmg; if (b.hp < 0) b.hp = 0; b.hf = 6; }
+  G.score += 300 * (G.stage + 1); E(G, 'rbrel', 1, dmg);
 }
 function collect(G, it) {
   var k = it.k;
@@ -1197,11 +1198,11 @@ function collect(G, it) {
 }
 
 /* ---------------- one step of the world ---------------- */
-function stepGame(G, dx, dy, skill, rb) {
+function stepGame(G, dx, dy, skill, rb, fc) {
   if (G.over || G.phase === 'cards') return;                        // nothing moves while you choose a Wild Card
   var M = G.M, i, j, e, b, s, it, sp, k;
   G.t++;
-  if (G.oc > 0) G.oc--;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
+  if (G.oc > 0) G.oc = G.phase === 'boss' || G.phase === 'dying' ? 0 : G.oc - 1;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
   if (G.jinx > 0) G.jinx--;
   k = Math.min(MAXBEAMS, G.U.lanes + (G.pw.triple > 0 ? G.pwBeams : 0) + G.wc.beam) + ((G.pw.spread > 0 || G.wc.fan) ? 2 : 0) + (G.oc > 0 ? 4 : 0); if (k > G.bp) G.bp = k;
   var env = envOf(G); G.env = env; G.es = envStr(G); var lim = G.stone > 0 ? 13 : Math.floor(32 * (1 + moveBonus(G))); if (G.stone > 0) G.stone--; if (env === 'griffin') lim = Math.max(6, Math.floor(lim * (1 - 0.6 * G.es)));        // High Winds: slow flying                     // Medusa's gaze slows you for a moment
@@ -1209,13 +1210,13 @@ function stepGame(G, dx, dy, skill, rb) {
   var nx = clamp(G.px + dx, 20, W - 20), ny = clamp(G.py + dy, 130, H - 36); if (env === 'griffin') nx = clamp(nx + Math.round(5 * G.es * SIN(G.t * 0.05)), 20, W - 20); else if (env === 'kraken') ny = clamp(ny + Math.round(4 * G.es), 130, H - 36); else if (env === 'cyclops' && G.t % 60 === 0) nx = clamp(nx + Math.round(((G.t / 60 | 0) % 2 ? -30 : 30) * G.es), 20, W - 20);   // gusts, an undertow, tremors
   G.pdx = nx - G.px; G.pdy = ny - G.py; G.px = nx; G.py = ny;
   if (skill) useSkill(G);
-  var rbOn = rb && G.rbReady && G.phase === 'boss' && G.boss && G.boss.inn && G.boss.hp > 0, rbSkip = false;   // Rainbrew Power: only in a boss fight, once the boss has arrived
-  if (rbOn) { if (G.rbHold === 0) E(G, 'rbhold', 0, 0); G.rbHold++; }
-  if (G.rbHold > 0 && (!rbOn || G.rbHold >= RB_MAX)) {             // let go (or held as long as allowed): the release
-    if (G.phase === 'boss' && G.boss && G.boss.hp > 0) rainbrewPower(G, Math.min(1, G.rbHold / RB_MAX));
-    G.rbReady = 0; G.rbHold = 0; G.rbAcc = 0;
-  } else if (G.rbHold > 0) { G.rbAcc += RB_SLOW; if (G.rbAcc >= 1) G.rbAcc -= 1; else rbSkip = true; }   // held: the whole world (the boss, its attacks, shots, hazards) moves only on one step in five
-  var frozen = G.freeze > 0; if (frozen) G.freeze--; if (rbSkip) frozen = true;
+  if (rb && G.rbReady && G.phase === 'boss' && G.boss && G.boss.inn && G.boss.hp > 0) { G.rbReady = 0; rainbrewPower(G); }   // Rainbrew Power: only in a boss fight, once the boss has arrived, once per fight
+  var fcOn = fc && G.fcE > 0 && G.phase !== 'cards', fcF = 1, wskip = false;                       // FOCUS: holding still anywhere slows the whole world (you still fly at full speed)
+  if (fcOn) { if (!G.fcOn) E(G, 'fcon', 0, 0); G.fcE--; G.fcAfter = FC_AFTER; fcF = FC_SLOW; }
+  else { if (G.fcOn) E(G, 'fcoff', 0, 0); if (G.fcAfter > 0) { G.fcAfter--; fcF = FC_LAST + (1 - FC_LAST) * (1 - G.fcAfter / FC_AFTER); } else if (G.t % 4 === 0 && G.fcE < FC_MAX) G.fcE++; }   // after you let go the slow-down fades out over 3 s
+  G.fcOn = fcOn ? 1 : 0; G.fcF = fcF;
+  if (fcF < 1) { G.fcAcc += fcF; if (G.fcAcc >= 1) G.fcAcc -= 1; else wskip = true; }             // while slowed, the world (waves, creatures, the boss, shots, hazards) moves only on some steps
+  var frozen = G.freeze > 0; if (frozen) G.freeze--; if (wskip) frozen = true;
   var sl = G.ultK === 'frost' && G.ultT > 0 ? 0.35 : 1;                              // Starfall Barrage: time crawls
   if (G.inv > 0) G.inv--; if (G.star > 0) G.star--; if (G.magic > 0) G.magic--;
   for (i = 0; i < POWERS.length; i++) { k = POWERS[i]; if (G.pw[k] > 0) G.pw[k]--; }
@@ -1223,7 +1224,8 @@ function stepGame(G, dx, dy, skill, rb) {
   if (G.comboT > 0) { G.comboT--; if (G.comboT === 0) G.combo = 0; }
   if (G.t >= M.maxSec * SPS) { G.over = 1; G.reason = 'time'; return; }
   var rp = ramp(G), fast = (G.magic > 0 ? 2.2 : 1) * (1 + 0.45 * G.hype);                 // Rainbrew Magic: the world rushes past 2.2x faster; before a boss (Ranked) it speeds up too
-  // levels and bosses
+  // levels and bosses (the whole level clock stops with the world while time is slowed)
+  if (!wskip) {
   if (G.phase === 'wave') {
     G.levelT++;
     if (!bossLevel(G) && G.levelT === 300 && !(G.magic > 0)) givePower(G);
@@ -1254,6 +1256,7 @@ function stepGame(G, dx, dy, skill, rb) {
   if (G.phase !== 'wave') G.cm = null; else if (!G.cm && G.cometDone !== G.stage && levelIn(G) === G.cometLv && G.levelT >= 240 && G.magic === 0 && !bossLevel(G)) spawnComet(G);
   if (G.cm) updateComet(G);
   if (G.t >= G.nextIce && G.magic === 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
+  }
   if (G.magic > 0) { if (G.magic % 8 === 0) mkItem(G, 'gem', 24 + Math.floor(G.rd() * (W - 48)), -12, 0, 4.5); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 0); }   // a rain of gems
   // shooting
   G.fireCd -= G.jinx > 0 ? 0.5 : 1; if (G.fireCd <= 0) { fire(G, false); G.fireCd += Math.max(1.1, (G.pw.coffee > 0 || G.hyper > 0 ? Math.max(1.25, G.U.cd * 0.5) : G.U.cd) * (G.env === 'medusa' ? 1 + 1.0 * G.es : 1) * WL_RATE[G.wl] / (1 + 0.06 * G.charm)); }   // coffee: twice the fire rate (and a little more damage and piercing); Freezing Air slows shooting          // (the remainder carries over, so an upgraded rate like 3.7 steps is exact on average)   // coffee: an energy boost, you shoot faster
@@ -1294,7 +1297,7 @@ function stepGame(G, dx, dy, skill, rb) {
     if (s.dead) continue;
     if (G.cm && G.cm.hp > 0 && Math.abs(s.x - G.cm.x) < 26 + s.w && Math.abs(s.y - G.cm.y) < 30) { G.cm.hp -= s.dmg; G.cm.hf = 3; G.hitsDealt++; E(G, 'cmhit', G.cm.x, G.cm.y); if (s.pierce > 0) s.pierce--; else s.dead = 1; if (G.cm.hp <= 0) cometBurst(G); }
     if (s.dead) continue;
-    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); if (!s.oc && G.oc <= 0) { G.nh = Math.min(100, G.nh + 0.4); startOc(G); } }   // hitting a boss charges the Overcharge
+    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); }   // (Overload is for creatures only: hitting a boss does not charge it)
   }
   // getting hurt: creatures, orbs, ice shards, the boss and its attacks
   for (j = 0; j < G.en.length && !G.over; j++) { e = G.en[j]; if (e.hp <= 0) continue; var cx = e.x - G.px, cy = e.y - G.py, cr = e.r + PR; if (cx * cx + cy * cy <= cr * cr) { var safe = G.inv > 0 || G.star > 0 || G.magic > 0; hurt(G); if (!safe || G.star > 0 || G.magic > 0) { e.hp = 0; E(G, 'crash', e.x, e.y); if (G.star > 0 || G.magic > 0) killEnemy(G, e); } } }
@@ -1314,9 +1317,9 @@ function stepGame(G, dx, dy, skill, rb) {
 
 /* ---------------- recording a flight: one character per step per axis; ULT presses listed by step ---------------- */
 function encodeTraj(deltas) { var s = ''; for (var i = 0; i < deltas.length; i++) s += String.fromCharCode(79 + clamp(deltas[i] | 0, -MAXSTEP, MAXSTEP)); return s; }
-function parseRb(str) { var o = { s: [], e: [] }, a = String(str || '').split(','), i, p; for (i = 0; i < a.length; i++) { p = a[i].split('-'); if (p.length === 2) { o.s.push(+p[0]); o.e.push(+p[1]); } } return o; }   // the steps where the Rainbrew Power button was held: "12-40,300-330"
-function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs) {
-  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch, rbp = parseRb(rbs), rbI = 0, held; G.keepEv = !!keepEv; skills = skills || [];
+function parseRb(str) { var o = { s: [], e: [] }, a = String(str || '').split(','), i, p; for (i = 0; i < a.length; i++) { p = a[i].split('-'); if (p.length === 2) { o.s.push(+p[0]); o.e.push(+p[1]); } } return o; }   // the steps where a button or the screen was held or pressed: "12-40,300-330" (Rainbrew Power presses, and Focus holds)
+function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs, fcs) {
+  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch, rbp = parseRb(rbs), rbI = 0, held, fcp = parseRb(fcs), fcI = 0, fheld; G.keepEv = !!keepEv; skills = skills || [];
   for (var i = 0; i < n; i++) {
     if (G.over) { if (rv.length && rv[0] === G.t && revive(G)) { rv.shift(); } else break; }       // the player paid to continue: the flight goes on
     if (G.phase === 'cards') {                                    // the Wild Card screen: replay the choices the player made (picks and reshuffles)
@@ -1325,7 +1328,8 @@ function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs
     }
     var kk = 0; while (ki < skills.length && skills[ki] <= i + 1) { if (skills[ki] === i + 1) kk = 1; ki++; }
     while (rbI < rbp.s.length && rbp.e[rbI] < i + 1) rbI++; held = rbI < rbp.s.length && rbp.s[rbI] <= i + 1 ? 1 : 0;
-    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk, held); G.used = i + 1;
+    while (fcI < fcp.s.length && fcp.e[fcI] < i + 1) fcI++; fheld = fcI < fcp.s.length && fcp.s[fcI] <= i + 1 ? 1 : 0;
+    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk, held, fheld); G.used = i + 1;
   }
   if (G.over && rv.length && rv[0] === G.t) revive(G);
   if (G.used === undefined) G.used = 0; return G;
@@ -1648,7 +1652,9 @@ const SFX2 = {
   spider: () => tone(1400, .35, 'sine', .07, 300),
   logo: () => arp([1319, 1568, 2093], .15, 'sine', .05, .1),
   magic: () => { arp([523, 659, 784, 1047, 1319, 1568, 2093, 2637], .3, 'triangle', .06, .06); noise(.9, 2000, 8000, .05, .1, 'highpass'); tone(262, .9, 'sine', .08, 523, .05); },
-  rbhold: () => { tone(68, .5, 'sine', .22, 38); tone(136, .4, 'triangle', .07, 90, .02); noise(.45, 700, 110, .05, 0, 'lowpass'); },
+  fcbeat: () => { tone(68, .45, 'sine', .14, 40); noise(.35, 700, 110, .03, 0, 'lowpass'); },
+  fcon: () => { tone(300, .55, 'sine', .12, 70); noise(.5, 2400, 200, .06, 0, 'lowpass'); tone(90, .6, 'sine', .14, 45, .05); },
+  fcoff: () => { tone(110, .4, 'sine', .1, 330); noise(.35, 300, 3000, .05, 0, 'highpass'); },
   rbrel: () => { tone(52, 1.2, 'sine', .32, 28); noise(.5, 120, 700, .2, 0, 'lowpass'); noise(1, 500, 9000, .1, .04, 'highpass'); arp([392, 523, 659, 784, 1047, 1319, 1568, 2093], .4, 'triangle', .07, .05); tone(196, 1, 'sawtooth', .08, 784, .05); },
   stage: () => arp([392, 523, 659, 784], .25, 'sine', .07, .12),
   win: () => arp([523, 659, 784, 1047], .2, 'triangle', .09, .09),
@@ -1708,7 +1714,7 @@ const MAJOR = { 3: 1, 8: 1, 10: 1 };                               // minor-to-m
 const KICKS = { four: [0, 4, 8, 12], half: [0, 8], sync: [0, 3, 8, 11], break: [0, 6, 10] };
 const BASSP = { pump: st => st % 2 === 0, offbeat: st => st === 0 || st % 4 === 2, roll: st => st % 3 === 0, gallop: st => st % 4 !== 3 };
 const MPLACE = [                                                   // every magical place has its own soundtrack: its own chords, tempo, drums, bass, melody mode and a signature sound
-  { t: 1.00, maj: 0, prog: [{ r: 0, n: [0, 3, 7] }, { r: 8, n: [8, 12, 15] }, { r: 3, n: [3, 7, 10] }, { r: 10, n: [10, 14, 17] }], kick: 'four', bass: 'pump', orn: 'none', riff: [0, 0, 7, 0, 12, 0, 7, 0, 0, 0, 7, 0, 15, 12, 7, 0] },     // Matcha Meadows: the heroic climb
+  { t: 0.93, maj: 0, prog: [{ r: 0, n: [0, 3, 7] }, { r: 1, n: [1, 4, 8] }, { r: 0, n: [0, 3, 7] }, { r: 7, n: [7, 10, 14] }], kick: 'half', bass: 'roll', orn: 'drone', riff: [0, 0, 1, 0, 0, 3, 0, 1, 0, 0, 1, 0, 7, 3, 1, 0] },     // Haunted Meadows: slow and creepy, a phrygian minor with a low drone
   { t: 0.97, maj: 1, prog: [{ r: 0, n: [0, 4, 7] }, { r: 7, n: [7, 11, 14] }, { r: 9, n: [9, 12, 16] }, { r: 5, n: [5, 9, 12] }], kick: 'half', bass: 'offbeat', orn: 'bell', riff: [0, 4, 7, 12, 7, 4, 7, 0, 0, 4, 7, 12, 16, 12, 7, 4] },         // Cappuccino Clouds: bright, floaty, bells
   { t: 1.02, maj: 0, prog: [{ r: 0, n: [0, 3, 7] }, { r: 5, n: [5, 8, 12] }, { r: 10, n: [10, 14, 17] }, { r: 3, n: [3, 7, 10] }], kick: 'sync', bass: 'roll', orn: 'wave', riff: [0, 0, 5, 7, 0, 0, 5, 10, 0, 0, 5, 7, 12, 10, 7, 5] },        // Boba Bay: a rolling dorian groove with water plucks
   { t: 1.04, maj: 1, prog: [{ r: 0, n: [0, 4, 7] }, { r: 1, n: [1, 5, 8] }, { r: 10, n: [10, 14, 17] }, { r: 0, n: [0, 4, 7] }], kick: 'break', bass: 'gallop', orn: 'clap', riff: [0, 1, 0, 4, 0, 1, 0, 7, 0, 1, 0, 4, 8, 7, 4, 1] },              // Caramel Canyon: a flamenco gallop with hand claps
@@ -2857,7 +2863,7 @@ const POW_NAME = { coffee: 'RAINBREW BOOST', triple: 'BEAM UP', helpers: 'LITTLE
 /* ---------- the eight magical places: you TRAVEL through them (the scenery scrolls past in layers) ---------- */
 const UIFONT = '\"Segoe UI\", \"Trebuchet MS\", system-ui, -apple-system, Roboto, \"Helvetica Neue\", Arial, sans-serif';   // clean sans-serif letters only (no serif, handwriting or script)
 const PLACES = [                                                    // eight magical places, painted like a quiet dusk: a soft gradient sky and three layers of calm silhouettes at the edges (nothing busy in the middle)
-  { name: 'Matcha Meadows',    tag: 'Where the Matcha Dragon sleeps',      sky: ['#a9d8c4', '#dfeec9', '#f6e3b8'], far: '#9ccdb0', mid: '#79b394', near: '#549277', light: '255,240,200', motif: 'pine' },
+  { name: 'Haunted Meadows',   tag: 'The Matcha Dragon sleeps here, in the dark', sky: ['#07030f', '#190b2c', '#3b1a46'], far: '#1c0f33', mid: '#140a26', near: '#0c0518', light: '255,140,50', motif: 'haunt', haunt: 1 },
   { name: 'Cappuccino Clouds', tag: 'Home of the Latte Griffin',           sky: ['#f1c9cf', '#f8ddd6', '#fff1e2'], far: '#ecc2c6', mid: '#e0adb4', near: '#cf97a2', light: '255,244,228', motif: 'puff' },
   { name: 'Boba Bay',          tag: 'The Boba Kraken waits below',         sky: ['#6db9e2', '#a4d9ee', '#ffe5c2'], far: '#79c0e0', mid: '#4f9fc9', near: '#2f7ba8', light: '255,236,200', motif: 'stack' },
   { name: 'Caramel Canyon',    tag: 'Fire-hot and caramel-sweet',          sky: ['#ee8a52', '#f5b46f', '#ffdba5'], far: '#e59a62', mid: '#cd7a45', near: '#a85a32', light: '255,226,170', motif: 'mesa' },
@@ -2877,6 +2883,7 @@ function ridge(side, col, base, a1, f1, a2, f2, speed, ph) {         // one calm
 function motif(kind, x, y, s, side) {                                // a tiny silhouette that tells you where you are (filled shapes only)
   const d = side < 0 ? 1 : -1;
   switch (kind) {
+    case 'haunt': ctx.strokeStyle = ctx.fillStyle; ctx.lineCap = 'round'; ctx.lineWidth = 4.4 * s; ctx.beginPath(); ctx.moveTo(x, y + 16 * s); ctx.quadraticCurveTo(x - d * 5 * s, y - 2 * s, x + d * 1 * s, y - 20 * s); ctx.stroke(); ctx.lineWidth = 2.2 * s; ctx.beginPath(); ctx.moveTo(x + d * 1 * s, y - 20 * s); ctx.quadraticCurveTo(x + d * 8 * s, y - 24 * s, x + d * 15 * s, y - 36 * s); ctx.moveTo(x + d * 6 * s, y - 25 * s); ctx.lineTo(x + d * 13 * s, y - 22 * s); ctx.moveTo(x + d * 1 * s, y - 20 * s); ctx.quadraticCurveTo(x - d * 8 * s, y - 28 * s, x - d * 12 * s, y - 40 * s); ctx.moveTo(x - d * 6 * s, y - 27 * s); ctx.lineTo(x - d * 14 * s, y - 25 * s); ctx.moveTo(x, y - 8 * s); ctx.lineTo(x - d * 11 * s, y - 14 * s); ctx.stroke(); break;
     case 'pine': for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x + d * 2, y - 26 * s + k * 10 * s); ctx.lineTo(x + d * 2 + 11 * s - k * 0, y - 8 * s + k * 10 * s); ctx.lineTo(x + d * 2 - 11 * s, y - 8 * s + k * 10 * s); ctx.closePath(); ctx.fill(); } break;
     case 'puff': ctx.beginPath(); ctx.arc(x, y, 13 * s, 0, 6.283); ctx.arc(x + d * 12 * s, y + 3 * s, 10 * s, 0, 6.283); ctx.arc(x + d * 2 * s, y - 9 * s, 11 * s, 0, 6.283); ctx.fill(); break;
     case 'stack': ctx.beginPath(); ctx.moveTo(x - 9 * s, y + 14 * s); ctx.lineTo(x - 6 * s, y - 24 * s); ctx.lineTo(x + 5 * s, y - 24 * s); ctx.lineTo(x + 9 * s, y + 14 * s); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.ellipse(x - 5 * s, y - 24 * s, 7 * s, 4 * s, 0, 0, 6.283); ctx.fill(); break;
@@ -2898,7 +2905,40 @@ function drawPlace(i, a) {                                           // Alto-sty
     ridge(side, P.near, 15, 10, .0105, 5, .024, 34, side * .7 + 2);
   }
   if (Q.layers >= 2) { ctx.fillStyle = P.near; const off = bgT * 34, gap = 330; for (let k = 0; k < 4; k++) for (const side of [-1, 1]) { const y = ((k * gap + (side < 0 ? 0 : 160) + off) % (gap * 4)) - 220, w = 15 + 10 * Math.sin((y - off) * .0105 + side * .7 + 2) + 5 * Math.sin((y - off) * .024 + (side * .7 + 2) * 1.7); motif(P.motif, side < 0 ? w - 3 : FW - w + 3, y, .9 + .25 * ((k + (side < 0 ? 0 : 1)) % 2), side); } }
+  if (P.haunt) drawHaunt(a, Q);
   ctx.globalAlpha = 1;
+}
+function webAt(x, y, a0, a1, r) {                                  // a spider web in a corner: spokes, and sagging rings between them
+  ctx.strokeStyle = 'rgba(226,216,248,.34)'; ctx.lineWidth = 1; const n = 6;
+  ctx.beginPath(); for (let k = 0; k <= n; k++) { const a = a0 + (a1 - a0) * k / n; ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } ctx.stroke();
+  for (let ring = 1; ring <= 4; ring++) { const rr = r * ring / 4; ctx.beginPath(); for (let k = 0; k < n; k++) { const b0 = a0 + (a1 - a0) * k / n, b1 = a0 + (a1 - a0) * (k + 1) / n, bm = (b0 + b1) / 2, sag = rr * .86; if (k === 0) ctx.moveTo(x + Math.cos(b0) * rr, y + Math.sin(b0) * rr); ctx.quadraticCurveTo(x + Math.cos(bm) * sag, y + Math.sin(bm) * sag, x + Math.cos(b1) * rr, y + Math.sin(b1) * rr); } ctx.stroke(); }
+}
+function spiderAt(x, y, s, t) {                                    // a spider: a dark body, eight wobbling legs and two glowing red eyes
+  ctx.strokeStyle = '#120720'; ctx.lineWidth = 1.7 * s; ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) for (const sd of [-1, 1]) { const w = Math.sin(t * 3 + k * 1.3 + sd) * 2.2 * s, ex = x + sd * (12 + k * 3) * s, ey = y + (k - 1.5) * 5 * s + w; ctx.beginPath(); ctx.moveTo(x + sd * 4 * s, y + (k - 1.5) * 2 * s); ctx.quadraticCurveTo(x + sd * 10 * s, y + (k - 1.5) * 4 * s - 8 * s, ex, ey + 6 * s); ctx.stroke(); }
+  ctx.fillStyle = '#1a0b2a'; ctx.beginPath(); ctx.ellipse(x, y + 4 * s, 7 * s, 9 * s, 0, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.arc(x, y - 6 * s, 5 * s, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(150,100,200,.35)'; ctx.beginPath(); ctx.ellipse(x - 2 * s, y + 1 * s, 2.2 * s, 4 * s, .3, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#ff4a3a'; ctx.beginPath(); ctx.arc(x - 2 * s, y - 7 * s, 1.3 * s, 0, 6.283); ctx.arc(x + 2 * s, y - 7 * s, 1.3 * s, 0, 6.283); ctx.fill();
+}
+function drawHaunt(a, Q) {                                         // HAUNTED MEADOWS: a cold moon, drifting fog, bats, webs in the corners and spiders hanging on silk (the first stage is creepy and dark)
+  const t = now / 1000; ctx.globalAlpha = a;
+  const mx = FW * .74, my = 112; glowDot(ctx, mx, my, 170, '#b9a6ff', .32 * a); ctx.globalAlpha = a; ctx.fillStyle = '#ebe6ff'; ctx.beginPath(); ctx.arc(mx, my, 38, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(120,105,170,.34)'; for (const c of [[-12, -8, 9], [10, 6, 7], [-3, 16, 5], [14, -14, 4]]) { ctx.beginPath(); ctx.arc(mx + c[0], my + c[1], c[2], 0, 6.283); ctx.fill(); }
+  if (Q.layers >= 2) for (let k = 0; k < 3; k++) {                  // fog drifts slowly across the field
+    const fx = ((t * (7 + k * 4) + k * 150) % (FW + 400)) - 200, fy = FH * (.5 + k * .17); ctx.save(); ctx.translate(fx, fy); ctx.scale(1, .3);
+    const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, 200); fg.addColorStop(0, 'rgba(190,170,235,.15)'); fg.addColorStop(1, 'rgba(190,170,235,0)'); ctx.globalAlpha = a; ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, 0, 200, 0, 6.283); ctx.fill(); ctx.restore();
+  }
+  ctx.globalAlpha = a; ctx.fillStyle = '#07030f';
+  for (let k = 0; k < 3; k++) {                                     // bats cross the sky
+    const bx = ((t * 38 + k * 170) % (FW + 160)) - 80, by = 70 + 62 * k + 12 * Math.sin(t * 2.1 + k * 2), fl = Math.sin(t * 13 + k * 3) * 6;
+    ctx.beginPath(); ctx.ellipse(bx, by, 4, 3, 0, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.moveTo(bx - 2, by); ctx.quadraticCurveTo(bx - 11, by - 9 - fl, bx - 18, by - 2 + fl * .4); ctx.quadraticCurveTo(bx - 11, by + 1, bx - 2, by + 3); ctx.moveTo(bx + 2, by); ctx.quadraticCurveTo(bx + 11, by - 9 - fl, bx + 18, by - 2 + fl * .4); ctx.quadraticCurveTo(bx + 11, by + 1, bx + 2, by + 3); ctx.fill();
+  }
+  webAt(0, 0, 0, Math.PI / 2, 138); webAt(FW, 0, Math.PI / 2, Math.PI, 138); webAt(0, FH * .46, -Math.PI / 4, Math.PI / 4, 72); webAt(FW, FH * .66, Math.PI * .75, Math.PI * 1.25, 78);
+  if (Q.layers >= 2) for (const sp of [[FW * .16, 70, 1.15, 0], [FW * .88, 40, .95, 2], [FW * .52, 22, .8, 4]]) {   // spiders hang on silk and bob up and down
+    const len = sp[1] + 22 * Math.sin(t * .8 + sp[3]), sx = sp[0] + 3 * Math.sin(t * .9 + sp[3]);
+    ctx.strokeStyle = 'rgba(226,216,248,.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sp[0], -10); ctx.lineTo(sx, len); ctx.stroke(); spiderAt(sx, len, sp[2], t);
+  }
+  const vg = ctx.createRadialGradient(FW / 2, FH / 2, FH * .3, FW / 2, FH / 2, FH * .8); vg.addColorStop(0, 'rgba(3,0,12,0)'); vg.addColorStop(1, 'rgba(3,0,12,.5)'); ctx.globalAlpha = a; ctx.fillStyle = vg; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
 }
 
 /* ---------- particles, floating numbers, messages ---------- */
@@ -3137,33 +3177,31 @@ function drawSkillBtn(g) {                                          // the ULT b
 /* ---------- RAINBREW POWER: the fixed button under the Unicorn Power button. Boss fights only; it glows when it is ready. HOLD: time slows and the screen dims; LET GO: a huge hit and fast fire. ---------- */
 const RB_SRC = 'data:image/png;base64,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', RB_IMG = new Image(); RB_IMG.src = RB_SRC;
 const SKB = { x: FW - 36, y: FH - 146 }, RBB = { x: FW - 36, y: FH - 50 };
-function rbStateOf(g) { return g.rbHold > 0 ? 'hold' : (g.rbReady && g.phase === 'boss' && g.boss && g.boss.inn && g.boss.hp > 0) ? 'ready' : (g.phase === 'boss' && g.boss && !g.rbReady) ? 'used' : 'locked'; }
+function rbStateOf(g) { return (g.rbReady && g.phase === 'boss' && g.boss && g.boss.inn && g.boss.hp > 0) ? 'ready' : (g.phase === 'boss' && g.boss && !g.rbReady) ? 'used' : 'locked'; }
 function drawRbBtn(g) {
-  const x = RBB.x, y = RBB.y, R = 29, s = rbStateOf(g), on = s === 'ready' || s === 'hold', pu = on ? 1 + (s === 'hold' ? .09 : .06) * Math.sin(now / (s === 'hold' ? 60 : 120)) : 1, im = RB_IMG.complete && RB_IMG.naturalWidth;
+  const x = RBB.x, y = RBB.y, R = 29, s = rbStateOf(g), on = s === 'ready', pu = on ? 1 + .07 * Math.sin(now / 110) : 1, im = RB_IMG.complete && RB_IMG.naturalWidth;
   if (on) {
-    glowDot(ctx, x, y, 84, s === 'hold' ? '#ffffff' : '#ffd66a', .5 + .3 * Math.sin(now / 130));
+    glowDot(ctx, x, y, 84, '#ffd66a', .5 + .3 * Math.sin(now / 130));
     ctx.lineCap = 'round'; ctx.lineWidth = 4.2; for (let k = 0; k < 7; k++) { const a0 = now / 650 + k * .8976; ctx.strokeStyle = COL[k]; ctx.beginPath(); ctx.arc(x, y, R * pu + 6, a0, a0 + .72); ctx.stroke(); }   // a ring of rainbow arcs turns around it
     for (let k = 0; k < 5; k++) { const a = -now / 420 + k * 1.256; sparkle4(x + Math.cos(a) * 40, y + Math.sin(a) * 40, 3.4, '#ffffff', .85); }
   }
   ctx.fillStyle = on ? 'rgba(40,20,90,.92)' : 'rgba(18,10,40,.7)'; ctx.beginPath(); ctx.arc(x, y, R * pu, 0, 6.283); ctx.fill();
   if (im) { const S = 76 * pu; ctx.globalAlpha = on ? 1 : .4; ctx.drawImage(RB_IMG, x - S / 2, y - S / 2, S, S); ctx.globalAlpha = 1; }
   if (!on) { ctx.fillStyle = 'rgba(14,8,34,.45)'; ctx.beginPath(); ctx.arc(x, y, R - 1, 0, 6.283); ctx.fill(); }
-  if (s === 'hold') { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(x, y, R + 1, -Math.PI / 2, -Math.PI / 2 + 6.283 * Math.min(1, g.rbHold / RB_MAX)); ctx.stroke(); }   // how long you have held it (the longer, the bigger the hit)
-  T(s === 'ready' ? 'HOLD!' : s === 'hold' ? 'LET GO!' : s === 'used' ? 'USED' : 'BOSS ONLY', x, y + 40, { size: s === 'locked' ? 8.5 : 10.5, fill: s === 'ready' ? '#ffe27a' : s === 'hold' ? '#ff9ad8' : 'rgba(255,255,255,.62)', w: 3 });
+  T(s === 'ready' ? 'TAP!' : s === 'used' ? 'USED' : 'BOSS ONLY', x, y + 40, { size: s === 'locked' ? 8.5 : 10.5, fill: s === 'ready' ? '#ffe27a' : 'rgba(255,255,255,.62)', w: 3 });
 }
-function drawRbDim(g) {                                            // while the button is held the world is dimmed a little (your unicorn and the buttons stay bright)
-  if (rbDim < .01) return;
-  ctx.fillStyle = 'rgba(12,6,46,' + (.34 * rbDim).toFixed(3) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
-  const vg = ctx.createRadialGradient(FW / 2, FH / 2, FH * .22, FW / 2, FH / 2, FH * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,0,44,' + (.5 * rbDim).toFixed(3) + ')'); ctx.fillStyle = vg; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
-  for (let k = 0; k < 3; k++) { const ph = (now / 1100 + k / 3) % 1; ctx.strokeStyle = 'rgba(190,230,255,' + (.5 * (1 - ph) * rbDim).toFixed(3) + ')'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(g.px, g.py, 18 + ph * 150, 0, 6.283); ctx.stroke(); }   // slow ripples of time
+function drawFcDim(g) {                                            // FOCUS: while you hold still the world is dimmed a little and slow ripples of time spread from your unicorn (your unicorn and the buttons stay bright). When you let go, the dimming ends at once.
+  if (fcDim < .01) return;
+  ctx.fillStyle = 'rgba(12,6,46,' + (.34 * fcDim).toFixed(3) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
+  const vg = ctx.createRadialGradient(FW / 2, FH / 2, FH * .22, FW / 2, FH / 2, FH * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,0,44,' + (.5 * fcDim).toFixed(3) + ')'); ctx.fillStyle = vg; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
+  for (let k = 0; k < 3; k++) { const ph = (now / 1100 + k / 3) % 1; ctx.strokeStyle = 'rgba(190,230,255,' + (.5 * (1 - ph) * fcDim).toFixed(3) + ')'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(g.px, g.py, 18 + ph * 150, 0, 6.283); ctx.stroke(); }
 }
-function drawRbFx(g) {
-  if (g.rbHold > 0) {                                              // charging: a rainbow ring fills around your unicorn and a glow grows
-    const k = Math.min(1, g.rbHold / RB_MAX), seg = 6.283 / 7;
-    glowDot(ctx, g.px, g.py, 40 + 100 * k, '#ffffff', .2 + .4 * k); ctx.lineWidth = 4; ctx.lineCap = 'round';
-    for (let i = 0; i < 7; i++) { const a0 = -Math.PI / 2 + i * seg, a1 = Math.min(a0 + seg, -Math.PI / 2 + 6.283 * k); if (a1 > a0) { ctx.strokeStyle = COL[i]; ctx.beginPath(); ctx.arc(g.px, g.py, 38, a0, a1); ctx.stroke(); } }
+function drawRbFx(g) {                                             // Rainbrew Power: a white flash, a rainbow wash, and shockwaves from you and from the boss
+  if (g.fcAfter > 0 && !g.fcOn && g.fcF < .99) { ctx.strokeStyle = 'rgba(190,230,255,' + (.35 * (1 - g.fcF)).toFixed(3) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.px, g.py, 30 + 10 * Math.sin(now / 160), 0, 6.283); ctx.stroke(); }   // a faint ring while the slow-down fades out
+  if (pressed && !fcEng && !fcLock && fcStillN > 4 && g.fcE > 0 && st === 'play') {   // holding still: a ring fills around your unicorn (at the end, time slows)
+    const k = Math.min(1, fcStillN / FC_HOLD); ctx.strokeStyle = 'rgba(200,235,255,.9)'; ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(g.px, g.py, 34, -Math.PI / 2, -Math.PI / 2 + 6.283 * k); ctx.stroke();
   }
-  if (rbRel.t > 0) {                                               // the release: a white flash, a rainbow wash, and shockwaves from you and from the boss
+  if (rbRel.t > 0) {
     const t = rbRel.t, k = 1 - t, b = g.boss;
     ctx.fillStyle = 'rgba(255,255,255,' + (.9 * t * t * t).toFixed(3) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
     ctx.globalCompositeOperation = 'lighter'; for (let i = 0; i < 7; i++) { ctx.fillStyle = COL[i]; ctx.globalAlpha = .2 * t; ctx.fillRect(-FW, -400 + i * ((FH + 800) / 7), FW * 3, (FH + 800) / 7 + 1); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
@@ -3171,6 +3209,15 @@ function drawRbFx(g) {
     ctx.globalAlpha = Math.min(1, t * 1.4); ctx.lineWidth = 3; for (let i = 0; i < 18; i++) { const a = i * .349 + k * .6; ctx.strokeStyle = COL[i % 7]; ctx.beginPath(); ctx.moveTo(g.px + Math.cos(a) * 30 * k, g.py + Math.sin(a) * 30 * k); ctx.lineTo(g.px + Math.cos(a) * (60 + 520 * k), g.py + Math.sin(a) * (60 + 520 * k)); ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
+}
+function drawFcBar(g) {                                            // the FOCUS energy: full at the start, it drains while time is slowed and refills by itself
+  if (g.phase === 'cards' || g.over || demo) return; const x = 12, y = FH - 74, w = 132, h = 9, f = Math.max(0, Math.min(1, g.fcE / FC_MAX)), full = f >= .999, on = g.fcOn;
+  ctx.save(); ctx.globalAlpha = .88; ctx.fillStyle = 'rgba(10,4,32,.78)'; rrect(ctx, x - 3, y - 15, w + 6, h + 19, 10); ctx.fill();
+  ctx.globalAlpha = 1; T(on ? 'FOCUS: time is slow' : full ? 'FOCUS · hold still' : 'FOCUS', x + 2, y - 6, { size: 10, align: 'left', fill: on ? '#bfe9ff' : '#e8defc', w: 2 });
+  ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, x, y, w, h, 4); ctx.fill();
+  if (f > 0.01) { const gr = ctx.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, '#7fd8ff'); gr.addColorStop(1, '#c9b2ff'); ctx.fillStyle = gr; rrect(ctx, x, y, Math.max(h, w * f), h, 4); ctx.fill(); }
+  if (on) { ctx.globalAlpha = .45 + .3 * Math.sin(now / 90); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; rrect(ctx, x - 1, y - 1, w + 2, h + 2, 5); ctx.stroke(); }
+  ctx.restore();
 }
 function drawBeast(x, y, s, col) {                                  // an astral beast of the stampede: a glowing unicorn-like silhouette
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, 6, 14, 8, 0, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.ellipse(-12, -2, 7, 6, -.4, 0, 6.283); ctx.fill();
@@ -3241,7 +3288,7 @@ function drawBossWarning() {                                         // BOSS APP
 function statusChips(g) {                                           // top-middle information: the boost, magic, the ULT and the boss's condition
   const chips = [];
   if (g.magic > 0) chips.push({ t: 'RAINBREW ' + Math.ceil(g.magic / SPS) + 's', c: '#ffe27a' }); else if (g.pw.coffee > 0) chips.push({ t: 'BOOST ' + Math.ceil(g.pw.coffee / SPS) + 's', c: '#ffb347' });
-  if (g.hyper > 0) chips.push({ t: 'HYPER ' + Math.ceil(g.hyper / SPS) + 's', c: '#ff7ae8' });
+  if (g.hyper > 0) chips.push({ t: 'HYPER ' + Math.ceil(g.hyper / SPS) + 's', c: '#ff7ae8' }); if (g.fcAfter > 0 && !g.fcOn) chips.push({ t: 'SLOW ' + Math.ceil(g.fcAfter / SPS) + 's', c: '#9be9ff' });
   if (g.env && ENV[g.env]) chips.push({ t: ENV[g.env].n + ': ' + ENV[g.env].d + (g.boss && g.boss.lv === 2 ? ' · stronger' : ''), c: ENV[g.env].c });
   return chips;
 }
@@ -3291,9 +3338,9 @@ function drawEnvFx(g) {                                              // the boss
 }
 let cardFx = { rar: -1, t: 0 }, prismAura = 0;
 function drawOcBar(g) {                                              // the streak: 100 defeats in a row without a hit fill it; then it drains while OVERLOAD lasts
-  if (g.phase === 'cards' || g.over) return; const x = 12, y = FH - 34, w = 132, h = 11, on = g.oc > 0, f = on ? Math.min(1, g.oc / OC_STEPS) : Math.min(1, g.nh / 100);
-  ctx.save(); ctx.globalAlpha = .88; ctx.fillStyle = 'rgba(10,4,32,.78)'; rrect(ctx, x - 3, y - 17, w + 6, h + 22, 10); ctx.fill();
-  ctx.globalAlpha = 1; T(on ? 'OVERLOAD' : 'OVERLOAD ' + Math.floor(Math.min(100, g.nh)) + '/100', x + 2, y - 7, { size: 10.5, align: 'left', fill: on ? '#fff2a8' : '#e8defc', w: 2 });
+  if (g.phase === 'cards' || g.over) return; const x = 12, y = FH - 34, w = 132, h = 11, on = g.oc > 0, f = on ? Math.min(1, g.oc / OC_STEPS) : Math.min(1, g.nh / 100), boss = g.phase === 'boss' || g.phase === 'dying';
+  ctx.save(); ctx.globalAlpha = boss ? .45 : .88; ctx.fillStyle = 'rgba(10,4,32,.78)'; rrect(ctx, x - 3, y - 17, w + 6, h + 22, 10); ctx.fill();
+  ctx.globalAlpha = boss ? .6 : 1; T(boss ? 'OVERLOAD: creatures only' : on ? 'OVERLOAD' : 'OVERLOAD ' + Math.floor(Math.min(100, g.nh)) + '/100', x + 2, y - 7, { size: 10.5, align: 'left', fill: on ? '#fff2a8' : '#e8defc', w: 2 });
   ctx.fillStyle = 'rgba(255,255,255,.2)'; rrect(ctx, x, y, w, h, 5); ctx.fill();
   if (f > 0.01) { const gr = ctx.createLinearGradient(x, 0, x + w, 0); RAINBOW.forEach((c, i) => gr.addColorStop(i / (RAINBOW.length - 1), c)); ctx.fillStyle = gr; rrect(ctx, x, y, Math.max(h, w * f), h, 5); ctx.fill(); }
   if (on) { ctx.globalAlpha = .45 + .3 * Math.sin(now / 90); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; rrect(ctx, x - 1, y - 1, w + 2, h + 2, 6); ctx.stroke(); }
@@ -3405,7 +3452,7 @@ function drawHud() {                                                 // always o
     ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(bx0, by0, bw * frac, bh * .42); ctx.restore();
     T(Math.max(0, Math.ceil(b.hp)).toLocaleString() + ' / ' + b.max.toLocaleString(), FW / 2, by0 + bh / 2 + .5, { size: 9.5, fill: '#ffffff', w: 3.4, stroke: 'rgba(90,50,150,.85)' });
   }
-  drawDmgChip(g); drawStatus(g); drawBuffs(g); drawOcBar(g); drawSkillBtn(g); drawRbBtn(g);
+  drawDmgChip(g); drawStatus(g); drawBuffs(g); drawOcBar(g); drawFcBar(g); drawSkillBtn(g); drawRbBtn(g);
 }
 
 let BOSSCV = null, NOISEC = null;
@@ -3453,7 +3500,7 @@ function draw() {
     const al = st === 'play' ? Math.min(1, accT * SPS) : 0;
     ctx.save(); if (ultFx.t > 0) { const z = 1 + .06 * ultFx.t * ultFx.t; ctx.translate(FW / 2, FH / 2); ctx.scale(z, z); ctx.translate(-FW / 2, -FH / 2); }   // the ULT punches the screen in
     safe(() => {
-      drawEnvFx(G); drawWorld(al); drawRbDim(G); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawCardFx(G);
+      drawEnvFx(G); drawWorld(al); drawFcDim(G); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawCardFx(G);
       for (const p of ps) { ctx.globalAlpha = Math.max(0, Math.min(1, p.l * 2)); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); } ctx.globalAlpha = 1;
       for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); T(p.txt, p.x, p.y, { size: 13, w: 4, fill: p.col }); } ctx.globalAlpha = 1;
       drawMagic(); drawRbFx(G);
@@ -3487,8 +3534,10 @@ function drawMenuScene() {                                        // the home sc
 /* ============ playing: one flight = the shared simulation, 30 steps a second ============ */
 const STEP = 1 / SPS, clamp2 = (v, a, b) => v < a ? a : v > b ? b : v;
 let skillQ = 0, skillSteps = [], anchor = null, runUp = '', demoVx = 0, demoVy = 0;
-let rbPtr = null, rbKey = 0, rbSteps = [], rbDim = 0, rbRel = { t: 0 }, rbLastBeat = 0, demoRbT = 0;   // Rainbrew Power: the finger (or key) holding the button, the held steps recorded for the server, the screen dim, the release effect
-const rbStr = () => rbSteps.map(a => a[0] + '-' + a[1]).join(',');
+let rbQ = 0, rbSteps = [], rbRel = { t: 0 }, demoRbT = 0;   // Rainbrew Power: a tap (queued), the taps recorded for the server, the release effect
+let fcEng = false, fcLock = false, fcStillN = 0, fcKey = 0, fcSteps = [], fcDim = 0, fcLastX = 0, fcLastY = 0, fcBeat = 0;   // FOCUS: hold your finger still (half a second) anywhere to slow time; the held steps are recorded for the server
+const FC_HOLD = 15;
+const rbStr = () => rbSteps.map(a => a[0] + '-' + a[1]).join(','), fcStr = () => fcSteps.map(a => a[0] + '-' + a[1]).join(',');
 let perfAcc = 0, perfN = 0, perfDown = 0, backFn = null;
 let G = null, trajD = [], accT = 0, lastTs = 0, tgt = { x: FW / 2, y: FH - 150 }, pressed = false;
 let st = 'menu', session = null, ranked = false, run = null, runSeed = 0, runSeq = 0, sessDone = true, waitT = 0, cd = 3, cdN = 0, noteUnranked = '', rankClosed = false, idleN = 0, lbTimer = 0, bossWarnN = 0;
@@ -3499,7 +3548,7 @@ function decodeTraj(tr) { const a = []; for (let i = 0; i < tr.length; i++) a.pu
 function startGame(m) {
   if (demo && !demoStarting) { demo = false; skipBtn.hidden = true; }         // any real game start ends a demo
   auInit(); mode = m; if (!demo) LS.set('wg_mode', m); const M = MODES[m]; if (!demo) clearCkpt();
-  trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbPtr = null; rbKey = 0; rbDim = 0; rbRel = { t: 0 }; demoRbT = 0; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
+  trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; fcSteps = []; fcEng = false; fcLock = false; fcStillN = 0; fcKey = 0; fcDim = 0; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
   session = null; ranked = false; run = null; waitT = 0; cdN = 0; noteUnranked = ''; tgt = { x: FW / 2, y: FH - 150 }; pressed = false; clearInterval(lbTimer);
   G = newGame(1, m, demo ? 'frost' : uniOf()); G.keepEv = true; placeFrom = placeTo = 0; placeMix = 1;     // (a preview while the countdown runs)
   st = 'count'; cd = 3; ov.style.display = 'none'; musicStop(); ++runSeq; sessDone = true;
@@ -3522,7 +3571,7 @@ function begin() {
     runSeed = (Math.random() * 4294967296) >>> 0; ranked = false;
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
-  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbPtr = null; rbKey = 0; rbDim = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
+  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; fcSteps = []; fcEng = false; fcLock = false; fcStillN = 0; fcKey = 0; fcDim = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
   placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: 'Boost on: fire fast!', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
   if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
 }
@@ -3534,7 +3583,7 @@ function endRun(reason) {
   if (g.score >= 2000) award('s10k'); if (g.score >= 10000) award('s50k'); if ((g.shards || 0) >= 12) award('shards');
   addGems(g.gems);                                                  // the gems from this flight go into the wallet for the unicorn shop
   run = { at: Date.now(), unlocked: [], mode, reason: reason || g.reason || 'lives', score: g.score, combo: g.maxCombo, foods: g.caught, hitsDealt: g.hitsDealt, place: PLACES[g.stage % PLACES.length].name, kills: g.kills, hits: g.hits, bosses: g.bosses, bp: g.bp, cc: g.cc, oc: g.ocs, fl: g.flawless, bx: g.boxes, surges: g.surges, stage: g.stage, level: g.level, gems: g.gems, spiders: g.spiders,
-          secs: Math.round(g.t / SPS), tEnd, tr: encodeTraj(trajD), sk: skillSteps.join(','), rb: rbStr(), cd: cdStr(g), rv: g.rvLog.join(','), revives: g.revives, up: runUp, uni: g.uni, bpct: g.boss && g.boss.hp > 0 ? Math.max(1, Math.ceil(100 * g.boss.hp / g.boss.max)) : null, token: ranked && session ? session.token : null, isBest };
+          secs: Math.round(g.t / SPS), tEnd, tr: encodeTraj(trajD), sk: skillSteps.join(','), rb: rbStr(), fc: fcStr(), cd: cdStr(g), rv: g.rvLog.join(','), revives: g.revives, up: runUp, uni: g.uni, bpct: g.boss && g.boss.hp > 0 ? Math.max(1, Math.ceil(100 * g.boss.hp / g.boss.max)) : null, token: ranked && session ? session.token : null, isBest };
   logGame(run); if (run.token) unsentAdd(run);
   if (autoOk(run)) startSend(run);
   setTimeout(() => { if (st === 'over') overScreen(); }, 750);
@@ -3582,12 +3631,13 @@ function handleEvents() {
     else if (n === 'icewarn') { say(b + ' ' + shardTheme().name + '! Move!', 1.4); sfx('icewarn', SHARD_THEMES[viewPlace()]); }
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
-    else if (n === 'rbhold') { duckMusic(3); vib(25); say('Time slows… LET GO to unleash it!', 2); }
+    else if (n === 'fcon') { sfx('fcon'); duckMusic(2.5); vib(20); if (!LS.get('us_fcseen', 0)) { LS.set('us_fcseen', 1); say('Focus! Time slows while you hold still', 2.4); } }
+    else if (n === 'fcoff') { sfx('fcoff'); vib(10); }
     else if (n === 'rbrel') {                                         // RAINBREW POWER let go: colour comes back with an impact, then the attack goes fast
       const bo = g.boss, pct = bo ? Math.max(1, Math.round(100 * b / bo.max)) : 0; rbRel = { t: 1 }; magicFx = { t: 1 }; sfx('rbrel'); duckMusic(1.4); magicVoice(false); shake = Math.max(shake, 1.2); bombFlash = Math.max(bombFlash, .35); vib([50, 30, 150]);
       banner = { txt: 'RAINBREW POWER!', sub: bo ? 'Boss -' + pct + '%  ·  Fire fast!' : 'Fire fast!', l: 2 }; award('magic'); if (bo) { bossSquash = Math.min(.08, bossSquash + .06); pop(bo.x, bo.y + 10, '-' + pct + '%', '#ffe27a'); }
       for (let k = 0; k < 90; k++) { const an = k * .37, v = 90 + (k % 9) * 42; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 5) * .15, COL[k % 7], 5 + (k % 4) * 2); } if (bo) for (let k = 0; k < 50; k++) { const an = k * .5, v = 80 + (k % 7) * 40; spark(bo.x, bo.y, Math.cos(an) * v, Math.sin(an) * v, .8, COL[k % 7], 5 + (k % 3) * 2); } }
-    else if (n === 'boss') { bsay(BOSS_NAME[a] + '!', 2.8); sfx('b_' + a); musicBossIn(); if (ENV[a]) say(ENV[a].n + ': ' + ENV[a].d, 2.6); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! HOLD the glowing Rainbrew button, then LET GO!', 3.6); }, 2800); } }
+    else if (n === 'boss') { bsay(BOSS_NAME[a] + '!', 2.8); sfx('b_' + a); musicBossIn(); if (ENV[a]) say(ENV[a].n + ': ' + ENV[a].d, 2.6); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
     else if (n === 'bossatk') { if (now - lastAtk > 250) { lastAtk = now; sfx('a_' + a); } }
     else if (n === 'angry' || n === 'enraged') { bsay(n === 'angry' ? 'IT IS ANGRY!' : 'FINAL PUSH!', 2); sfx('b_' + a); shake = .35; vib(100); }
     else if (n === 'thunder') { thunderT = .4; shake = .3; sfx('thunder'); }
@@ -3605,17 +3655,22 @@ function stepOnce() {
   const g = G; if (g.phase === 'cards') { skillQ = 0; if (demo) { demoEnd(true); return; } cardsScreen(); return; } let dx, dy, skill = skillQ; skillQ = 0; const usedS = g.skillsUsed;
   if (demo) { const m = botMove(g); dx = Math.max(-28, Math.min(28, Math.round(demoVx = demoVx * 0.74 + m[0] * 0.26))); dy = Math.max(-28, Math.min(28, Math.round(demoVy = demoVy * 0.74 + m[1] * 0.26))); skill = m[2]; }
   else { dx = clamp2(Math.round(tgt.x - g.px), -MAXSTEP, MAXSTEP); dy = clamp2(Math.round(tgt.y - g.py), -MAXSTEP, MAXSTEP); }
-  let rb = 0; const rbCan = g.rbHold > 0 || (g.rbReady && g.phase === 'boss' && g.boss && g.boss.inn && g.boss.hp > 0);   // the button only matters during a boss fight
-  if (demo) { if (rbCan && g.rbReady && demoRbT < 42) { rb = 1; demoRbT++; } } else rb = rbPtr !== null || rbKey ? 1 : 0;
-  stepGame(g, dx, dy, skill, rb); trajD.push(dx, dy); if (g.skillsUsed > usedS) skillSteps.push(g.t);
-  if (rb && rbCan && !demo) { const n = trajD.length / 2, last = rbSteps[rbSteps.length - 1]; if (last && last[1] === n - 1) last[1] = n; else rbSteps.push([n, n]); }   // only holds that can count are recorded (at most one per boss fight)
+  let rb = 0, fc = 0; const rbCan = g.rbReady && g.phase === 'boss' && g.boss && g.boss.inn && g.boss.hp > 0;   // Rainbrew Power only works in a boss fight
+  if (demo) { if (rbCan && demoRbT++ >= 30) rb = 1; } else { rb = rbQ; rbQ = 0; }
+  if (!demo) {                                                        // FOCUS: a finger held still (half a second) engages it; it stays on until the finger lifts or the energy is gone
+    if (!pressed) { fcEng = false; fcLock = false; fcStillN = 0; } else if (!fcEng && !fcLock && ++fcStillN >= FC_HOLD) fcEng = true;
+    if (fcEng && g.fcE <= 0) { fcEng = false; fcLock = true; }
+    fc = (fcEng || fcKey) && g.fcE > 0 ? 1 : 0;
+  }
+  stepGame(g, dx, dy, skill, rb, fc); trajD.push(dx, dy); if (g.skillsUsed > usedS) skillSteps.push(g.t);
+  { const n = trajD.length / 2; if (rb && rbCan && !demo) rbSteps.push([n, n]); if (fc) { const l = fcSteps[fcSteps.length - 1]; if (l && l[1] === n - 1) l[1] = n; else fcSteps.push([n, n]); } }   // only the taps that can count, and the held steps, are recorded
   if (demo) { if (g.phase === 'wave' && levelIn(g) < 5) g.levelT += 2; g.lives = Math.max(g.lives, 2); if (g.phase === 'boss' && g.boss && g.boss.inn && !g.demoUlt2) { g.demoUlt2 = 1; g.elem = 100; } if (g.bosses >= 1 && !g.demoDone) g.demoDone = g.t + 70; if (g.demoDone && g.t >= g.demoDone) { demoEnd(true); return; } } /* the demo hurries through the four phases, fights the boss, and ends when it falls */ handleEvents();
   if (g.over) { if (g.reason === 'lives' && g.revives < REVIVE_MAX) continueScreen(); else endRun(g.reason); }   // out of lives: offer a Continue
 }
 /* ---------- the demo: the real game plays itself for about 25 seconds (nothing is scored, saved or uploaded) ---------- */
 let demo = false, demoStarting = false, demoPrev = 'rank', demoCap = 0;
 const DEMO_LEN = 80, skipBtn = $('skipdemo');
-const DEMO_CAPS = [[0.3, 'Drag your finger to fly', 3], [3.3, 'Your unicorn shoots by itself', 3], [7.6, 'Every phase brings new creatures', 3], [11.2, 'Sharp shards fall fast: watch the marker!', 3.2], [15, 'Catch power-ups: their beams stack up', 3.2], [19, 'Defeat creatures to charge Unicorn Power. Grab the green gems!', 3.4], [23, 'Four phases, then a boss!', 3], [29.8, 'The boss is coming!', 2.6], [34, 'Hold the glowing Rainbrew button, then let go!', 3.4], [41, 'Beat it, pick a Wild Card, fly on. Your turn!', 3.4]];
+const DEMO_CAPS = [[0.3, 'Drag your finger to fly', 3], [3.3, 'Your unicorn shoots by itself', 3], [7.6, 'Every phase brings new creatures', 3], [11.2, 'Sharp shards fall fast: watch the marker!', 3.2], [15, 'Catch power-ups: their beams stack up', 3.2], [19, 'Defeat creatures to charge Unicorn Power. Grab the green gems!', 3.4], [23, 'Four phases, then a boss!', 3], [29.8, 'The boss is coming!', 2.6], [34, 'Tap the glowing Rainbrew button!', 3.4], [41, 'Beat it, pick a Wild Card, fly on. Your turn!', 3.4]];
 function startDemo() {
   if (demo) return; demoPrev = mode; demo = true; demoCap = 0;
   ov.style.display = 'none'; demoStarting = true; startGame('classic'); demoStarting = false; cd = 0.01; skipBtn.hidden = false;
@@ -3630,18 +3685,18 @@ skipBtn.addEventListener('click', () => demoEnd());
 /* ---------- the loop ---------- */
 function update(dt) {
   if (st === 'menu') { menuT += dt; if (menuT > 9 && placeMix >= 1) { menuT = 0; placeFrom = placeTo; placeTo = (placeTo + 1) % PLACES.length; placeMix = 0; } }   // the home sky drifts on to the next place
-  { const tgtS = st === 'menu' ? 1.5 : G ? (G.rbHold > 0 ? .25 : G.magic > 0 ? 9 : G.pw.coffee > 0 ? 1.8 + 1.2 * (G.hype || 0) : 1 + 1.4 * (G.hype || 0)) : 1; scrollNow += (tgtS - scrollNow) * Math.min(1, dt * (tgtS > scrollNow ? 4 : 2)); }   // the scenery always flows downward: faster before a boss, and hyper-fast in Rainbrew Magic
+  { const tgtS = st === 'menu' ? 1.5 : G ? (G.fcF < 1 ? Math.max(.3, G.fcF) : G.magic > 0 ? 9 : G.pw.coffee > 0 ? 1.8 + 1.2 * (G.hype || 0) : 1 + 1.4 * (G.hype || 0)) : 1; scrollNow += (tgtS - scrollNow) * Math.min(1, dt * (tgtS > scrollNow ? 4 : 2)); }   // the scenery always flows downward: faster before a boss, and hyper-fast in Rainbrew Magic
   bgT += dt * scrollNow * (st === 'pause' || st === 'cards' ? 0 : 1);        // in Rainbrew Magic the scenery rushes past: you are flying fast
   if (bombFlash > 0) bombFlash -= dt * 2.2; if (weaponFx.t > 0) weaponFx.t -= dt * 1.5; if (slowmo > 0) slowmo -= dt;
   if (placeMix < 1) placeMix = Math.min(1, placeMix + dt / 2.5);                 // the new place fades in over 2.5 seconds
   if (G && G.phase === 'warn') { const cn = Math.ceil(G.warnT / SPS); if (cn !== lastCount) { lastCount = cn; sfx('cdtick', cn); } } else lastCount = 0;
   if (warnFx.t > 0) warnFx.t -= dt; if (skillFx.t > 0) skillFx.t -= dt * 1.4; if (ultFx.t > 0) ultFx.t -= dt * 1.6; if (introQ > 0) { introQ -= dt; if (introQ <= 0 && G && G.phase === 'wave') phaseIntro(G); } if (cardFx.t > 0) cardFx.t -= dt * (cardFx.rar === 3 ? .55 : cardFx.rar === 2 ? .9 : cardFx.rar === 1 ? 1.1 : 1.4); if (prismAura > 0) prismAura -= dt; for (let i = ultBolts.length - 1; i >= 0; i--) { ultBolts[i].l -= dt; if (ultBolts[i].l <= 0) ultBolts.splice(i, 1); } if (boostFx.t > 0) boostFx.t -= dt * 3;
   if (thunderT > 0) thunderT -= dt; if (magicFx.t > 0) magicFx.t -= dt * 3;
-  if (st !== 'play') { rbPtr = null; rbKey = 0; }
-  rbDim += ((G && G.rbHold > 0 && st === 'play' ? 1 : 0) - rbDim) * Math.min(1, dt * (G && G.rbHold > 0 ? 7 : 16)); if (rbRel.t > 0) rbRel.t -= dt * 1.35;
-  if (G && G.rbHold > 0 && st === 'play' && now - rbLastBeat > 520) { rbLastBeat = now; sfx('rbhold'); vib(12); spark(G.px + (Math.random() - .5) * 60, G.py - 20 - Math.random() * 40, (Math.random() - .5) * 30, -30, .8, COL[Math.floor(Math.random() * 7)], 4); }   // a slow heartbeat while time is slowed
+  if (st !== 'play') { fcKey = 0; fcEng = false; fcLock = false; fcStillN = 0; }
+  fcDim += ((G && G.fcOn && st === 'play' ? 1 : 0) - fcDim) * Math.min(1, dt * (G && G.fcOn ? 8 : 20)); if (rbRel.t > 0) rbRel.t -= dt * 1.35;
+  if (G && G.fcOn && st === 'play' && now - fcBeat > 600) { fcBeat = now; sfx('fcbeat'); vib(10); spark(G.px + (Math.random() - .5) * 60, G.py - 20 - Math.random() * 40, (Math.random() - .5) * 30, -30, .8, COL[Math.floor(Math.random() * 7)], 4); }   // a slow heartbeat while time is slowed
   for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.l -= dt; if (p.l <= 0) { sparks.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy *= .985; }
-  if (G && G.boss) { const bb = G.boss; if (!RIG || RIG.kind !== bb.kind) RIG = makeRig(bb.kind); if (RIG && RIG.update) { const rdt = Math.min(dt, .05) * (G.rbHold > 0 ? .2 : 1), sc = 1.22; RIG.update(rdt, lastBossX === null ? 0 : (bb.x - lastBossX) / sc, lastBossY === null ? 0 : (bb.y - lastBossY) / sc, now / 1000, { charge: bossCharge, lv: bb.lv || 0, tx: (G.px - bb.x) / sc, ty: (G.py - bb.y) / sc }); } lastBossY = bb.y; bossCharge += ((bb.tele ? 1 : 0) - bossCharge) * Math.min(1, dt * 9); const vx = lastBossX === null ? 0 : (bb.x - lastBossX) / Math.max(dt, .001); lastBossX = bb.x; bossLean += (Math.max(-.12, Math.min(.12, vx * .0007)) - bossLean) * Math.min(1, dt * 6); bossSquash = Math.max(0, bossSquash - dt * .35); } else { RIG = null; lastBossY = null; lastBossX = null; bossCharge = 0; bossLean = 0; bossSquash = 0; }
+  if (G && G.boss) { const bb = G.boss; if (!RIG || RIG.kind !== bb.kind) RIG = makeRig(bb.kind); if (RIG && RIG.update) { const rdt = Math.min(dt, .05) * (G.fcF || 1), sc = 1.22; RIG.update(rdt, lastBossX === null ? 0 : (bb.x - lastBossX) / sc, lastBossY === null ? 0 : (bb.y - lastBossY) / sc, now / 1000, { charge: bossCharge, lv: bb.lv || 0, tx: (G.px - bb.x) / sc, ty: (G.py - bb.y) / sc }); } lastBossY = bb.y; bossCharge += ((bb.tele ? 1 : 0) - bossCharge) * Math.min(1, dt * 9); const vx = lastBossX === null ? 0 : (bb.x - lastBossX) / Math.max(dt, .001); lastBossX = bb.x; bossLean += (Math.max(-.12, Math.min(.12, vx * .0007)) - bossLean) * Math.min(1, dt * 6); bossSquash = Math.max(0, bossSquash - dt * .35); } else { RIG = null; lastBossY = null; lastBossX = null; bossCharge = 0; bossLean = 0; bossSquash = 0; }
   if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
   if (G && G.magic > 0 && st === 'play') { trail.push({ x: G.px - G.pdx * .5, y: G.py + 30 }); if (trail.length > 28) trail.shift(); if (Math.random() < .9) spark(G.px + (Math.random() - .5) * 26, G.py + 22, (Math.random() - .5) * 50, 20 + Math.random() * 60, .7, COL[Math.floor(Math.random() * 7)], 4 + Math.random() * 4); } else if (trail.length) trail.shift();
   if (bombFx.t > 0) bombFx.t -= dt; if (flashT > 0) flashT -= dt; if (shake > 0) shake -= dt; if (hurtT > 0) hurtT -= dt; if (bossBanner.l > 0) bossBanner.l -= dt; if (banner.l > 0) banner.l -= dt; if (overloadFx.t > 0) overloadFx.t -= dt * .9; if (pwCard.l > 0) pwCard.l -= dt;
@@ -3683,35 +3738,36 @@ function loop(ts) {                                               // (a bomb bri
 const toField = e => ({ x: (e.clientX - OXp) / K, y: (e.clientY - OYp) / K });
 cv.addEventListener('pointerdown', e => {
   auInit(); if (demo) return; const p = toField(e);
-  if (st === 'play') { if (Math.hypot(p.x - (FW - 20), p.y - 19) < 24) { pauseGame(); return; } if (Math.hypot(p.x - SKB.x, p.y - SKB.y) < 38) { skillQ = 1; return; } if (Math.hypot(p.x - RBB.x, p.y - RBB.y) < 40) { rbPtr = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (x) {} return; } pressed = true; anchor = { fx: p.x, fy: p.y, ux: G.px, uy: G.py }; if (cfg.ctrl === 'touch') { tgt.x = clamp2(p.x, 20, FW - 20); tgt.y = clamp2(p.y - cfg.aim, 130, FH - 36); } else { tgt.x = G.px; tgt.y = G.py; } try { cv.setPointerCapture(e.pointerId); } catch (x) {} }
+  if (st === 'play') { if (Math.hypot(p.x - (FW - 20), p.y - 19) < 24) { pauseGame(); return; } if (Math.hypot(p.x - SKB.x, p.y - SKB.y) < 38) { skillQ = 1; return; } if (Math.hypot(p.x - RBB.x, p.y - RBB.y) < 40) { rbQ = 1; return; } pressed = true; fcStillN = 0; fcLastX = p.x; fcLastY = p.y; anchor = { fx: p.x, fy: p.y, ux: G.px, uy: G.py }; if (cfg.ctrl === 'touch') { tgt.x = clamp2(p.x, 20, FW - 20); tgt.y = clamp2(p.y - cfg.aim, 130, FH - 36); } else { tgt.x = G.px; tgt.y = G.py; } try { cv.setPointerCapture(e.pointerId); } catch (x) {} }
   else if (st === 'count' && cd <= 0 && !sessDone && waitT > 4) { sessDone = true; noteUnranked = 'slow'; }                 // tap to skip the wait for a session
 });
-cv.addEventListener('pointermove', e => { if (e.pointerId === rbPtr || !pressed || st !== 'play' || demo) return; const p = toField(e); if (!anchor) anchor = { fx: p.x, fy: p.y, ux: G.px, uy: G.py }; if (cfg.ctrl === 'touch') { tgt.x = clamp2(p.x, 20, FW - 20); tgt.y = clamp2(p.y - cfg.aim, 130, FH - 36); } else { tgt.x = clamp2(anchor.ux + (p.x - anchor.fx) * cfg.sens, 20, FW - 20); tgt.y = clamp2(anchor.uy + (p.y - anchor.fy) * cfg.sens, 130, FH - 36); } });
-const up = e => { if (e && rbPtr !== null && e.pointerId === rbPtr) { rbPtr = null; return; } pressed = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);   // the finger on the Rainbrew button lets go without stopping the flying finger
+cv.addEventListener('pointermove', e => { if (!pressed || st !== 'play' || demo) return; const p = toField(e); if (Math.hypot(p.x - fcLastX, p.y - fcLastY) > 5) { fcLastX = p.x; fcLastY = p.y; if (!fcEng) fcStillN = 0; } if (!anchor) anchor = { fx: p.x, fy: p.y, ux: G.px, uy: G.py }; if (cfg.ctrl === 'touch') { tgt.x = clamp2(p.x, 20, FW - 20); tgt.y = clamp2(p.y - cfg.aim, 130, FH - 36); } else { tgt.x = clamp2(anchor.ux + (p.x - anchor.fx) * cfg.sens, 20, FW - 20); tgt.y = clamp2(anchor.uy + (p.y - anchor.fy) * cfg.sens, 130, FH - 36); } });
+const up = () => { pressed = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 addEventListener('keydown', e => {
   const k = String(e.key).toLowerCase();
   if (demo && k === 'escape') { demoEnd(); return; }
   if (k === 'arrowleft' || k === 'a') keys.l = 1; if (k === 'arrowright' || k === 'd') keys.r = 1; if (k === 'arrowup' || k === 'w') keys.u = 1; if (k === 'arrowdown' || k === 's') keys.d = 1;
   if (k === 'p' || k === 'escape') { if (st === 'play') pauseGame(); else if (st === 'pause') ACT.resume(); else if (k === 'escape') goBack(); }
   if ((k === 'b' || k === ' ' || k === 'e' || k === 'q') && st === 'play' && !demo) { skillQ = 1; e.preventDefault(); }
-  if (k === 'r' && st === 'play' && !demo) { rbKey = 1; e.preventDefault(); }
+  if (k === 'r' && st === 'play' && !demo && !e.repeat) { rbQ = 1; e.preventDefault(); }
+  if (k === 'f' && st === 'play' && !demo) { fcKey = 1; e.preventDefault(); }
   if (k === 'm') { cfg.mute = cfg.mute ? 0 : 1; saveCfg(); }
 });
-addEventListener('keyup', e => { const k = String(e.key).toLowerCase(); if (k === 'r') rbKey = 0; if (k === 'arrowleft' || k === 'a') keys.l = 0; if (k === 'arrowright' || k === 'd') keys.r = 0; if (k === 'arrowup' || k === 'w') keys.u = 0; if (k === 'arrowdown' || k === 's') keys.d = 0; });
+addEventListener('keyup', e => { const k = String(e.key).toLowerCase(); if (k === 'f') fcKey = 0; if (k === 'arrowleft' || k === 'a') keys.l = 0; if (k === 'arrowright' || k === 'd') keys.r = 0; if (k === 'arrowup' || k === 'w') keys.u = 0; if (k === 'arrowdown' || k === 's') keys.d = 0; });
 addEventListener('resize', resize);
 /* ---------- like a real app: a flight survives leaving the page, a closed browser or a phone call ---------- */
 const CKPT_MAX_AGE = 6 * 3600 * 1000;
 function saveCheckpoint() {
   if (demo) return;
-  try { if (G && !G.over && (st === 'play' || st === 'pause' || st === 'ready') && trajD.length > 60) LS.set('wg_ckpt', { v: SIM_VERSION, at: Date.now(), mode, seed: runSeed, uni: G.uni, tr: encodeTraj(trajD), sk: skillSteps.join(','), rb: rbStr(), cd: cdStr(G), rv: G.rvLog.join(','), up: runUp, ranked, session: ranked ? session : null }); } catch (e) {}
+  try { if (G && !G.over && (st === 'play' || st === 'pause' || st === 'ready') && trajD.length > 60) LS.set('wg_ckpt', { v: SIM_VERSION, at: Date.now(), mode, seed: runSeed, uni: G.uni, tr: encodeTraj(trajD), sk: skillSteps.join(','), rb: rbStr(), fc: fcStr(), cd: cdStr(G), rv: G.rvLog.join(','), up: runUp, ranked, session: ranked ? session : null }); } catch (e) {}
 }
 function ckpt() { const c = LS.get('wg_ckpt', null); return c && c.v === SIM_VERSION && Date.now() - c.at < CKPT_MAX_AGE && MODES[c.mode] && c.tr && c.tr.length > 100 ? c : null; }
 function clearCkpt() { LS.set('wg_ckpt', null); }
 function resumeCkpt() {
   const c = ckpt(); if (!c) { menu(); return; }
   auInit(); mode = c.mode; runSeed = c.seed; ranked = !!c.ranked; session = c.session || null;
-  skillSteps = c.sk ? c.sk.split(',').map(Number) : []; skillQ = 0; runUp = c.up || ''; rbSteps = c.rb ? c.rb.split(',').map(x => x.split('-').map(Number)) : []; rbPtr = null; rbKey = 0;
-  G = simulate(c.seed, c.mode, c.uni, c.tr, false, skillSteps, c.up || '', c.cd || '', c.rv || '', c.rb || ''); G.keepEv = true; G.ev = []; trajD = decodeTraj(c.tr);                  // replaying the recorded flight brings the world back exactly
+  skillSteps = c.sk ? c.sk.split(',').map(Number) : []; skillQ = 0; runUp = c.up || ''; rbSteps = c.rb ? c.rb.split(',').map(x => x.split('-').map(Number)) : []; fcSteps = c.fc ? c.fc.split(',').map(x => x.split('-').map(Number)) : []; rbQ = 0; fcKey = 0; fcEng = false; fcLock = false; fcStillN = 0;
+  G = simulate(c.seed, c.mode, c.uni, c.tr, false, skillSteps, c.up || '', c.cd || '', c.rv || '', c.rb || '', c.fc || ''); G.keepEv = true; G.ev = []; trajD = decodeTraj(c.tr);                  // replaying the recorded flight brings the world back exactly
   if (G.over) { clearCkpt(); menu(); return; }
   ps = []; pops = []; flash = ''; flashT = 0; banner = { txt: '', sub: '', l: 0 }; bossBanner = { txt: '', l: 0 }; tgt = { x: G.px, y: G.py }; placeFrom = placeTo = viewPlace(); placeMix = 1;
   ov.style.display = 'none'; st = 'ready'; cd = 3; cdN = 0; ++runSeq; clearInterval(lbTimer);
@@ -4146,7 +4202,7 @@ function ticketBox(res, r) {
 const validPH = s => { const d = String(s || '').replace(/\D/g, ''); return /^09\d{9}$/.test(d) || /^639\d{9}$/.test(d); };
 const ERR = { device: 'This score was played on a different phone, so it can’t be submitted from this one. Play again.', mode: 'This mode doesn’t record scores.', server: 'The server could not save your score right now. It keeps trying.', size: 'This run is too large to upload.', events: 'This run is too long to check.', kind: 'The run did not pass the server’s check.', order: 'The run did not pass the server’s check.', item: 'The run did not pass the server’s check.', format: 'The run did not pass the server’s check.', afterover: 'The run did not pass the server’s check.', time: 'The run did not pass the server’s check.', closed: 'The competition has ended, so this score arrived too late to count.', contact: 'Rank needs a Philippine mobile number (like 0917 123 4567) so staff can reach winners.', mismatch: 'The score didn’t match the server’s check.', timing: 'The run timing looked invalid.', clock: 'The run was longer than the time that passed.', used: 'This run was already submitted.', rate: 'Too many submissions. Try again in a bit.', expired: 'This session expired. Play again to get a new one.', name: 'That name can’t be used. Please choose a different name (no bad words, phone numbers or web addresses).', token: 'This run could not be verified.', version: 'The game or the scoreboard was updated while you played, so this run could not be counted. Reload the page and play again: your next run will count.' };
 async function sendRun(r, nm, ct, onBusy) {                                      // returns {status:'ok'|'queued'|'refused', res, p}
-  const p = { action: 'submit', token: r.token, did, name: nm, contact: ct, cv: consentCv(), score: r.score, tEnd: r.tEnd, tr: r.tr, sk: r.sk || '', rb: r.rb || '', cd: r.cd || '', rv: r.rv || '', up: r.up || '', uni: r.uni, mode: r.mode, v: SIM_VERSION };
+  const p = { action: 'submit', token: r.token, did, name: nm, contact: ct, cv: consentCv(), score: r.score, tEnd: r.tEnd, tr: r.tr, sk: r.sk || '', rb: r.rb || '', fc: r.fc || '', cd: r.cd || '', rv: r.rv || '', up: r.up || '', uni: r.uni, mode: r.mode, v: SIM_VERSION };
   const res = await trySubmit(p, 150000, onBusy);   // safe to repeat: the server returns the same code for the same run
   if (res.ok) { r.done = 1; unsentDel(r); saveTicket(res, p); return { status: 'ok', res, p }; }
   if (['net', 'busy', 'server', 'rate'].indexOf(res.err) >= 0) { enqueue(p); unsentDel(r); return { status: 'queued', res, p }; }   // saved on the device, uploads automatically later
@@ -4428,13 +4484,14 @@ function howOld() {
     <div class="step">${ico('power')}<b>Power up</b>Fly into glowing capsules</div>
     <div class="step">${ico('dodge')}<b>Dodge</b>Watch for warnings</div>
   </div>
-  <p class="note">Each <b>Level</b> is a magical place with five <b>Phases</b>: four of creatures, then a <b>boss</b>. In a boss fight, <b>hold the Rainbrew button</b> to slow time, then <b>let go</b> for a huge hit!</p>
+  <p class="note">Each <b>Level</b> is a magical place with five <b>Phases</b>: four of creatures, then a <b>boss</b>. In a boss fight, <b>tap the Rainbrew button</b> for a huge hit! <b>Hold your finger still</b> to slow time.</p>
   <button class="sec" data-a="demo">Watch the demo</button>
   <details><summary>Power-ups</summary><ul>
     <li><b>Coffee</b>: an energy boost. You shoot faster and gems come to you.</li>
     <li><b>Beam up</b>, <b>fan shot</b>, <b>piercing</b>, <b>helpers</b> and a <b>shield</b>.</li>
     <li><b>Unicorn Power</b>: every creature you defeat charges it by 0.5%. At 100%, tap it to wipe out the whole screen!</li>
-    <li><b>Rainbrew Power</b> (boss fights only): the glowing Rainbrew button under it. <b>Hold</b> it: time slows and the screen dims, so you can dodge. <b>Let go</b>: a huge hit on the boss and you fire fast! Once per boss.</li>
+    <li><b>Rainbrew Power</b> (boss fights only): the glowing Rainbrew button under it. <b>Tap</b> it: an instant, huge blast takes about a fifth of the boss's health, the screen clears, and you fire fast for 8 seconds! Once per boss.</li>
+    <li><b>Focus</b> (anywhere in the game): hold your finger <b>still</b> on the screen for half a second. Time slows and the screen dims, so you can dodge. Let go: the screen brightens and the slow-down fades out over a few seconds. The FOCUS bar refills by itself.</li>
     <li><b>Falling shards</b> (ice, caramel, crystal, lava or stone, depending on the place) plunge down fast: watch for the marker, then dodge.</li>
     <li>Every unicorn shoots in its own style: see them in the Unicorn shop.</li>
   </ul></details>
@@ -4750,11 +4807,11 @@ function howGuide(start) {                                           // a visual
   const cardRows = r => CARDS.filter(c => r.includes(c.rar)).map(c => `<div class="hwrow r${c.rar}"><i class="hwic">${CARD_SVG[c.id]}</i><div><b>${CARD_TXT[c.id][0]} <em>${RAR_NAME[c.rar]}</em></b><span>${CARD_TXT[c.id][1]}</span></div></div>`).join('');
   const S = [
     slide('The basics', `<div class="steps4"><div class="step">${ico('fly')}<b>Fly</b>Drag your finger</div><div class="step">${ico('shoot')}<b>Shoot</b>It fires by itself</div><div class="step">${ico('power')}<b>Power up</b>Fly into glowing capsules</div><div class="step">${ico('dodge')}<b>Dodge</b>Watch for warnings</div></div>${row(ico('dodge'), 'Falling shards', 'A marker shows where ice, caramel, crystal, lava or stone will plunge. Move out of the way.')}`),
-    slide('Gems and powers', `${row(cv('gem', 44), 'Gems', 'Collect the glowing green gems. Spend them in the Shop, on Wild Card reshuffles, and to Continue.')}${row(ICONS.bolt || ico('power'), 'Unicorn Power', 'Every creature you defeat charges it by 0.5%, so 200 defeats fill it. Tap it to wipe out the whole screen and hit a boss hard.')}${row(`<img src="${RB_SRC}" alt="">`, 'Rainbrew Power', 'Boss fights only, once per boss. When the button glows, hold it: time slows and the screen dims. Let go: a huge hit on the boss and fast fire!')}${row(cv('heart', 44), 'Hearts', 'Three lives. A hit costs one. Lost them all? Continue for 250 gems.')}`),
-    slide('Power-ups', `<div class="hwgrid">${HW_PW.concat([['mystery', 'Mystery box', 'Rare and glowing: a small gem prize, a full Unicorn Power bar, a shield, or a gamble.'], ['overcharge', 'Overload', '100 defeats in a row without a hit fill the bar: four extra rainbow beams and 50% more damage for 8 seconds. Hitting a boss charges the bar too. Creatures its beams defeat are worth half the points.']]).map(p => `<div class="hwcell">${cv(p[0], 38)}<div><b>${p[1]}</b><span>${p[2]}</span></div></div>`).join('')}</div>`),
+    slide('Gems and powers', `${row(cv('gem', 44), 'Gems', 'Collect the glowing green gems. Spend them in the Shop, on Wild Card reshuffles, and to Continue.')}${row(ICONS.bolt || ico('power'), 'Unicorn Power', 'Every creature you defeat charges it by 0.5%, so 200 defeats fill it. Tap it to wipe out the whole screen and hit a boss hard.')}${row(`<img src="${RB_SRC}" alt="">`, 'Rainbrew Power', 'Boss fights only, once per boss. When the button glows, tap it: an instant huge hit on the boss, a cleared screen and fast fire for 8 seconds!')}${row(ico('fly'), 'Focus', 'Hold your finger still on the screen for half a second: time slows and the screen dims. Let go: it brightens and the slow-down fades out over a few seconds. The FOCUS bar refills by itself.')}${row(cv('heart', 44), 'Hearts', 'Three lives. A hit costs one. Lost them all? Continue for 250 gems.')}`),
+    slide('Power-ups', `<div class="hwgrid">${HW_PW.concat([['mystery', 'Mystery box', 'Rare and glowing: a small gem prize, a full Unicorn Power bar, a shield, or a gamble.'], ['overcharge', 'Overload', '100 defeats in a row without a hit fill the bar: four extra rainbow beams and 50% more damage for 8 seconds. It works on creatures only: it switches off in boss fights. Creatures its beams defeat are worth half the points.']]).map(p => `<div class="hwcell">${cv(p[0], 38)}<div><b>${p[1]}</b><span>${p[2]}</span></div></div>`).join('')}</div>`),
     ...[['a', 'Small creatures', 'Quick and easy. They come in big groups.'], ['b', 'Tough creatures', 'Big and sturdy. They take lots of hits.'], ['c', 'Shooters', 'They stop and shoot at you. Beat them fast!']].map(([role, title, tip]) => { const ks = Object.keys(ENEMIES).filter(k => ENEMIES[k].role === role), top = Math.max(...Object.keys(ENEMIES).map(k => ENEMIES[k].hp)); return slide(title, `<p class="meta hwnote">${tip}</p><div class="hwtip">Health = damage needed to defeat · ${myDmgTxt()}</div><div class="hwgrid">${ks.map(k => { const hp = ENEMIES[k].hp, pct = Math.max(14, Math.round(100 * Math.sqrt(hp / top))); return `<div class="hwcell hwcr">${cv(k, 40)}<div><b>${KIND_NAME[k] || k}</b><span class="hpb"><i style="width:${pct}%"></i></span><span class="hits">${hp} damage</span></div></div>`; }).join('')}</div>`); }),
     slide('Weapon levels', row(cv('core', 44), 'Star Cores', 'Beat the boss of every second Level (2, 4, 6...) and a glowing Star Core falls early in the next Level: catch it! Each one upgrades your shooting for the rest of the flight, up to level 5.') + [1, 2, 3, 4, 5].map(l => row(wlIcon(l), WL_NAMES[l], ['', '+10% damage and brighter beams.', 'Two little star bolts angle out beside your beams.', 'Beams pierce one more creature and you shoot faster.', '+25% damage in all, and a blazing rainbow comet tail.', 'Four star bolts, the strongest piercing and the fastest shooting.'][l])).join('')),
-    slide('The bosses', '<p class="meta">Level 1 = the first run of 8 bosses, Level 2 = the second run, and so on. Bosses learn new attacks at Level 1, 2 and 3, and Cerberus uses fire, frost and poison. Health is base health (Classic bosses are a bit softer).</p>' + Object.entries(ENV).map(([k, v]) => row(`<canvas class="hwi" data-boss="${k}" width="88" height="88" style="width:44px;height:44px"></canvas>`, BOSS_NAME[k] || k, v.n + ': ' + v.d + '. Health: Level 1 = ' + bossHP(BOSS_KINDS.indexOf(k)) + ', Level 2 = ' + bossHP(BOSS_KINDS.indexOf(k) + 8) + ', Level 3 = ' + bossHP(BOSS_KINDS.indexOf(k) + 16) + ', Level 4 = ' + bossHP(BOSS_KINDS.indexOf(k) + 24))).join('') + row(`<img src="${RB_SRC}" alt="">`, 'Rainbrew Power', 'Hold the glowing button in a boss fight to slow time, then let go: a huge hit and fast fire. Once per boss.')),
+    slide('The bosses', '<p class="meta">Level 1 = the first run of 8 bosses, Level 2 = the second run, and so on. Bosses learn new attacks at Level 1, 2 and 3, and Cerberus uses fire, frost and poison. Health is base health (Classic bosses are a bit softer).</p>' + Object.entries(ENV).map(([k, v]) => row(`<canvas class="hwi" data-boss="${k}" width="88" height="88" style="width:44px;height:44px"></canvas>`, BOSS_NAME[k] || k, v.n + ': ' + v.d + '. Health: Level 1 = ' + bossHP(BOSS_KINDS.indexOf(k)) + ', Level 2 = ' + bossHP(BOSS_KINDS.indexOf(k) + 8) + ', Level 3 = ' + bossHP(BOSS_KINDS.indexOf(k) + 16) + ', Level 4 = ' + bossHP(BOSS_KINDS.indexOf(k) + 24))).join('') + row(`<img src="${RB_SRC}" alt="">`, 'Rainbrew Power', 'Tap the glowing button in a boss fight: an instant huge hit and fast fire. Once per boss.')),
     slide('Wild Cards: Common and Uncommon', cardRows([0, 1])),
     slide('Wild Cards: Rare and Super Rare', cardRows([2, 3])),
     slide('See it in action', `<div class="hwdemo"><img src="${LOGO}" alt=""><button data-a="demo">${bi('play')}Watch the demo</button><p class="meta">A unicorn flies from Phase 1 all the way to the boss.</p></div>`)];

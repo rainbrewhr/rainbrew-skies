@@ -31,13 +31,14 @@ var CONFIG = {
 };
 
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 34;
+var SIM_VERSION = 35;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
 var LEVEL_STEPS = 660, BOSS_EVERY = 5, BOSS_MAX = 3900;           // a level lasts 22 s; every 5th level is a boss; a boss not beaten in 130 s flies away
 var OC_STEPS = 240, POWER_STEPS = 300, COFFEE_STEPS = 240, PR = 12;
-var RB_MAX = 75, RB_SLOW = 0.2;                                  // RAINBREW POWER (the fixed button, boss fights only): hold it for up to 2.5 s; while held the world runs at 20% speed (you still move at full speed); let go and it hits
+var RB_DMG = 0.22;                                               // RAINBREW POWER (the fixed button, boss fights only, once per boss): one tap = an instant, huge hit (22% of the boss's health), then a fast surge
+var FC_MAX = 120, FC_SLOW = 0.25, FC_AFTER = 90, FC_LAST = 0.5;   // FOCUS (hold still anywhere): up to 4 s of slowed time (the world at 25% speed); after you let go it stays slowed for 3 s, easing back to normal; the energy refills in 16 s
 var ELEM_MAX = 100, ELEM_KILL = 0.5;                                // every defeated creature charges Rainbrew Power by 0.5%: 200 defeats = a full bar
 var MODES = {
   rank:    { ranked: 1, lives: 3, maxSec: 10800, diff: 1.5, boss: 1, ramp: 1, hype: 1, fair: 1 },   // fair: every unicorn uses its equal base kit and no upgrades, because gems live on each phone and the server cannot check what was bought   // the weekly ranked flight: the same course for everyone; it gets harder with time and builds a hype before every boss
@@ -117,7 +118,7 @@ function newGame(seed, mode, uni, up) {
     level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, boss: null, bossT: 0, powGiven: 0,
     wl: 0, coreOwed: 0, nh: 0, oc: 0, ocs: 0, cc: 0, bp: 0, boxes: 0, jinx: 0, bossHit: 0, flaw: 0, flawless: 0,       // streak (kills without a hit), Overcharged, close calls, most beams at once, mystery boxes, risk debuff, flawless boss wins
     nextIce: SPS * (22 + Math.floor(rs() * 8)),
-    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbHold: 0, rbAcc: 0, rbUsed: 0 };
+    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbUsed: 0, fcE: FC_MAX, fcOn: 0, fcAfter: 0, fcAcc: 0 };
 }
 function bossLevel(G) { return G.M.boss && G.level % BOSS_EVERY === 0; }
 
@@ -252,7 +253,7 @@ function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = Math.ceil(bossHP(G.stage) * (G.M && G.M.easy ? 0.6 : 1) * (1 + 1.5 * wcPower(G)));   // endurance fights: bosses have 2.6 times their old life
   G.bossHit = 0;
   G.phase = 'boss'; G.bossT = 0; G.hz = []; G.boss = { kind: kind, x: W / 2, y: -90, hp: hp, max: hp, r: 44, hf: 0, lv: 0, n: 0, inn: 0, t2: 0, tele: 0, dying: 0, ph: 0, cd: 80, m: 0, mode: 0, md: 0, lx: 0 };
-  G.rbReady = 1; G.rbHold = 0; G.rbAcc = 0;                      // every boss fight starts with Rainbrew Power ready (one use per fight)
+  G.rbReady = 1; G.oc = 0;                                       // every boss fight starts with Rainbrew Power ready (one use per fight); Overload is for creatures only
   E(G, 'boss', kind, G.stage);
 }
 function orb(G, x, y, a, sp, r, k) { G.bl.push({ x: x, y: y, vx: COS(a) * sp, vy: SIN(a) * sp, r: r || 6, k: k }); }   // k: the creature that fired it (its colour is the shot's colour)
@@ -344,11 +345,11 @@ function updateBoss(G) {
   if (b.cd <= 0 && T >= 60) { b.cd = Math.floor(bossMove(G, b, lvl, sp) * (1 - 0.22 * ramp(G)) * (lvl === 2 ? 0.8 : 1)); E(G, 'bossatk', b.kind, 0); }
 }
 function startDying(G) {                                          // a slow, dramatic defeat instead of a sudden pop
-  G.rbReady = 0; G.rbHold = 0; G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
+  G.rbReady = 0; G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
   E(G, 'bossdying', G.boss.kind, G.stage);
 }
 function endBoss(G, beaten) {
-  var b = G.boss; G.bl = []; G.hz = []; G.boss = null; G.rbReady = 0; G.rbHold = 0;
+  var b = G.boss; G.bl = []; G.hz = []; G.boss = null; G.rbReady = 0;
   if (beaten) {                                                    // the defeat animation is over: go straight to the Wild Cards (no diamond shower: the cards are the reward)
     G.score += 400 * (G.stage + 1); G.bosses++; if (G.stage % 2 === 1 && G.wl < WL_MAX) G.coreOwed = 1;   /* beating the boss of every second Level (2, 4, 6...) earns a Star Core */ if (!G.bossHit) { G.flaw = 1; G.flawless++; E(G, 'flawless', b.kind, 0); }   // beat it without a single hit: a Prismatic Wild Card is guaranteed
     G.phase = 'cards'; G.cardRe = 0; G.cdCur = ''; drawCards(G);
@@ -386,7 +387,7 @@ function hurt(G) {
   G.lives--; E(G, 'hurt', G.lives, 0);
   if (G.lives <= 0) { G.over = 1; G.reason = 'lives'; }
 }
-function startOc(G) { if (G.nh >= 100 && G.oc <= 0) { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
+function startOc(G) { if (G.nh >= 100 && G.oc <= 0 && G.phase === 'wave') { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
 function killEnemy(G, e) { var pts = ENEMIES[e.k].pts * mult(G) * (e.ovHit ? 0.3 : 1);   /* creatures the Overload beams touched are worth 30%: the extra firepower must not inflate the score */ pts = Math.max(1, Math.round(pts)); G.score += pts; G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo; G.comboT = 90; G.kills++; dropGems(G, e.k, e.x, e.y); dropHeart(G, e.k, e.x, e.y); dropWeapon(G, e.k, e.x, e.y); dropMystery(G, e.k, e.x, e.y); if (!e.ocHit && G.oc <= 0) { G.nh++; startOc(G); } var was = G.elem; if (G.ultT <= 0) G.elem = Math.min(ELEM_MAX, G.elem + (ELEM_KILL + G.wc.ult) * (G.env === 'hydra' ? 1 - 0.75 * G.es : 1)); if (G.ultT <= 0 && was < ELEM_MAX && G.elem >= ELEM_MAX) E(G, 'ultready', 0, 0); E(G, 'kill', e.x, e.y, e.k); }
 function damage(G, e, d) { e.hp -= d; e.hf = 3; G.hitsDealt++; E(G, 'hit', e.x, e.y, e.k); if (e.hp <= 0) killEnemy(G, e); }   // every hit scores a little; a defeat scores a lot
 function clearScreen(G) { var i; for (i = 0; i < G.en.length; i++) G.score += ENEMIES[G.en[i].k].pts; G.en = []; G.bl = []; G.ice = []; G.hz = []; }
@@ -445,13 +446,13 @@ function ultStep(G) {
   G.ultT--; if (G.ultT <= 0) G.ultK = '';
 }
 function skillStep(G) { if (G.hyper > 0) G.hyper--; if (G.magnetT > 0) G.magnetT--; ultStep(G); }
-function rainbrewPower(G, t) {                                   // RAINBREW POWER, let go: a huge hit on the boss (the longer you held, the bigger), the screen is cleared, 8 s untouchable with every power on, a rain of gems, and FAST fire
+function rainbrewPower(G) {                                      // RAINBREW POWER: an instant, huge hit on the boss, the screen is cleared, 8 s untouchable with every power on, a rain of gems, and a FAST surge of fire
   var b = G.boss, dmg = 0;
   G.surges++; G.rbUsed++; G.magic = 240; G.inv = Math.max(G.inv, 240); clearScreen(G);
   for (var i = 0; i < POWERS.length; i++) G.pw[POWERS[i]] = Math.max(G.pw[POWERS[i]], 240);
   G.hyper = Math.max(G.hyper, 240);
-  if (b) { dmg = Math.ceil(b.max * (0.15 + 0.10 * t)); b.hp -= dmg; if (b.hp < 0) b.hp = 0; b.hf = 6; }
-  G.score += 300 * (G.stage + 1); E(G, 'rbrel', t, dmg);
+  if (b) { dmg = Math.ceil(b.max * RB_DMG); b.hp -= dmg; if (b.hp < 0) b.hp = 0; b.hf = 6; }
+  G.score += 300 * (G.stage + 1); E(G, 'rbrel', 1, dmg);
 }
 function collect(G, it) {
   var k = it.k;
@@ -470,11 +471,11 @@ function collect(G, it) {
 }
 
 /* ---------------- one step of the world ---------------- */
-function stepGame(G, dx, dy, skill, rb) {
+function stepGame(G, dx, dy, skill, rb, fc) {
   if (G.over || G.phase === 'cards') return;                        // nothing moves while you choose a Wild Card
   var M = G.M, i, j, e, b, s, it, sp, k;
   G.t++;
-  if (G.oc > 0) G.oc--;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
+  if (G.oc > 0) G.oc = G.phase === 'boss' || G.phase === 'dying' ? 0 : G.oc - 1;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
   if (G.jinx > 0) G.jinx--;
   k = Math.min(MAXBEAMS, G.U.lanes + (G.pw.triple > 0 ? G.pwBeams : 0) + G.wc.beam) + ((G.pw.spread > 0 || G.wc.fan) ? 2 : 0) + (G.oc > 0 ? 4 : 0); if (k > G.bp) G.bp = k;
   var env = envOf(G); G.env = env; G.es = envStr(G); var lim = G.stone > 0 ? 13 : Math.floor(32 * (1 + moveBonus(G))); if (G.stone > 0) G.stone--; if (env === 'griffin') lim = Math.max(6, Math.floor(lim * (1 - 0.6 * G.es)));        // High Winds: slow flying                     // Medusa's gaze slows you for a moment
@@ -482,13 +483,13 @@ function stepGame(G, dx, dy, skill, rb) {
   var nx = clamp(G.px + dx, 20, W - 20), ny = clamp(G.py + dy, 130, H - 36); if (env === 'griffin') nx = clamp(nx + Math.round(5 * G.es * SIN(G.t * 0.05)), 20, W - 20); else if (env === 'kraken') ny = clamp(ny + Math.round(4 * G.es), 130, H - 36); else if (env === 'cyclops' && G.t % 60 === 0) nx = clamp(nx + Math.round(((G.t / 60 | 0) % 2 ? -30 : 30) * G.es), 20, W - 20);   // gusts, an undertow, tremors
   G.pdx = nx - G.px; G.pdy = ny - G.py; G.px = nx; G.py = ny;
   if (skill) useSkill(G);
-  var rbOn = rb && G.rbReady && G.phase === 'boss' && G.boss && G.boss.inn && G.boss.hp > 0, rbSkip = false;   // Rainbrew Power: only in a boss fight, once the boss has arrived
-  if (rbOn) { if (G.rbHold === 0) E(G, 'rbhold', 0, 0); G.rbHold++; }
-  if (G.rbHold > 0 && (!rbOn || G.rbHold >= RB_MAX)) {             // let go (or held as long as allowed): the release
-    if (G.phase === 'boss' && G.boss && G.boss.hp > 0) rainbrewPower(G, Math.min(1, G.rbHold / RB_MAX));
-    G.rbReady = 0; G.rbHold = 0; G.rbAcc = 0;
-  } else if (G.rbHold > 0) { G.rbAcc += RB_SLOW; if (G.rbAcc >= 1) G.rbAcc -= 1; else rbSkip = true; }   // held: the whole world (the boss, its attacks, shots, hazards) moves only on one step in five
-  var frozen = G.freeze > 0; if (frozen) G.freeze--; if (rbSkip) frozen = true;
+  if (rb && G.rbReady && G.phase === 'boss' && G.boss && G.boss.inn && G.boss.hp > 0) { G.rbReady = 0; rainbrewPower(G); }   // Rainbrew Power: only in a boss fight, once the boss has arrived, once per fight
+  var fcOn = fc && G.fcE > 0 && G.phase !== 'cards', fcF = 1, wskip = false;                       // FOCUS: holding still anywhere slows the whole world (you still fly at full speed)
+  if (fcOn) { if (!G.fcOn) E(G, 'fcon', 0, 0); G.fcE--; G.fcAfter = FC_AFTER; fcF = FC_SLOW; }
+  else { if (G.fcOn) E(G, 'fcoff', 0, 0); if (G.fcAfter > 0) { G.fcAfter--; fcF = FC_LAST + (1 - FC_LAST) * (1 - G.fcAfter / FC_AFTER); } else if (G.t % 4 === 0 && G.fcE < FC_MAX) G.fcE++; }   // after you let go the slow-down fades out over 3 s
+  G.fcOn = fcOn ? 1 : 0; G.fcF = fcF;
+  if (fcF < 1) { G.fcAcc += fcF; if (G.fcAcc >= 1) G.fcAcc -= 1; else wskip = true; }             // while slowed, the world (waves, creatures, the boss, shots, hazards) moves only on some steps
+  var frozen = G.freeze > 0; if (frozen) G.freeze--; if (wskip) frozen = true;
   var sl = G.ultK === 'frost' && G.ultT > 0 ? 0.35 : 1;                              // Starfall Barrage: time crawls
   if (G.inv > 0) G.inv--; if (G.star > 0) G.star--; if (G.magic > 0) G.magic--;
   for (i = 0; i < POWERS.length; i++) { k = POWERS[i]; if (G.pw[k] > 0) G.pw[k]--; }
@@ -496,7 +497,8 @@ function stepGame(G, dx, dy, skill, rb) {
   if (G.comboT > 0) { G.comboT--; if (G.comboT === 0) G.combo = 0; }
   if (G.t >= M.maxSec * SPS) { G.over = 1; G.reason = 'time'; return; }
   var rp = ramp(G), fast = (G.magic > 0 ? 2.2 : 1) * (1 + 0.45 * G.hype);                 // Rainbrew Magic: the world rushes past 2.2x faster; before a boss (Ranked) it speeds up too
-  // levels and bosses
+  // levels and bosses (the whole level clock stops with the world while time is slowed)
+  if (!wskip) {
   if (G.phase === 'wave') {
     G.levelT++;
     if (!bossLevel(G) && G.levelT === 300 && !(G.magic > 0)) givePower(G);
@@ -527,6 +529,7 @@ function stepGame(G, dx, dy, skill, rb) {
   if (G.phase !== 'wave') G.cm = null; else if (!G.cm && G.cometDone !== G.stage && levelIn(G) === G.cometLv && G.levelT >= 240 && G.magic === 0 && !bossLevel(G)) spawnComet(G);
   if (G.cm) updateComet(G);
   if (G.t >= G.nextIce && G.magic === 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
+  }
   if (G.magic > 0) { if (G.magic % 8 === 0) mkItem(G, 'gem', 24 + Math.floor(G.rd() * (W - 48)), -12, 0, 4.5); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 0); }   // a rain of gems
   // shooting
   G.fireCd -= G.jinx > 0 ? 0.5 : 1; if (G.fireCd <= 0) { fire(G, false); G.fireCd += Math.max(1.1, (G.pw.coffee > 0 || G.hyper > 0 ? Math.max(1.25, G.U.cd * 0.5) : G.U.cd) * (G.env === 'medusa' ? 1 + 1.0 * G.es : 1) * WL_RATE[G.wl] / (1 + 0.06 * G.charm)); }   // coffee: twice the fire rate (and a little more damage and piercing); Freezing Air slows shooting          // (the remainder carries over, so an upgraded rate like 3.7 steps is exact on average)   // coffee: an energy boost, you shoot faster
@@ -567,7 +570,7 @@ function stepGame(G, dx, dy, skill, rb) {
     if (s.dead) continue;
     if (G.cm && G.cm.hp > 0 && Math.abs(s.x - G.cm.x) < 26 + s.w && Math.abs(s.y - G.cm.y) < 30) { G.cm.hp -= s.dmg; G.cm.hf = 3; G.hitsDealt++; E(G, 'cmhit', G.cm.x, G.cm.y); if (s.pierce > 0) s.pierce--; else s.dead = 1; if (G.cm.hp <= 0) cometBurst(G); }
     if (s.dead) continue;
-    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); if (!s.oc && G.oc <= 0) { G.nh = Math.min(100, G.nh + 0.4); startOc(G); } }   // hitting a boss charges the Overcharge
+    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); }   // (Overload is for creatures only: hitting a boss does not charge it)
   }
   // getting hurt: creatures, orbs, ice shards, the boss and its attacks
   for (j = 0; j < G.en.length && !G.over; j++) { e = G.en[j]; if (e.hp <= 0) continue; var cx = e.x - G.px, cy = e.y - G.py, cr = e.r + PR; if (cx * cx + cy * cy <= cr * cr) { var safe = G.inv > 0 || G.star > 0 || G.magic > 0; hurt(G); if (!safe || G.star > 0 || G.magic > 0) { e.hp = 0; E(G, 'crash', e.x, e.y); if (G.star > 0 || G.magic > 0) killEnemy(G, e); } } }
@@ -587,9 +590,9 @@ function stepGame(G, dx, dy, skill, rb) {
 
 /* ---------------- recording a flight: one character per step per axis; ULT presses listed by step ---------------- */
 function encodeTraj(deltas) { var s = ''; for (var i = 0; i < deltas.length; i++) s += String.fromCharCode(79 + clamp(deltas[i] | 0, -MAXSTEP, MAXSTEP)); return s; }
-function parseRb(str) { var o = { s: [], e: [] }, a = String(str || '').split(','), i, p; for (i = 0; i < a.length; i++) { p = a[i].split('-'); if (p.length === 2) { o.s.push(+p[0]); o.e.push(+p[1]); } } return o; }   // the steps where the Rainbrew Power button was held: "12-40,300-330"
-function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs) {
-  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch, rbp = parseRb(rbs), rbI = 0, held; G.keepEv = !!keepEv; skills = skills || [];
+function parseRb(str) { var o = { s: [], e: [] }, a = String(str || '').split(','), i, p; for (i = 0; i < a.length; i++) { p = a[i].split('-'); if (p.length === 2) { o.s.push(+p[0]); o.e.push(+p[1]); } } return o; }   // the steps where a button or the screen was held or pressed: "12-40,300-330" (Rainbrew Power presses, and Focus holds)
+function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs, fcs) {
+  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch, rbp = parseRb(rbs), rbI = 0, held, fcp = parseRb(fcs), fcI = 0, fheld; G.keepEv = !!keepEv; skills = skills || [];
   for (var i = 0; i < n; i++) {
     if (G.over) { if (rv.length && rv[0] === G.t && revive(G)) { rv.shift(); } else break; }       // the player paid to continue: the flight goes on
     if (G.phase === 'cards') {                                    // the Wild Card screen: replay the choices the player made (picks and reshuffles)
@@ -598,7 +601,8 @@ function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs
     }
     var kk = 0; while (ki < skills.length && skills[ki] <= i + 1) { if (skills[ki] === i + 1) kk = 1; ki++; }
     while (rbI < rbp.s.length && rbp.e[rbI] < i + 1) rbI++; held = rbI < rbp.s.length && rbp.s[rbI] <= i + 1 ? 1 : 0;
-    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk, held); G.used = i + 1;
+    while (fcI < fcp.s.length && fcp.e[fcI] < i + 1) fcI++; fheld = fcI < fcp.s.length && fcp.s[fcI] <= i + 1 ? 1 : 0;
+    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk, held, fheld); G.used = i + 1;
   }
   if (G.over && rv.length && rv[0] === G.t) revive(G);
   if (G.used === undefined) G.used = 0; return G;
@@ -945,13 +949,15 @@ function verifyRun(tok, b, now) {
   var rvS = String(b.rv || ''); if (rvS && !/^\d{1,6}(,\d{1,6}){0,1}$/.test(rvS)) return { ok: false, err: 'format' };      // when the player paid to Continue (at most twice)
   var cdS = String(b.cd || ''); if (cdS && !/^[r0-2;]{1,4000}$/.test(cdS)) return { ok: false, err: 'format' };      // the Wild Card choices (picks and reshuffles) after each boss
   var upS = String(b.up || ''); if (upS && !/^d[0-5]r[0-5]t[0-3]$/.test(upS)) return { ok: false, err: 'format' };                // weapon upgrades (Classic only; Ranked ignores them)
-  var rbS = String(b.rb || '');                                                                                                      // when the Rainbrew Power button was held: "first-last" step pairs, in order, one pair per boss fight at most
-  if (rbS) {
-    if (!/^\d{1,6}-\d{1,6}(,\d{1,6}-\d{1,6}){0,199}$/.test(rbS)) return { ok: false, err: 'format' };
-    var rbA = rbS.split(','), prevE = 0;
-    for (i = 0; i < rbA.length; i++) { var rp = rbA[i].split('-'), r0 = +rp[0], r1 = +rp[1]; if (!(r0 >= 1 && r1 >= r0 && r1 <= tr.length / 2 && r0 > prevE)) return { ok: false, err: 'format' }; prevE = r1; }
+  var rbS = String(b.rb || ''), fcS = String(b.fc || '');                                                                              // when Rainbrew Power was tapped, and when the screen was held for Focus: "first-last" step pairs, in order
+  var holds = [[rbS, 200], [fcS, 4000]], hi;
+  for (hi = 0; hi < holds.length; hi++) {
+    var hs = holds[hi][0]; if (!hs) continue;
+    if (hs.length > 80000 || !/^\d{1,6}-\d{1,6}(,\d{1,6}-\d{1,6})*$/.test(hs)) return { ok: false, err: 'format' };
+    var hA = hs.split(','), prevE = 0; if (hA.length > holds[hi][1]) return { ok: false, err: 'format' };
+    for (i = 0; i < hA.length; i++) { var rp = hA[i].split('-'), r0 = +rp[0], r1 = +rp[1]; if (!(r0 >= 1 && r1 >= r0 && r1 <= tr.length / 2 && r0 > prevE)) return { ok: false, err: 'format' }; prevE = r1; }
   }
-  var G = simulate(tok.seed, mode, uni, tr, false, sk, upS, cdS, rvS, rbS), steps = G.used || 0, secs = steps / SPS, tReal = secs * 1000;
+  var G = simulate(tok.seed, mode, uni, tr, false, sk, upS, cdS, rvS, rbS, fcS), steps = G.used || 0, secs = steps / SPS, tReal = secs * 1000;
   if (steps < 20 || isNaN(tEnd) || Math.abs(tEnd - tReal) > 1500) return { ok: false, err: 'time' };
   if (tReal > (now - tok.iat) + 5000) return { ok: false, err: 'clock' };       // a run cannot last longer than the time since its session was issued
   if (+b.score !== G.score) return { ok: false, err: 'mismatch' };
