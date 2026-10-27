@@ -1472,7 +1472,8 @@ function auInit() {
     try {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
       AU.ctx = new C(); AU.sfxG = AU.ctx.createGain(); AU.musG = AU.ctx.createGain();
-      AU.sfxG.connect(AU.ctx.destination); AU.musG.connect(AU.ctx.destination); applyVol();
+      AU.master = AU.ctx.createDynamicsCompressor(); AU.master.threshold.value = -8; AU.master.knee.value = 10; AU.master.ratio.value = 5; AU.master.attack.value = .003; AU.master.release.value = .2; AU.master.connect(AU.ctx.destination);   // a soft limiter: the biggest moments can never distort
+      AU.sfxG.connect(AU.master); AU.musG.connect(AU.master); applyVol();
     } catch (e) { AU.ctx = null; }
   }
   try { if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); } catch (e) {}
@@ -1962,6 +1963,27 @@ Object.assign(SFX2, {                                                // new powe
   ocend: k => { tone(mhz((k || 0) + 24), .5, 'sine', .07, mhz(k || 0) * 2, 0); noise(.4, 2500, 300, .035, 0, 'lowpass'); },   // the Overload fades out: a soft power-down
   close: () => tone(1800, .06, 'sine', .035, 2600),
   flawless: () => arp([523, 659, 784, 1047, 1319, 1568, 2093], .16, 'triangle', .09, .06)
+});
+Object.assign(SFX2, {                                                // POWER-UPS (under a second, one clear sound each) and the five UNICORN POWERS, all in the musical key of the level
+  p_coffee: k => { const n = o => mhz((k || 0) + o); tone(n(0), .3, 'sine', .34, n(-12)); noise(.3, 500, 4500, .14, 0, 'bandpass'); [0, 7, 12, 19].forEach((o, i) => pluck(n(o + 24), .16, .14, .05 + i * .06, AU.sfxG)); },   // the Boost: a warm thump, a rising whoosh and a quick run up
+  p_triple: k => { const n = o => mhz((k || 0) + o); tone(n(12), .16, 'sawtooth', .14, n(12) * 6); [24, 31, 36].forEach((o, i) => tone(n(o), .12, 'triangle', .25, 0, .1 + i * .07)); },   // BEAM UP: a charge-up, then three bright pings
+  p_spread: k => { const n = o => mhz((k || 0) + o); noise(.25, 700, 6000, .2, 0, 'bandpass'); [24, 31, 36].forEach((o, i) => tone(n(o), .14, 'triangle', .22, n(o) * 1.06, .03 + i * .04)); },   // FAN SHOT: a whoosh and three notes that fan out
+  p_pierce: k => { const n = o => mhz((k || 0) + o); tone(n(36), .14, 'sawtooth', .16, n(36) * 3); tone(n(48), .25, 'square', .12, 0, .1); noise(.12, 5000, 9000, .17, .05, 'highpass'); },   // PIERCING: a sharp zip and a metal ping
+  p_helpers: k => { const n = o => mhz((k || 0) + o); bells([n(36), n(43)], .5, .13, .12, 0); bells([n(48)], .5, 0, .09, .22); noise(.25, 6000, 9000, .06, .05, 'highpass'); },   // HELPERS: two soft twinkles
+  p_shield: k => { const n = o => mhz((k || 0) + o); tone(n(12), .35, 'sine', .33, n(12) * .8); bells([n(36), n(43), n(48)], .6, .05, .11, .02); noise(.3, 3000, 9000, .1, .03, 'highpass'); },   // SHIELD: a solid thump and a glassy shimmer
+  p_charm: k => { const n = o => mhz((k || 0) + o); bells([n(43), n(48)], .6, .11, .15, 0); tone(n(24), .4, 'sine', .14); },   // the Charm: two sweet chimes
+  p_mystery: k => { const n = o => mhz((k || 0) + o); noise(.35, 500, 7000, .2, 0, 'bandpass'); [0, 7, 12, 19, 24].forEach((o, i) => tone(n(o + 36), .15, 'triangle', .17, 0, .08 + i * .055)); },   // a mystery box: a shimmer that rises
+  ult_frost: k => { const n = o => mhz((k || 0) + o);                // STARFALL BARRAGE: an icy riser, a soft low whoosh, then stars falling in a glassy run
+    noise(.7, 3000, 9000, .12, 0, 'bandpass'); tone(n(0), .9, 'sine', .28, n(-12)); [60, 55, 52, 48, 43, 40, 36].forEach((o, i) => bells([n(o)], .55, 0, .12, .12 + i * .09)); for (let i = 0; i < 4; i++) noise(.04, 6000, 9000, .09, .3 + i * .17, 'highpass'); },
+  ult_solar: k => { const n = o => mhz((k || 0) + o);                // PRISMATIC BEAM: a charge-up that rises, the beam (a bright sustained chord) and a rainbow run
+    tone(n(0), .32, 'sawtooth', .07, n(0) * 14); noise(.3, 300, 8000, .07, 0, 'bandpass'); boom(.3, .24); [0, 7, 12, 19].forEach(o => stab(n(o + 12), 1, .05, .3, true));
+    tone(n(24), 1, 'sawtooth', .025, n(24) * 1.5, .35); noise(.8, 1500, 6000, .05, .3, 'highpass'); bells([n(36), n(43), n(48), n(55), n(60), n(67)], .5, .08, .045, .5); },
+  ult_void: k => { const n = o => mhz((k || 0) + o);                 // EVENT HORIZON: everything is pulled inward, a dark swell, then the implosion
+    noise(.6, 7000, 200, .07, 0, 'bandpass'); tone(n(12), .6, 'sawtooth', .04, n(-12)); cinPad(n(-12), 1.6, .06, 0, AU.sfxG); boom(.55, .3); stab(n(0), .9, .06, .55, false); },
+  ult_emerald: k => { const n = o => mhz((k || 0) + o);              // ASTRAL STAMPEDE: galloping drums that speed up, two horn calls and a bright shimmer
+    [0, 1, 2, 3, 4, 5].forEach(i => { const t = i * (.16 - i * .012); tone(90, .16, 'sine', .4, 48, t); noise(.12, 700, 120, .14, t, 'lowpass'); }); horn(n(24), .5, .13, .55, AU.sfxG); horn(n(31), .7, .12, .75, AU.sfxG); bells([n(48), n(55), n(60)], .6, .09, .09, .9); },
+  ult_golden: k => { const n = o => mhz((k || 0) + o);               // DAWN BREAK: a golden brass chord (with a bright third), a deep hit and a rising shimmer
+    boom(0, .3); [0, 7, 12, 16].forEach((o, i) => stab(n(o + 12), 1.1, [.075, .055, .055, .04][i], .01, true)); noise(.5, 500, 9000, .06, 0, 'bandpass'); bells([n(36), n(43), n(48), n(55), n(60)], .6, .07, .045, .08); }
 });
 Object.assign(SFX2, {                                                // a weapon upgrade: a bright rising run that climbs higher (and fuller) with every level
   wlevel: lv => { lv = lv || 1; const f = [0, 523, 587, 659, 784, 880][lv] || 523, notes = [f, f * 1.25, f * 1.5, f * 2, f * 2.5].slice(0, 3 + Math.min(2, lv));
@@ -3260,11 +3282,28 @@ function drawBeast(x, y, s, col) {                                  // an astral
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, 6, 14, 8, 0, 0, 6.283); ctx.fill(); ctx.beginPath(); ctx.ellipse(-12, -2, 7, 6, -.4, 0, 6.283); ctx.fill();
   ctx.beginPath(); ctx.moveTo(-16, -6); ctx.lineTo(-24, -20); ctx.lineTo(-11, -9); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(-14, -3, 1.6, 0, 6.283); ctx.fill(); ctx.restore();
 }
+let puFx = [];
+function drawPuFx(g) {                                             // catching a power-up: one clean ring in its colour and a small shape that says what it is (short and calm)
+  for (const f of puFx) {
+    const al = Math.max(0, f.t), k = 1 - al, x = g.px, y = g.py; ctx.lineCap = 'round'; ctx.strokeStyle = f.c; ctx.fillStyle = f.c;
+    ctx.globalAlpha = al * .85; ctx.lineWidth = 4 * al + 1; ctx.beginPath(); ctx.arc(x, y, 16 + k * 70, 0, 6.283); ctx.stroke(); ctx.globalAlpha = al;
+    if (f.k === 'triple') for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.moveTo(x + j * 14, y - 20 - k * 20); ctx.lineTo(x + j * 14, y - 70 - k * 150); ctx.stroke(); }
+    else if (f.k === 'spread') for (let j = -2; j <= 2; j++) { const an = -Math.PI / 2 + j * .28; ctx.beginPath(); ctx.moveTo(x + Math.cos(an) * 24, y + Math.sin(an) * 24); ctx.lineTo(x + Math.cos(an) * (40 + k * 130), y + Math.sin(an) * (40 + k * 130)); ctx.stroke(); }
+    else if (f.k === 'pierce') { ctx.lineWidth = 6 * al + 1; ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(x, y - 40 - k * 220); ctx.stroke(); sparkle4(x, y - 40 - k * 220, 7 * al + 2, '#ffffff', al); }
+    else if (f.k === 'shield') { ctx.lineWidth = 3 * al + 1; ctx.beginPath(); for (let j = 0; j < 6; j++) { const an = j * Math.PI / 3 + k * .6; ctx[j ? 'lineTo' : 'moveTo'](x + Math.cos(an) * (36 + k * 10), y + Math.sin(an) * (36 + k * 10)); } ctx.closePath(); ctx.stroke(); }
+    else if (f.k === 'helpers') for (const sd of [-1, 1]) glowDot(ctx, x + sd * (10 + 30 * Math.min(1, k * 2)), y + 6 - k * 14, 20, f.c, al * .9);
+    else if (f.k === 'charm') sparkle4(x, y - 34 - k * 40, 9 * al + 2, f.c, al);
+    else if (f.k === 'coffee') for (let j = 0; j < 6; j++) { const an = j * 1.047 + k * 3; sparkle4(x + Math.cos(an) * (20 + k * 50), y + Math.sin(an) * (20 + k * 50) - k * 20, 3.5 * al + 1, '#ffd9a0', al); }
+  }
+  ctx.globalAlpha = 1;
+}
 function drawSkillFx(g) {                                            // each unicorn's ULT looks different
   if (g.freeze > 0) { ctx.fillStyle = 'rgba(140,210,255,.12)'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
-  if (g.hyper > 0) { edgeAura('hsla(' + (Math.floor(now / 6) % 360) + ',100%,62%,A)', .3 * Math.min(1, g.hyper / 20)); }
+  if (g.hyper > 0) { edgeAura('hsla(' + (Math.floor(now / 40) % 360) + ',100%,68%,A)', .16 * Math.min(1, g.hyper / 20)); }
   if (g.hyper > 0 || g.ultT > 0 && g.ultK !== 'solar') { ctx.fillStyle = 'rgba(255,240,170,.12)'; ctx.strokeStyle = 'rgba(255,248,200,.85)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(g.px, g.py, 46, 0, 6.283); ctx.fill(); ctx.stroke(); }
   const u = g.ultK, t = g.ultT;
+  if (t > 0) { const tint = { frost: 'rgba(150,210,255,A)', solar: 'rgba(255,200,90,A)', void: 'rgba(150,70,210,A)', emerald: 'rgba(90,230,140,A)' }[u]; if (tint) edgeAura(tint, .22 * Math.min(1, t / 20)); }   // a soft tint of the unicorn's element
+  if (ultFx.t > 0 && ultFx.kind === 'golden') edgeAura('rgba(255,215,110,A)', .2 * ultFx.t);
   if (t > 0 && u === 'frost') {                                      // Starfall Barrage: a cold hush over everything while stars fall from the sky
     ctx.fillStyle = 'rgba(120,190,255,.16)'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
     for (let k = 0; k < 14; k++) { const sx = (k * 97 + Math.floor(now / 3)) % FW, sy = (now / 4 + k * 71) % FH; sparkle4(sx, sy, 3, '#dff6ff', .8); }
@@ -3274,22 +3313,26 @@ function drawSkillFx(g) {                                            // each uni
     const bw = 92 + 6 * Math.sin(now / 40), gr = ctx.createLinearGradient(g.px - bw / 2, 0, g.px + bw / 2, 0);
     ['#ff5a7a', '#ffb347', '#ffe66a', '#7dff9a', '#6ad0ff', '#b48cff'].forEach((c, i, a) => gr.addColorStop(i / (a.length - 1), c));
     ctx.globalAlpha = .85 * Math.min(1, t / 10); ctx.fillStyle = gr; ctx.fillRect(g.px - bw / 2, -20, bw, g.py + 20); ctx.fillStyle = '#ffffff'; ctx.globalAlpha *= .8; ctx.fillRect(g.px - 9, -20, 18, g.py + 20); ctx.globalAlpha = 1;
-    glowDot(ctx, g.px, g.py - 30, 70, '#ffffff', .8);
+    glowDot(ctx, g.px, g.py - 30, 70, '#ffffff', .8); glowDot(ctx, g.px, g.py - 6, 120, '#ffe9a8', .3 * Math.min(1, t / 10));   // a soft flare where the beam begins
+    for (let k = 0; k < 8; k++) sparkle4(g.px + (k % 2 ? 1 : -1) * (bw / 2 + 8 + 6 * Math.sin(now / 200 + k)), (now / 3 + k * 90) % Math.max(60, g.py), 3, '#fff4c8', .6);   // light drifts along the beam
   }
   if (t > 0 && u === 'void') {                                       // Event Horizon: a black hole above the unicorn, spinning, with a purple rim
     const cx = g.px, cy = Math.max(150, g.py - 90), k = Math.min(1, (90 - t) / 12 + .2), rr = 74 * k;
     glowDot(ctx, cx, cy, rr * 1.8, '#8a3ad0', .6); ctx.strokeStyle = 'rgba(199,125,255,.75)'; ctx.lineWidth = 3;
     for (let a = 0; a < 3; a++) { ctx.beginPath(); for (let i = 0; i <= 28; i++) { const q = i / 28, an = q * 9 + now / 220 + a * 2.09, r2 = rr * q; ctx.lineTo(cx + Math.cos(an) * r2, cy + Math.sin(an) * r2); } ctx.stroke(); }
     ctx.fillStyle = '#05010c'; ctx.beginPath(); ctx.arc(cx, cy, rr * .38, 0, 6.283); ctx.fill();
+    for (let r = 0; r < 3; r++) { const ph = (now / 700 + r / 3) % 1; ctx.strokeStyle = 'rgba(199,125,255,' + (.4 * (1 - ph)).toFixed(3) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, rr * 2.6 * (1 - ph) + 8, 0, 6.283); ctx.stroke(); }   // rings pull inward
   }
   if (t > 0 && u === 'emerald') {                                    // Astral Stampede: a green-white band of astral beasts charging upward
     const by = g.py - (60 - t) * (g.py / 60), gr = ctx.createLinearGradient(0, by - 60, 0, by + 60); gr.addColorStop(0, 'rgba(92,240,143,0)'); gr.addColorStop(.5, 'rgba(160,255,200,.45)'); gr.addColorStop(1, 'rgba(92,240,143,0)');
     ctx.fillStyle = gr; ctx.fillRect(-20, by - 60, FW + 40, 120); for (let k = 0; k < 6; k++) drawBeast(30 + k * 60 + (k % 2) * 8, by + (k % 2) * 14, 1.5, k % 2 ? '#d8ffe8' : '#7dffb0');
+    for (let k = 0; k < 10; k++) sparkle4(30 + ((k * 83 + now / 5) % 300), by + 66 + (k * 13) % 50, 3, '#a8ffcc', .6);   // leaves trail behind the herd
   }
   if (ultFx.t > 0 && ultFx.kind === 'golden') {                      // Dawn Break: a white-out and golden shockwaves
     const k = 1 - ultFx.t;
-    if (k < .22) { ctx.fillStyle = 'rgba(255,248,210,' + (.9 * (1 - k / .22)).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
-    for (let i = 0; i < 5; i++) { const kk = Math.max(0, (k - i * .06) / (1 - i * .06)); if (kk <= 0 || kk >= 1) continue; ctx.strokeStyle = rgba(COL[(i * 3) % 7], 1 - kk); ctx.lineWidth = 26 * (1 - kk) + 3; ctx.beginPath(); ctx.arc(g.px, g.py, 30 + kk * 820, 0, 6.283); ctx.stroke(); }
+    if (k < .22) { ctx.fillStyle = 'rgba(255,248,210,' + (.55 * (1 - k / .22)).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
+    ctx.lineCap = 'round'; ctx.lineWidth = 3; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + now / 1500; ctx.strokeStyle = 'rgba(255,224,130,' + (.55 * (1 - k)).toFixed(3) + ')'; ctx.beginPath(); ctx.moveTo(g.px + Math.cos(a) * 50, g.py + Math.sin(a) * 50); ctx.lineTo(g.px + Math.cos(a) * (60 + 520 * k), g.py + Math.sin(a) * (60 + 520 * k)); ctx.stroke(); }   // sun rays
+    for (let i = 0; i < 3; i++) { const kk = Math.max(0, (k - i * .08) / (1 - i * .08)); if (kk <= 0 || kk >= 1) continue; ctx.strokeStyle = rgba(['#ffd96a', '#ffffff', '#ffb347'][i], 1 - kk); ctx.lineWidth = 16 * (1 - kk) + 2; ctx.beginPath(); ctx.arc(g.px, g.py, 30 + kk * 820, 0, 6.283); ctx.stroke(); }
   }
 }
 function drawComet(c) {                                              // the Golden Comet: a glowing golden star with a long tail, gliding across the sky
@@ -3537,7 +3580,7 @@ function draw() {
     const al = st === 'play' ? Math.min(1, accT * SPS) : 0;
     ctx.save(); if (ultFx.t > 0) { const z = 1 + .03 * ultFx.t * ultFx.t; ctx.translate(FW / 2, FH / 2); ctx.scale(z, z); ctx.translate(-FW / 2, -FH / 2); }   // the ULT punches the screen in
     safe(() => {
-      drawEnvFx(G); drawWorld(al); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawCardFx(G);
+      drawEnvFx(G); drawWorld(al); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawPuFx(G); drawCardFx(G);
       for (const p of ps) { ctx.globalAlpha = Math.max(0, Math.min(1, p.l * 2)); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); } ctx.globalAlpha = 1;
       for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); T(p.txt, p.x, p.y, { size: 13, w: 4, fill: p.col }); } ctx.globalAlpha = 1;
       drawMagic(); drawRbFx(G);
@@ -3583,7 +3626,7 @@ function decodeTraj(tr) { const a = []; for (let i = 0; i < tr.length; i++) a.pu
 function startGame(m) {
   if (demo && !demoStarting) { demo = false; skipBtn.hidden = true; }         // any real game start ends a demo
   auInit(); mode = m; if (!demo) LS.set('wg_mode', m); const M = MODES[m]; if (!demo) clearCkpt();
-  trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
+  trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
   session = null; ranked = false; run = null; waitT = 0; cdN = 0; noteUnranked = ''; tgt = { x: FW / 2, y: FH - 150 }; pressed = false; clearInterval(lbTimer);
   G = newGame(1, m, demo ? 'frost' : uniOf()); G.keepEv = true; placeFrom = placeTo = 0; placeMix = 1;     // (a preview while the countdown runs)
   st = 'count'; cd = 3; ov.style.display = 'none'; musicStop(); ++runSeq; sessDone = true;
@@ -3642,10 +3685,10 @@ function handleEvents() {
     else if (n === 'wlevel') { weaponFx = { t: 1, lv: a }; banner = { txt: 'WEAPON LEVEL ' + a + '!', sub: WL_NAMES[a], l: 2 }; burst(g.px, g.py, WL_COL[a], 18 + a * 6); burst(g.px, g.py, '#ffffff', 10); sfx('wlevel', a); shake = Math.max(shake, .25 + .06 * a); bombFlash = Math.max(bombFlash, .18 + .04 * a); if (a >= 5) { slowmo = Math.max(slowmo, .25); duckMusic(1.2); } vib([30, 20, 50]); }
     else if (n === 'ultready') { say('UNICORN POWER READY! Tap it', 1.8); sfx('skillready'); vib(40); }
     else if (n === 'skill') {                                        // the ULT: each unicorn has its own look
-      ultFx = { t: 1, kind: a, n: c }; sfx('ult'); duckMusic(1.2); vib(200); shake = Math.max(shake, 1.4); hurtT = 0;
-      banner = { txt: ULT_NAME[a] || 'UNICORN POWER!', sub: a === 'golden' && c ? c + ' destroyed' : 'Unicorn Power', l: 1.5 };
-      if (a === 'golden') { bombFx = { t: .9, x: g.px, y: g.py }; bombFlash = .6; slowmo = .6; for (let k2 = 0; k2 < 150; k2++) { const an = k2 * .21, v = 120 + (k2 % 11) * 46; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .8 + (k2 % 6) * .12, COL[k2 % 7], 4 + (k2 % 4) * 2); } }
-      else { const cc = (charById(a) || CHARACTERS[0]).color; for (let k2 = 0; k2 < 50; k2++) { const an = k2 * .4, v = 90 + (k2 % 9) * 36; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .7 + (k2 % 5) * .1, k2 % 3 ? cc : '#ffffff', 4 + (k2 % 3) * 2); } } }
+      ultFx = { t: 1, kind: a, n: c }; sfx(SFX2['ult_' + a] ? 'ult_' + a : 'ult', MKEYS[g.stage % 8] || 0); duckMusic(1.2); vib(120); shake = Math.max(shake, .7); hurtT = 0;
+      banner = { txt: ULT_NAME[a] || 'UNICORN POWER!', sub: a === 'golden' && c ? c + ' destroyed' : '', l: 1.5 };
+      if (a === 'golden') { bombFx = { t: .9, x: g.px, y: g.py }; bombFlash = .4; slowmo = .4; for (let k2 = 0; k2 < 50; k2++) { const an = k2 * .21, v = 120 + (k2 % 11) * 46; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .8 + (k2 % 6) * .12, COL[k2 % 7], 4 + (k2 % 4) * 2); } }
+      else { const cc = (charById(a) || CHARACTERS[0]).color; for (let k2 = 0; k2 < 24; k2++) { const an = k2 * .4, v = 90 + (k2 % 9) * 36; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v, .7 + (k2 % 5) * .1, k2 % 3 ? cc : '#ffffff', 4 + (k2 % 3) * 2); } } }
     else if (n === 'ultbolt') ultBolts.push({ x: a, y: b, l: .35 });
     else if (n === 'implode') { bombFx = { t: .7, x: a, y: b }; shake = Math.max(shake, .8); sfx('bomb'); burst(a, b, '#c77dff', 30); }
     else if (n === 'comet') { say('A Golden Comet! Shoot it down!', 2); sfx('comet'); }
@@ -3659,10 +3702,10 @@ function handleEvents() {
     else if (n === 'levelup') { sfx('levelup'); }
     else if (n === 'hurt') { shake = .4; hurtT = .5; sfx('hit'); vib(120); say(a < 0 ? '−100 points' : a > 0 ? a + (a === 1 ? ' heart' : ' hearts') + ' left!' : '', 1.1); }
     else if (n === 'shield') { sfx('shield'); shake = .1; }
-    else if (n === 'power') { sfx('p_' + a); const pi = PW_INFO[a]; if (pi) { burst(g.px, g.py, pi.c, 14); if (a === 'triple' && !b) say('BEAMS MAXED! +10 GEMS', 1.2); } if (a === 'coffee') { boostFx = { t: 1 }; burst(g.px, g.py, '#ffb347', 20); vib(40); } else if (!pi) say(POW_NAME[a] || 'Power-up!', 1.4); }
+    else if (n === 'power') { sfx('p_' + a, MKEYS[g.stage % 8] || 0); const pi = PW_INFO[a]; if (pi) { puFx.push({ k: a, t: 1, c: pi.c }); if (puFx.length > 3) puFx.shift(); burst(g.px, g.py, pi.c, 6); if (a === 'triple' && !b) say('BEAMS MAXED! +10 GEMS', 1.2); } if (a === 'coffee') { boostFx = { t: 1 }; burst(g.px, g.py, '#ffb347', 20); vib(40); } else if (!pi) say(POW_NAME[a] || 'Power-up!', 1.4); }
     else if (n === 'hzwarn') { if (now - lastWarn > 450) { lastWarn = now; sfx('hzwarn'); } }
     else if (n === 'boom') {                                         // every creature the ULT wipes out explodes with its own pop and points
-      burst(a, b, c === 'orb' ? '#ffffff' : ROLE_COL[(ENEMIES[c] || { role: 'b' }).role], c === 'orb' ? 3 : 14); if (c !== 'orb') { pop(a, b - 10, '+' + ENEMIES[c].pts * mult(g), '#ffe27a'); for (let k = 0; k < 2; k++) spark(a, b, (Math.random() - .5) * 220, (Math.random() - .5) * 220, .6, COL[k % 7], 5); } }
+      burst(a, b, c === 'orb' ? '#ffffff' : ROLE_COL[(ENEMIES[c] || { role: 'b' }).role], c === 'orb' ? 3 : 14); if (c !== 'orb') { if (ENEMIES[c].role !== 'a') pop(a, b - 10, '+' + ENEMIES[c].pts * mult(g), '#ffe27a'); for (let k = 0; k < 2; k++) spark(a, b, (Math.random() - .5) * 220, (Math.random() - .5) * 220, .6, COL[k % 7], 5); } }
     else if (n === 'icewarn') { say(b + ' ' + shardTheme().name + '! Move!', 1.4); sfx('icewarn', SHARD_THEMES[viewPlace()]); }
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
@@ -3717,7 +3760,7 @@ function update(dt) {
   if (G && G.phase === 'warn') { const cn = Math.ceil(G.warnT / SPS); if (cn !== lastCount) { lastCount = cn; sfx('cdtick', cn); } } else lastCount = 0;
   if (warnFx.t > 0) warnFx.t -= dt; if (skillFx.t > 0) skillFx.t -= dt * 1.4; if (ultFx.t > 0) ultFx.t -= dt * 1.6; if (introQ > 0) { introQ -= dt; if (introQ <= 0 && G && G.phase === 'wave') phaseIntro(G); } if (cardFx.t > 0) cardFx.t -= dt * (cardFx.rar === 3 ? .55 : cardFx.rar === 2 ? .9 : cardFx.rar === 1 ? 1.1 : 1.4); if (prismAura > 0) prismAura -= dt; for (let i = ultBolts.length - 1; i >= 0; i--) { ultBolts[i].l -= dt; if (ultBolts[i].l <= 0) ultBolts.splice(i, 1); } if (boostFx.t > 0) boostFx.t -= dt * 3;
   if (thunderT > 0) thunderT -= dt; if (magicFx.t > 0) magicFx.t -= dt * 3;
-  if (rbRel.t > 0) rbRel.t -= dt * 2;
+  if (rbRel.t > 0) rbRel.t -= dt * 2; if (puFx.length) puFx = puFx.filter(f => (f.t -= dt * 1.7) > 0);
   if (G && st === 'play') { if (ocWas > 0 && !(G.oc > 0) && G.phase === 'wave') sfx('ocend', MKEYS[G.stage % 8] || 0); ocWas = G.oc; } else ocWas = 0;   // the Overload ran out: a soft power-down
   for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.l -= dt; if (p.l <= 0) { sparks.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy *= .985; }
   if (G && G.boss) { const bb = G.boss; if (!RIG || RIG.kind !== bb.kind) RIG = makeRig(bb.kind); if (RIG && RIG.update) { const rdt = Math.min(dt, .05), sc = 1.22; RIG.update(rdt, lastBossX === null ? 0 : (bb.x - lastBossX) / sc, lastBossY === null ? 0 : (bb.y - lastBossY) / sc, now / 1000, { charge: bossCharge, lv: bb.lv || 0, tx: (G.px - bb.x) / sc, ty: (G.py - bb.y) / sc }); } lastBossY = bb.y; bossCharge += ((bb.tele ? 1 : 0) - bossCharge) * Math.min(1, dt * 9); const vx = lastBossX === null ? 0 : (bb.x - lastBossX) / Math.max(dt, .001); lastBossX = bb.x; bossLean += (Math.max(-.12, Math.min(.12, vx * .0007)) - bossLean) * Math.min(1, dt * 6); bossSquash = Math.max(0, bossSquash - dt * .35); } else { RIG = null; lastBossY = null; lastBossX = null; bossCharge = 0; bossLean = 0; bossSquash = 0; }
