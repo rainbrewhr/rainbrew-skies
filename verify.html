@@ -72,7 +72,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
 const MODES = [['rank', 'Ranked'], ['classic', 'Classic']], MODE_NAME = { rank: 'Ranked', classic: 'Classic', rush: 'Rush', infinite: 'Infinite' };
-const ERRS = { auth: 'That PIN is wrong, or it was changed. Ask the game owner.', locked: 'Too many wrong attempts. Wait 10 minutes.', notfound: 'No score found with that code.', busy: 'The server is busy. Try again in a moment.' };
+const ERRS = { auth: 'That PIN is wrong, or it was changed. Ask the game owner.', locked: 'Too many wrong attempts. Wait 10 minutes.', notfound: 'No score found with that code.', busy: 'The server is busy. Try again in a moment.', contact: 'Enter a valid mobile number (09…).', nocontact: 'That score has no mobile number saved.', name: 'Enter a name.' };
 const HELP = 'Can’t reach the server. Ask the game owner to check in Apps Script: Deploy → Manage deployments → Edit → “Who has access” must be Anyone, the address must end in /exec, then Version: New version → Deploy.';
 const relCmp = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; } return 0; };   // 7.10 is newer than 7.9
 const app = $('app');
@@ -153,6 +153,18 @@ async function act(a, code, extra) {
       const j = await call({ action: 'a_mark', code, status: a === 'give' ? 'CLAIMED' : a === 'void' ? 'VOID' : 'OK', by: S.who || 'staff' });
       patchRow(j.row); if (a === 'void') { S.rows = S.rows.filter(x => x.code !== code); S.found = null; }
       renderList(); flash(a === 'give' ? '🎁 Prize recorded for ' + j.row.name : a === 'void' ? 'Score removed' : 'Restored'); return;
+    }
+    if (a === 'rename') {
+      const r = (S.rows.find(x => x.code === code) || S.found);
+      const n = await ask({ title: 'Rename this player?', body: 'Changes the name shown for <b>' + esc(r ? r.name : code) + '</b> on every board and circle. Use it for a name that should not be public.', input: { label: 'New name (12 letters at most)', value: '', placeholder: 'e.g. Player 12' }, ok: 'Rename' });
+      if (!n.ok || !String(n.value).trim()) return;
+      const j = await call({ action: 'a_rename', code, name: n.value }); flash('Renamed to ' + j.name + ' (' + j.changed + ' score' + (j.changed === 1 ? '' : 's') + ')'); return load();
+    }
+    if (a === 'erase') {
+      const n = await ask({ title: 'Erase a player’s data', body: 'Use this only when the player (or their parent or guardian) asks us to delete their data. Type their <b>mobile number</b>, or one of their score codes. Their name and number are removed from every score, their scores leave the boards, they leave all circles, and circles they own are hidden. <b>This cannot be undone.</b>', input: { label: 'Mobile number or score code', value: '', placeholder: '09…  or RB-XXXX-XXXX' }, ok: 'Erase', danger: true });
+      if (!n.ok) return; const v = String(n.value).trim(); if (!v) return;
+      const j = await call(Object.assign({ action: 'a_erase' }, /^RB-/i.test(v) ? { code: v.toUpperCase() } : { contact: v }));
+      flash('Erased: ' + j.scores + ' score' + (j.scores === 1 ? '' : 's') + ', ' + j.members + ' circle membership' + (j.members === 1 ? '' : 's') + ', ' + j.circles + ' circle' + (j.circles === 1 ? '' : 's') + ' hidden'); return load();
     }
     if (a === 'compsave') return saveComp();
     if (a === 'evsave') return saveEvent();
@@ -284,7 +296,7 @@ function details(r, rank) {
   <div class="acts"><button data-act="give" data-code="${esc(r.code)}" ${claimed ? 'disabled' : ''}>🎁 ${claimed ? 'Prize given' : 'Give prize'}</button>
   ${sms ? `<a class="btn alt" href="${esc(sms)}">💬 Text winner</a>` : '<span class="btn alt dis">💬 No number</span>'}
   <button class="alt" data-act="copy" data-code="x" data-extra="${esc(msgFor(r, rank))}">Copy message</button>
-  ${claimed ? `<button class="alt" data-act="undo" data-code="${esc(r.code)}">Undo</button>` : ''}<button class="alt" data-act="void" data-code="${esc(r.code)}">Remove score</button></div>`;
+  ${claimed ? `<button class="alt" data-act="undo" data-code="${esc(r.code)}">Undo</button>` : ''}<button class="alt" data-act="rename" data-code="${esc(r.code)}">Rename player</button><button class="alt" data-act="void" data-code="${esc(r.code)}">Remove score</button></div>`;
 }
 function card(r, rank, prize, open) {
   return `<div class="card${prize ? ' prize' : ''}"><div class="head" ${prize ? '' : `data-act="toggle" data-code="${esc(r.code)}"`}><div class="rank">${['🥇', '🥈', '🥉'][rank - 1] || (rank ? rank + '.' : '🔎')}</div>
@@ -364,6 +376,7 @@ function renderTools() {
   $('diag').innerHTML = S.diag ? diagCard() : '';
   $('tools').innerHTML = `<div class="card"><h2>Tools</h2>
     <div class="acts"><button data-act="diag">🔍 Why is a board empty?</button><button class="alt" data-act="csv">⬇ Winners list (CSV)</button></div>
+    <div class="acts"><button class="alt" data-act="erase">🗑 Erase a player’s data (on request)</button></div>
     <p class="meta" style="margin-top:12px">Connected to server <b>${esc(st ? st.server : '…')}</b> (…${esc(SERVER_URL.slice(-14))}) · code v${esc(st ? st.release : '…')} · staff page v${esc(STAFF_BUILD)} · rules ${esc(st ? st.rules : '…')}</p>
     <div class="acts"><button class="alt" data-act="testconn">Test the connection</button><button class="alt" data-act="disconnect">Disconnect this device</button></div></div>`;
 }

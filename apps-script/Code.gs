@@ -598,8 +598,8 @@ function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives) {
 var RULES_VERSION = SIM_VERSION;                                       // (the server and the game must run the same simulation version)
 
 var CODE_VERSION = '5.0';     // release number: this script, the game (index.html) and the staff page (verify.html) must all show the same one
-var COL = { MS: 1, WHEN: 2, SEASON: 3, MODE: 4, NAME: 5, CONTACT: 6, PID: 7, SCORE: 8, CODE: 9, RISK: 10, STATUS: 11, SID: 12, COMBO: 13, CATCHES: 14, SECS: 15, EVENTS: 16, CLAIMED_AT: 17, CLAIMED_BY: 18, NOTE: 19, UNI: 20, UNAME: 21 };
-var HEADERS = ['Ms', 'When', 'Season', 'Mode', 'Name', 'Contact', 'PID', 'Score', 'Code', 'Risk', 'Status', 'SID', 'MaxCombo', 'Catches', 'GameSecs', 'Events', 'ClaimedAt', 'ClaimedBy', 'Note', 'Unicorn', 'Unicorn Name'];
+var COL = { MS: 1, WHEN: 2, SEASON: 3, MODE: 4, NAME: 5, CONTACT: 6, PID: 7, SCORE: 8, CODE: 9, RISK: 10, STATUS: 11, SID: 12, COMBO: 13, CATCHES: 14, SECS: 15, EVENTS: 16, CLAIMED_AT: 17, CLAIMED_BY: 18, NOTE: 19, UNI: 20, UNAME: 21, CONSENT: 22 };
+var HEADERS = ['Ms', 'When', 'Season', 'Mode', 'Name', 'Contact', 'PID', 'Score', 'Code', 'Risk', 'Status', 'SID', 'MaxCombo', 'Catches', 'GameSecs', 'Events', 'ClaimedAt', 'ClaimedBy', 'Note', 'Unicorn', 'Unicorn Name', 'Consent'];
 
 /* ---------- one-time setup: run this function once from the editor ---------- */
 function setup() {
@@ -689,6 +689,8 @@ function doPost(e) {
       case 'c_create': case 'c_join': case 'c_leave': case 'c_mine': case 'c_edit': case 'c_delete': case 'c_kick': return out(circleAction(b.action, b));
       case 'a_event_set': return out(admin(b, adminEventSet));
       case 'a_circles': return out(admin(b, adminCircles));
+      case 'a_rename': return out(admin(b, adminRename));
+      case 'a_erase': return out(admin(b, adminErase));
       case 'a_circle_status': return out(admin(b, adminCircleStatus));
       case 'a_circle_kick': return out(admin(b, adminCircleKick));
     }
@@ -815,7 +817,15 @@ function rankOf(season, mode, score) {
   return higher + 1;
 }
 
-function readBoardRows() { var sh = sheet(), last = sh.getLastRow(); return last >= 2 ? sh.getRange(2, 1, last - 1, COL.UNI).getValues() : []; }
+/* Reads the score rows up to column `upto`, but NEVER the Events column (a replay log of up to 45,000 characters per row): with thousands of scores reading it every minute would make the boards slow. That cell comes back empty. */
+function readScoreRows(upto) {
+  var sh = sheet(), last = sh.getLastRow();
+  if (last < 2) return [];
+  var n = last - 1, a = sh.getRange(2, 1, n, COL.EVENTS - 1).getValues(), b = upto > COL.EVENTS ? sh.getRange(2, COL.EVENTS + 1, n, upto - COL.EVENTS).getValues() : null, out = new Array(n);
+  for (var i = 0; i < n; i++) out[i] = b ? a[i].concat([''], b[i]) : a[i].concat(['']);
+  return out;
+}
+function readBoardRows() { return readScoreRows(COL.UNI); }
 function buildList(mode, season, preloaded) {                       // preloaded: rows already read from the Sheet (one read can serve every board)
   var best = {}, list = [], rows = preloaded || readBoardRows();
   if (rows.length) {
@@ -866,7 +876,7 @@ function submitCore(b) {
   var comp = getComp();
   if (mode === 'rank' && comp && tok.s === comp.season && now > comp.end + comp.grace * 60000) return { ok: false, err: 'closed' };   // the competition is over
   var name = cleanName(b.name);
-  if (!name) return { ok: false, err: 'name' };
+  if (!name || nameBlocked(name)) return { ok: false, err: 'name' };          // the score stays on the phone and the player is asked for a different name
   var contact = cleanContact(b.contact);
   var isTest = name.indexOf('LOADTEST') === 0;
   if (mode === 'rank' && !isTest && !/^09\d{9}$/.test(contact)) return { ok: false, err: 'contact' };   // prizes need a number staff can call or text                         // rows from loadtest.html are tagged TEST and never shown on any board
@@ -895,7 +905,7 @@ function submitCore(b) {
   else c.put('sid_' + tok.sid, code, 21600);
   if (dup) { reply.dup = true; return reply; }                         // the same run sent again (e.g. the first reply was lost): same code, no new row
 
-  var rowVals = [now, Utilities.formatDate(new Date(now), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), season, mode, name, contact, pid, v.score, code, risk, isTest ? 'TEST' : 'OK', tok.sid, v.maxCombo, v.catches, v.secs, capEvents(b.tr), '', '', note, UNICORNS[b.uni] ? b.uni : 'frost', UNAMES[UNICORNS[b.uni] ? b.uni : 'frost'] || ''];
+  var rowVals = [now, Utilities.formatDate(new Date(now), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), season, mode, name, contact, pid, v.score, code, risk, isTest ? 'TEST' : 'OK', tok.sid, v.maxCombo, v.catches, v.secs, capEvents(b.tr), '', '', note, UNICORNS[b.uni] ? b.uni : 'frost', UNAMES[UNICORNS[b.uni] ? b.uni : 'frost'] || '', /^v\d{1,3}:[AM]$/.test(String(b.cv || '')) ? String(b.cv) : ''];   // the last column records which privacy notice the player agreed to (v1) and whether they are an adult (A) or a minor with a guardian's agreement (M)
   try { sheet().appendRow(rowVals); }
   catch (e1) {
     try { Utilities.sleep(300); sheet().appendRow(rowVals); }       // one more try
@@ -952,7 +962,7 @@ function adminTop(b) {
   var mode = String(b.mode || 'rank'), season = String(b.season || getSeason(mode));
   var sh = sheet(), last = sh.getLastRow(), best = {};
   if (last >= 2) {
-    var rows = sh.getRange(2, 1, last - 1, COL.NOTE).getValues(), seenSid = {};
+    var rows = readScoreRows(COL.NOTE), seenSid = {};
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i], sidv = r[COL.SID - 1];
       if (sidv) { if (seenSid[sidv]) continue; seenSid[sidv] = 1; }
@@ -1079,6 +1089,7 @@ function circleWho(b, light) {
   if (!did) return { err: 'device' };
   if (!/^09\d{9}$/.test(contact)) return { err: 'contact' };
   if (!name) return { err: 'name' };
+  if (nameBlocked(name)) return { err: 'badname' };
   var c = CacheService.getScriptCache(), k = (light ? 'cm_' : 'cw_') + did, n = +(c.get(k) || 0);
   if (n >= (light ? 120 : 40)) return { err: 'rate' };
   c.put(k, String(n + 1), 3600);
@@ -1108,6 +1119,7 @@ function circleAction(act, b) {
 function cCreate(w, b) {
   var name = cleanCircleName(b.cname);
   if (name.length < 2) return { ok: false, err: 'cname' };
+  if (nameBlocked(name)) return { ok: false, err: 'badcname' };
   var all = readCircles(), mine = all.filter(function (c) { return c.owner === w.pid && c.kind === 'circle' && c.status !== 'HIDDEN'; });
   if (mine.length >= CIRCLE.MAX_OWN) return { ok: false, err: 'limit' };
   var code = newCircleCode(all); if (!code) return { ok: false, err: 'server' };
@@ -1169,6 +1181,7 @@ function ownedCircle(w, b) {
 function cEdit(w, b) {
   var o = ownedCircle(w, b); if (o.err) return { ok: false, err: o.err };
   var name = cleanCircleName(b.cname); if (name.length < 2) return { ok: false, err: 'cname' };
+  if (nameBlocked(name)) return { ok: false, err: 'badcname' };
   o.c.name = name; if (b.close === true || b.close === false) o.c.status = b.close ? 'CLOSED' : 'ACTIVE';
   writeCircle(o.c); dropCircleCache(o.c.code);
   return { ok: true, circle: pubCircle(o.c, null, w.pid) };
@@ -1289,6 +1302,52 @@ function adminCircleKick(b) {
   for (var i = 0; i < members.length; i++) if (members[i].code === code && members[i].pid === pid && members[i].status === 'ACTIVE') { memberSheet().getRange(members[i].row, MEMBER_HEAD.length).setValue('REMOVED'); break; }
   dropCircleCache(code);
   return { ok: true };
+}
+
+/* ---------- staff: change a player's display name, and erase a player's personal data on request ---------- */
+function adminRename(b) {                                           // renames the player behind a score code everywhere (all their scores, their circles)
+  var row = findByCode(String(b.code || '').toUpperCase().trim()), name = cleanName(b.name);
+  if (!row) return { ok: false, err: 'notfound' };
+  if (!name) return { ok: false, err: 'name' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { ok: false, err: 'busy' }; }
+  try {
+    var sh = sheet(), pid = String(sh.getRange(row, COL.PID).getValue()), last = sh.getLastRow(), changed = 0;
+    if (!pid || pid === 'erased') return { ok: false, err: 'notfound' };
+    var pids = sh.getRange(2, COL.PID, last - 1, 1).getValues(), names = sh.getRange(2, COL.NAME, last - 1, 1).getValues();
+    for (var i = 0; i < pids.length; i++) if (String(pids[i][0]) === pid) { names[i][0] = name; changed++; }
+    sh.getRange(2, COL.NAME, last - 1, 1).setValues(names);
+    try {
+      var ms = readMembers(); ms.forEach(function (m) { if (m.pid === pid) memberSheet().getRange(m.row, 3).setValue(name); });
+      readCircles().forEach(function (c) { if (c.owner === pid) { c.ownerName = name; writeCircle(c); dropCircleCache(c.code); } });
+    } catch (e) {}
+  } finally { lock.releaseLock(); }
+  dropBoards();
+  return { ok: true, changed: changed, name: name };
+}
+function adminErase(b) {                                            // a player asks us to delete their data: by mobile number, or by one of their score codes
+  var contact = cleanContact(b.contact), code = String(b.code || '').toUpperCase().trim(), sh = sheet(), last = sh.getLastRow();
+  if (code && !contact) { var r0 = findByCode(code); if (!r0) return { ok: false, err: 'notfound' }; contact = cleanContact(sh.getRange(r0, COL.CONTACT).getValue()); if (!contact) return { ok: false, err: 'nocontact' }; }
+  if (!contact) return { ok: false, err: 'contact' };
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { ok: false, err: 'busy' }; }
+  var rowsHit = 0, members = 0, circles = 0;
+  try {
+    var pid = hmacHex('pid|c' + contact).slice(0, 8);
+    if (last >= 2) {
+      var n = last - 1, idv = sh.getRange(2, COL.NAME, n, 3).getValues(), st = sh.getRange(2, COL.STATUS, n, 1).getValues(), nt = sh.getRange(2, COL.NOTE, n, 1).getValues();   // Name, Contact, PID | Status | Note
+      for (var i = 0; i < n; i++) {
+        if (String(idv[i][2]) === pid || cleanContact(idv[i][1]) === contact) {
+          idv[i] = ['Deleted player', '', 'erased']; st[i][0] = 'VOID'; nt[i][0] = (String(nt[i][0] || '') + ' ERASED').trim(); rowsHit++;
+        }
+      }
+      if (rowsHit) { sh.getRange(2, COL.NAME, n, 3).setValues(idv); sh.getRange(2, COL.STATUS, n, 1).setValues(st); sh.getRange(2, COL.NOTE, n, 1).setValues(nt); }
+    }
+    readMembers().forEach(function (m) { if (m.pid === pid && m.status !== 'REMOVED') { memberSheet().getRange(m.row, 3, 1, 3).setValues([['', m.joined, 'REMOVED']]); dropCircleCache(m.code); members++; } });
+    readCircles().forEach(function (c) { if (c.owner === pid) { c.ownerName = 'Deleted'; c.status = 'HIDDEN'; writeCircle(c); dropCircleCache(c.code); circles++; } });
+  } finally { lock.releaseLock(); }
+  dropBoards();
+  return { ok: true, scores: rowsHit, members: members, circles: circles };
 }
 
 /* ---------- helpers ---------- */
@@ -1444,8 +1503,8 @@ function adminRepair() {                                              // turn se
 function sheet() { if (!_sheet) { _sheet = SpreadsheetApp.openById(prop('SHEET_ID')).getSheetByName(CONFIG.SHEET); ensureUniCol(_sheet); } return _sheet; }
 function ensureUniCol(sh) {   // older sheets get the Unicorn (id, used by the leaderboard) and Unicorn Name (for staff) columns once
   try {
-    if (sh.getMaxColumns() < COL.UNAME) sh.insertColumnsAfter(sh.getMaxColumns(), COL.UNAME - sh.getMaxColumns());
-    [[COL.UNI, 'Unicorn'], [COL.UNAME, 'Unicorn Name']].forEach(function (x) { if (String(sh.getRange(1, x[0]).getValue()) !== x[1]) sh.getRange(1, x[0]).setValue(x[1]).setFontWeight('bold'); });
+    if (sh.getMaxColumns() < COL.CONSENT) sh.insertColumnsAfter(sh.getMaxColumns(), COL.CONSENT - sh.getMaxColumns());
+    [[COL.UNI, 'Unicorn'], [COL.UNAME, 'Unicorn Name'], [COL.CONSENT, 'Consent']].forEach(function (x) { if (String(sh.getRange(1, x[0]).getValue()) !== x[1]) sh.getRange(1, x[0]).setValue(x[1]).setFontWeight('bold'); });
   } catch (e) {}
 }
 var UNAMES = { frost: 'Frost Unicorn', solar: 'Solar Blaze', void: 'Void Shadow', emerald: 'Emerald Nature', golden: 'Golden Sun' };
@@ -1464,6 +1523,23 @@ function readToken(t) {
 function makeCode(sid, score, mode, pid) { var h = hmacHex('code|' + sid + '|' + score + '|' + mode + '|' + pid).slice(0, 8).toUpperCase(); return 'RB-' + h.slice(0, 4) + '-' + h.slice(4); }
 function cleanId(s) { s = String(s || ''); return /^[A-Za-z0-9_-]{8,40}$/.test(s) ? s : ''; }
 function cleanName(s) { return String(s || '').replace(/[\u0000-\u001f<>&"'`\\\/]/g, '').replace(/^[=+\-@\s]+/, '').replace(/\s+/g, ' ').trim().slice(0, 12); }
+/* ---------- name filter: player names, circle names ----------
+   A basic list (English and Filipino), checked after turning look-alike characters into letters (a bad word with 0 for o, @ for a ... is still caught).
+   Long roots match anywhere; short words only match as a whole word, so honest names are not blocked by accident ("Class" is fine).
+   Names that look like contact details (a long number, an e-mail or a web address) are blocked too. It is a first line of defence, not a guarantee:
+   staff can still rename a player (staff page) and hide a circle. Keep this list the same as BAD_ROOTS / BAD_WORDS in index.html. */
+var BAD_ROOTS = ['fuck', 'shit', 'bitch', 'cunt', 'asshole', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'faggot', 'retard', 'rapist', 'hitler', 'putang', 'tangina', 'tarantado', 'pakyu', 'pakshet', 'kantot', 'jakol', 'hindot', 'pekpek', 'burat', 'kupal', 'ulol', 'puki', 'bayag', 'gago', 'dickhead', 'pussy', 'penis', 'vagina', 'blowjob'];
+var BAD_WORDS = ['cock', 'ass', 'tits', 'sex', 'rape', 'puta', 'bobo', 'tanga', 'tite', 'fag', 'kike', 'nazi', 'porn', 'wtf', 'stfu', 'kys'];
+function nameBlocked(s) {
+  var raw = String(s || '').toLowerCase();
+  if (/\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d/.test(raw) || /@|https?:|www\.|\.(com|net|org|ph|io)\b/.test(raw)) return true;
+  var map = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i', '|': 'i' }, t = raw.replace(/[01345878@$!|]/g, function (c) { return map[c]; });
+  var squeezed = t.replace(/[^a-z]/g, '').replace(/(.)\1+/g, '$1'), i;
+  for (i = 0; i < BAD_ROOTS.length; i++) if (squeezed.indexOf(BAD_ROOTS[i].replace(/(.)\1+/g, '$1')) >= 0) return true;
+  var words = t.split(/[^a-z]+/).filter(Boolean);
+  for (i = 0; i < words.length; i++) if (BAD_WORDS.indexOf(words[i].replace(/(.)\1+/g, '$1')) >= 0 || BAD_WORDS.indexOf(words[i]) >= 0) return true;
+  return false;
+}
 function cleanContact(s) {
   var d = String(s || '').replace(/\D/g, '');
   if (d.length === 12 && d.indexOf('63') === 0) d = '0' + d.slice(2);
@@ -1492,4 +1568,39 @@ function addManualScore() {
   sheet().appendRow([now, Utilities.formatDate(new Date(now), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), season, mode, name, contact, pid, score, code, 'REVIEW', 'OK', sid, '', '', '', '', '', '', 'MANUAL: added by staff after seeing proof', uni, UNAMES[uni] || '']);
   var c = CacheService.getScriptCache(); c.remove(boardKey(season, mode) + '_f');
   Logger.log('Recorded ' + score + ' for ' + name + ' (' + mode + ', ' + season + '). Verification code: ' + code);
+}
+
+
+/* ---------- speed check: run this once from the Apps Script editor, then read the log (View > Logs, or Execution log) ----------
+   1. Pick  benchmark  in the function list and press Run.  2. Copy the log lines and send them to whoever is helping you.
+   It only READS: it never writes a score, a circle or a setting. It times the things that make the server slow or fast:
+   reading the Sheet, building a leaderboard, a cache round trip, and replaying a real recorded flight (the heavy part of checking a score).
+   The recorded flight is a real Ranked run by the game's autopilot (about 2 minutes of play); replaying it many times acts like a long flight. */
+var BENCH = {"seed":1111,"mode":"rank","uni":"frost","score":8966,"steps":3949,"tr":"O?OLONOOOOOOiOZOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O7OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOO:O:O:O:N:O:N:O=OKONOOOOOOOOOO5O5O8OOOOOOOOOOOOOOOOOOOiOiOZOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVcVcUcUcUcTcTcSdPVOQOOOOOOOOOOiO^OOOOOOOOOOOOO5O5O5O5O5O5O5OLOOOOOiOiOiO\\=[=[==@=@>?>?gGgGgGfFfE[EIJUPLMRPNNPPROQNONPPOOPOOORPONOPROOOPPQOOORPONRPOOOPOOMOLPOOOOPOOOOOOOOOOOOOOOOOOOOOLOOOOOOO5O5O5O5OFOOOOO>_>_>_?_?_@`E^P[O^I`B_>XVE[N\\H\\BW<Q:M:L:L:M:N:OKLdLdLdLdLdNbFX@`E^WRGPWOGOWOGOWOGOWOGOWOGOWOGO[:R:R:R:Q:Q:Q:Q=OKONOOOOOOOOOOOOOOOOOOOOiOiOiOiOiO^OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO]a5R5S6TTcTcSd\\=[=Z<X<TAOMONOOiOiOPO5O5O5O5O5O5OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOROQOROQOROQO9OVOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOXOOOOOOOOO5OFOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiO[OOOOOOOOOOO5OEOBaCaCaDbDbDbEbNcqPiPiQiQiQiQiQiQiQiQeV[SIPNO-L5KCMONOOOOOOOOOOOOO:O:O:O:O:O:O:O@OIiNiOcNGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OI[N[OZNZOYNXOXNWOVOVOUNUOTOTOTOSOSORORORORNQOQOQOQOQOQOPOPOPPPQQPQOPNOMONPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5P5P5O5PBPNOOOOOOOOOOOOOOO5O5PIOOOPOOOOOOOPOOOOOOOOOGONONOOONONOOONONONOOONONOOOHOOOOOOOOOiOiO_?_?_?^>^>^>]=\\=[=UAOMONGcGcGcRdRdRdQdPdOSOPNOOOOOOONOOOOO5O5O5O5O5O8ONOOOOONOOONOOONOOONOOONONOOONONOOONONOiOiOiOWONONOOONONOOONONOOONONOOONOOONOOO5O5O5O5ONOOOPOS:S:S:S:S:R:R:Q=OKONOOOOOOOOOOOOOOOOOOOONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO@OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOb]b]b^a^a^a^`^`___^`Z]PROPPOPOOOPOPOOOPOPOOOPOPOPOOOPO5O5O6OOONOOONOOONOOOOONOOOB=C=C=C<D<D<E<F<I>iNiOiNiNiOeNOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!OgO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(PuO!fpF!jhD!?}G;FmPcP@OWOBO[O>O`O<OgO7O}O=^=^U]N\\O[NZNYNXOXNWOVNUOTOTOSOSORORNQOQOQOPOPOPOPOPOPOPOPOO5O5O5P5P5O8POOPOOOROOONOOONOOONOOONOLOOOOOOOOOOOiOPOOOPOOO9OOONOOONOOOiOiOiOiOiOiOeOOOOONOOOOOOONOOOOOOOOOOOiOPOOOOOOONOOONOOOOONOOONOOONO5O5O5O5O5OE<E<F<F<F;G;H;H;MDOMONOOOOOOOOOOOOOdOdOdOdOdOdOdOaOSNPOOOOiOOOOOOONOOONOOONOOOiOiOiOiOiOiOeONOOONONOOONONOOONONOOONONOOONONOOONONOOONO5O5O5O5O5O5O<OOOPOPOOOPOPOPOOOPOPOOOPOPOOOPOOOPOOOFONONOOONOiO]OPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONPMPNOONQNQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOIOOOOOOOOOOOOOOOOOOOOOiOiOiO4OiO6OiO5OiO5OiO5OiO5OiOUOMOOOPOOOOOOOPOOOOOOOOOOOOOOOOOOOOONO5O5O5O5O5O5O5O6OOOOONOOOOONOOOOONOOONOOONOOONONOOONONOcBcBcBcBcBcBcBcBdCdC]IT;QBOMONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO@`@`A`A`AaBaBaCaDbLXOQNOOOOONOOOOOOOOOOOOOOO5O5O5O:OPOPOOOPOPOOOPO]>]=]=\\=\\=[=[<Y<X;OKONOOOOOOOO@`A`A`LdLdLdMdfXfYfYTTOPPO}OGOVO!OQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOg:6:i:2;p:(<p:!ArG!M}f\"C}@!OtJ!TrQ!ORO=^>^>_>_?_?_@`@`BaDbOSPPOOPOPOOOPOOOPOiOiOiOiOiOiOiOiOiORONOOONOOONOOOOONOO:O:O:O:O:O:O:O=OKLNOOOOOOOOOOOOOO]OMOOONONOOONOH`H_G_G_G^G^F]F]F\\E[EYDWLROPOOOOOOOOOOOOOOOONOPONOPOIOOOOO6O9O<O>O?OAOMONONONOMONONONONONONOP:P:P:P:P:P:P:O=fKiNiOGOOOOOOO6TMK5NYOgOhPGN=OPOiQ5M;OcOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOJdVcGcUcDbyYKZPXPWOVPTOSOSORPQOQOPOPOPOOOOOOOPOOOOOOOOOOOOOOOOOOOOOO!OHOOPQPPOONMNMOOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOP5OiOiO\\OPOOOOOOOOOOOOOOOOOOOiOiOiOiOiOiOeOPR5N5N7MNOOONO5O5O5O5O5O5O=OPOPOOOPOPOPOPOOOiOiOiOiOiOiOiOiOiO[ONONONOOONONONO5O5O5O5OCOOOPOPOOOPOPOOOO:O:O:O:O:P:O:\\a\\a\\a\\a[aZbZbU^PRPPOOPOOOPOPOPOOOPOPOPOOOPOPOPOPO5O5O5O5O5O5O5O5O6OPOPOPOOOPOPOOOPOPOOOPOPOOOPOOOPOOOPOiOfOPOOOOOPOOOPOOOPOOOPOPOOOPOPOOOPOiOiOiOiOiOgOOOOONOOOO:O:O:P:O:P:O:O=OKONOOOOOOOOOOOOOOOOOO5O5O5O5O5OKOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBaBaCaCbDbEbEbGcK_PRPPOOPOPOPOOOPOPOPOPOOOPOPOiOHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOiOiOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5ONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO;OD<D<D<D<E<F<F;U;>BgM7NgO7OgO7OgO7O}OiOiOiOIOTOKOROMOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!OGO]`]aQaP`P_Q^Q]P[QYPXPVPTOSPQOQOPOPOPOOOOOOOOOOOOOOOOOOOOOOOONPMPNOONQNQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiO`P8OfO8OfO8OfO8OfO8OfO8OfOOOOOOOOOOOOOOOOOOOO:O:KBAIJ?Q;\\==^=^>_>_?_@`D_OROPOOOOOOOOiOiOiOiOeNTD[MXZOQOPOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5O@OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOMOK:L:L:L:L:L:L:M=OKONOOOOOOOOOOOOOOOOOO5O;OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOd[d\\c\\b]a^`^__^`[aPdO\\OQOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5OOOeOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOiOiOOOOOO:N:O:O:N:O:N:O=OKONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5OCOOOOOOOOOhVLdLdLdMdMdMdMd6S6T6TMQOOOOOOOOOOOOOOOOOOOOOOOO!OXOMOQOPOOOOO8:_;A;a<?;d=<<aBGAUKLOQOLQPONPMPNOOSOTOUPUOVQUOVPUOUPUOVOUPUMYPWPVOVOUPTOTOSOSOSORORPQOQOQOQOP8;_;:;c<D<e><<YCRFPLNNPONOPONOPONOPOH^P]SXPXOXPWOWOVOVOUPUOTOTOTOSiShShSKSOSORORORPQOQOQOQOQOPOPOPOPNPNQMQOPPOQOPOOOOPOPOPOOOOOOOOOO9;X;I;Z<F<S>Q?RARDgHOYSMJVROKZUPRp_`^`]_]a\\aTZIJVWLLSTNOQQOOOPOOOOOOOOOO5OKOOOOOOOOOOOPPOPPQOPQQOORQOOsT`DOMONOONPOONPOObOCZZHBUZHAQ]JAL^OEJ[RIKVSMMQQN9P:O:P:O:O:P;ZOOGWPHNWQFXYTDUTjAb=a;]<]=^>^FZOQOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOOOOOPOPOOOPOPOPOQOPOQOPOQOQOQOQOROQOQOROQOROROQOROROQOROQOQOROQOQOQOQOQOQOQOQOPOQOQOPOQOPOQOPOPOQOPOPOPOPOPOPOPOOOPOPOOOPOOOPOOOOOOOOOOOOOOOOOOOOONOOONOOONOOONONONONOOOMONONONONONOMONOMONOMONOMOMONOMO:C:C:C:C:B;B;B;A<A=@?>l\\c\\c]b]b]a^`_^`\\aRYLQMPLOMOLOMOLOMOLOLOMOLOMOLOMOLOL:L:L:M:M:M:M:N=OKONOOOO7OOOOOOOOOOOOPNPOPNPUPNSPNMSPMLUQJIZUB@iZ<FZVB=d\\>AYXC;X_DH__RMe]CD^RBCZRDCTTGCSZJ?NXDNDZBbBhLhS_SOPOPOOOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOROQOROQOROOOOOOOOOOO5O>OiOiOiOROOOOOaPONOOOPPPPPOOQQOORQONRQPNRP>QQb@MPeF@lgT;ZCTAAIWB?NSB>XMFL[PGNYOJOVOM5N5Q5RBQOPOOOOOOOOOOOOiOiOiOOOOO}l<@FDOMON8Otl<AEC5Ntk8F9ECFOMiOWOOO@OOOOOOOOOOOOO5OHOOOOOOOOOOOOOOOiOiOQOOOOOOOOOOOOOOOOO5O<OOOOOOOOOOOOOOOOOOOOOOO5O5O5O5OBOOOOOOOOOOOiOiOiOWOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOPOQOQORORNROROROSOSOSOSOSOSOSOSOSOSOSOTOSOTOSOTOSOTOSOTOSOTOSOTNTNTNTNSPSPSPSPSOTOTOSOTOSOTOSOTOSOTOSOTOSOTOSOTOSOTOShThUhVJXPVPUOONPOQNRORORNSOSfSaX<;;<:B:C:C9D8E^>]>^>^>6I5L`?`?_?_>^>]>\\=SEOMONOOOOOOOOOOOOOO5O5OGOOOOOOOOOOOOOOOOOOOOOOOOO^`^`<]<]fYeZeZeZeZd[d[c]^\\GQOPOOOOOOOOOOOOOOOOOO-O5O5O5O5O5O5O5O5O5O5OWOOOOOU:K:K:S:EDmDdCdBcBbAXEOMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOFcGcGcd\\c\\c\\c\\b]b^`^XZOQO:O:O:O:O:NH7[9Z9[eZeZeZd[c\\b]JTOPOOOOOOOOOOOOI:T;L;[?.U6V6V7V7V7W7W7W8X@WOQOOOOOOOOOOOOOOOOOOOOOOOO5O5OOOOOOOOOOOOOOOqOKOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOeOOOOOOOOOOOOOOOOOOOOOOOOOO:O:O:O:O:O:O:>?MIONOOOOOOOOOOOOOObO<OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO$OzO$OzO$OzO$OzO$OzO$OzO$OzP$N{P$N{Q$M|R$M}S$K}T$J}V#I}V#H}X#G}X#F}X\"G}X\"F}W!G}V!H}T!I}R!K}N!N}J!Q}H![}E!s}I!b}M!P}F!&}I","sk":"2533","cd":"0","rv":"1671,2482"};
+function benchmark() {
+  var out = [], t, ms = function (t0) { return Math.round(Date.now() - t0); }, log = function (s) { out.push(s); Logger.log(s); };
+  log('Rainbrew Sky speed check · release ' + CODE_VERSION + ' · rules ' + RULES_VERSION);
+  t = Date.now(); var rows = readBoardRows(); var tRead = ms(t);
+  log('1. Read every score row (without the long Events column): ' + tRead + ' ms for ' + rows.length + ' rows');
+  t = Date.now(); var season = getSeason('rank'), list = buildList('rank', season, rows); var tBuild = ms(t);
+  log('2. Build the Ranked leaderboard from those rows: ' + tBuild + ' ms (' + list.length + ' players this season)');
+  t = Date.now(); var c = readCircles().length, m = readMembers().length; var tCirc = ms(t);
+  log('3. Read the Circles and Members tabs: ' + tCirc + ' ms (' + c + ' circles, ' + m + ' memberships)');
+  var cc = CacheService.getScriptCache(), n = 20; t = Date.now();
+  for (var i = 0; i < n; i++) { cc.put('bench_' + i, 'x', 30); cc.get('bench_' + i); }
+  var tCache = ms(t); log('4. Cache write+read: ' + (tCache / n).toFixed(1) + ' ms each (' + n + ' round trips)');
+  var G, runs = 20, ok = true; t = Date.now();
+  for (var r = 0; r < runs; r++) {
+    G = simulate(BENCH.seed, BENCH.mode, BENCH.uni, BENCH.tr, false, String(BENCH.sk).split(',').filter(function (x) { return x !== ''; }).map(Number), '', BENCH.cd, BENCH.rv);
+    if (G.score !== BENCH.score) ok = false;
+  }
+  var tSim = ms(t), steps = BENCH.steps * runs, per = tSim / steps * 1000;
+  log('5. Replay a recorded flight ' + runs + ' times (' + steps + ' game steps, about ' + (steps / SPS / 60).toFixed(0) + ' minutes of play): ' + tSim + ' ms = ' + per.toFixed(1) + ' microseconds per step · ' + (ok ? 'every replay matched the recorded score' : 'WARNING: a replay did NOT match the recorded score (the server and the game rules differ)'));
+  [5, 30, 180].forEach(function (min) { log('   so checking a ' + min + '-minute flight takes about ' + Math.round(min * 60 * SPS * per / 1000) + ' ms'); });
+  var notes = [];
+  if (tRead > 4000) notes.push('Reading the Sheet is slow (' + tRead + ' ms): the leaderboard refresh may time out as scores grow; this is the sign to move to a real database.');
+  if (tCirc > 1500) notes.push('The Circles/Members tabs are slow to read (' + tCirc + ' ms).');
+  if (per > 150) notes.push('Replay is slow on this server (' + per.toFixed(0) + ' microseconds per step).');
+  log(notes.length ? 'Verdict: ' + notes.join(' ') : 'Verdict: nothing slow right now. Run this again when you have many more scores, and after a busy contest.');
+  return out;
 }

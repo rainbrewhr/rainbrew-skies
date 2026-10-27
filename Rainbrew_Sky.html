@@ -115,7 +115,8 @@ details{margin:12px 0;text-align:left}details summary{cursor:pointer;font-weight
 #skipdemo[hidden]{display:none}
 a.sbtn.big{font-size:1.15rem;padding:16px 12px;background:var(--btn2);color:#fff;border-color:transparent;margin:14px 0}
 button.small{font-size:.85rem;padding:8px 14px;opacity:.85;min-height:40px}
-small.foot{display:block;margin-top:12px;opacity:.7;font-size:.72rem}
+small.foot{display:block;margin-top:12px;opacity:.7;font-size:.72rem}small.foot a{color:inherit;text-decoration:underline}
+.consent{text-align:left;font-size:.84rem;margin:10px 0}.consent label{display:flex;gap:8px;align-items:flex-start;margin:8px 0;line-height:1.35}.consent input{width:20px;height:20px;flex:0 0 20px;margin:1px 0 0;accent-color:#7b4bb8}.consent a{color:inherit;font-weight:800;text-decoration:underline}
 @media (prefers-reduced-motion:reduce){button:active{transform:none}}
 /* BOLD ARCADE */h1,.big{font-family:"Segoe UI", "Trebuchet MS", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;font-weight:700;letter-spacing:.6px;text-transform:uppercase}button[data-a=play],button[data-a=setgo]{font-family:"Segoe UI", "Trebuchet MS", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;font-weight:900;letter-spacing:1px;text-transform:uppercase;font-size:1.25em}
 .unis{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:12px 0}.uni{position:relative;display:flex;flex-direction:column;align-items:center;padding:8px 6px 10px;border-radius:16px;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:inherit;font:inherit;cursor:pointer}.uni.on{border-color:#ffd23f;box-shadow:0 0 0 3px rgba(255,210,63,.35)}.uni.lock{opacity:.85;cursor:default}.uni b{font-size:1.05em;margin-top:2px}.uni small{opacity:.8;font-size:.82em;line-height:1.2;text-align:center}.ue3{display:block;width:96px;height:96px;background-size:600% 100%;background-position:20% 0;background-repeat:no-repeat}.uni .lk{position:absolute;top:36px;font-style:normal;font-size:28px}
@@ -3814,7 +3815,7 @@ function saveTicket(r, p) {
 }
 
 /* ============ screens ============ */
-const FOOT = '<small class="foot">' + (CONFIG.SHOP_LINE ? esc(CONFIG.SHOP_LINE) + ' · ' : '') + '© 2026 Rainbrew Coffee Shop. The Rainbrew name, logo &amp; products are owned by Rainbrew Coffee Shop.</small>';
+const FOOT = '<small class="foot">' + (CONFIG.SHOP_LINE ? esc(CONFIG.SHOP_LINE) + ' · ' : '') + '© 2026 Rainbrew Coffee Shop. The Rainbrew name, logo &amp; products are owned by Rainbrew Coffee Shop. <a href="privacy.html" target="_blank" rel="noopener">Privacy Notice &amp; Rules</a></small>';
 let curBack = '', exitArm = 0, navOn = false, menuMore = false;
 function screen(h, name, back) {
   h = decorate(h);
@@ -4079,9 +4080,9 @@ function ticketBox(res, r) {
   return `<div class="ticket"><div class="meta"> Recorded! Verification code</div><div class="code" id="code">${esc(res.code)}</div><div class="meta">${r.score} pts · ${MODE_NAME[r.mode]}${res.rank ? ' · about #' + res.rank : ''}</div>${res.seasonLabel ? `<div class="meta">Counted on: <b>${esc(res.seasonLabel)}</b></div>` : ''}</div>${res.stale ? `<p class="note warn">This run counted on the earlier board “${esc(res.season)}”, because the Rank board was reset while you were playing.</p>` : ''}<p class="meta">Take a screenshot. If you finish in the prize ranks, show this code to Rainbrew staff. The leaderboard updates within a minute.</p><button class="sec" data-a="copy">Copy code</button>`;
 }
 const validPH = s => { const d = String(s || '').replace(/\D/g, ''); return /^09\d{9}$/.test(d) || /^639\d{9}$/.test(d); };
-const ERR = { device: 'This score was played on a different phone, so it can’t be submitted from this one. Play again.', mode: 'This mode doesn’t record scores.', server: 'The server could not save your score right now. It keeps trying.', size: 'This run is too large to upload.', events: 'This run is too long to check.', kind: 'The run did not pass the server’s check.', order: 'The run did not pass the server’s check.', item: 'The run did not pass the server’s check.', format: 'The run did not pass the server’s check.', afterover: 'The run did not pass the server’s check.', time: 'The run did not pass the server’s check.', closed: 'The competition has ended, so this score arrived too late to count.', contact: 'Rank needs a Philippine mobile number (like 0917 123 4567) so staff can reach winners.', mismatch: 'The score didn’t match the server’s check.', timing: 'The run timing looked invalid.', clock: 'The run was longer than the time that passed.', used: 'This run was already submitted.', rate: 'Too many submissions. Try again in a bit.', expired: 'This session expired. Play again to get a new one.', name: 'Please enter a name.', token: 'This run could not be verified.', version: 'The game or the scoreboard was updated while you played, so this run could not be counted. Reload the page and play again: your next run will count.' };
+const ERR = { device: 'This score was played on a different phone, so it can’t be submitted from this one. Play again.', mode: 'This mode doesn’t record scores.', server: 'The server could not save your score right now. It keeps trying.', size: 'This run is too large to upload.', events: 'This run is too long to check.', kind: 'The run did not pass the server’s check.', order: 'The run did not pass the server’s check.', item: 'The run did not pass the server’s check.', format: 'The run did not pass the server’s check.', afterover: 'The run did not pass the server’s check.', time: 'The run did not pass the server’s check.', closed: 'The competition has ended, so this score arrived too late to count.', contact: 'Rank needs a Philippine mobile number (like 0917 123 4567) so staff can reach winners.', mismatch: 'The score didn’t match the server’s check.', timing: 'The run timing looked invalid.', clock: 'The run was longer than the time that passed.', used: 'This run was already submitted.', rate: 'Too many submissions. Try again in a bit.', expired: 'This session expired. Play again to get a new one.', name: 'That name can’t be used. Please choose a different name (no bad words, phone numbers or web addresses).', token: 'This run could not be verified.', version: 'The game or the scoreboard was updated while you played, so this run could not be counted. Reload the page and play again: your next run will count.' };
 async function sendRun(r, nm, ct, onBusy) {                                      // returns {status:'ok'|'queued'|'refused', res, p}
-  const p = { action: 'submit', token: r.token, did, name: nm, contact: ct, score: r.score, tEnd: r.tEnd, tr: r.tr, sk: r.sk || '', cd: r.cd || '', rv: r.rv || '', up: r.up || '', uni: r.uni, mode: r.mode, v: SIM_VERSION };
+  const p = { action: 'submit', token: r.token, did, name: nm, contact: ct, cv: consentCv(), score: r.score, tEnd: r.tEnd, tr: r.tr, sk: r.sk || '', cd: r.cd || '', rv: r.rv || '', up: r.up || '', uni: r.uni, mode: r.mode, v: SIM_VERSION };
   const res = await trySubmit(p, 150000, onBusy);   // safe to repeat: the server returns the same code for the same run
   if (res.ok) { r.done = 1; unsentDel(r); saveTicket(res, p); return { status: 'ok', res, p }; }
   if (['net', 'busy', 'server', 'rate'].indexOf(res.err) >= 0) { enqueue(p); unsentDel(r); return { status: 'queued', res, p }; }   // saved on the device, uploads automatically later
@@ -4203,7 +4204,7 @@ const ACT = {
   play() { playNow(); }, unis: unicornsScreen, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
   compclose() { const c = compNow(); if (comp) compHideKey = comp.name + ':' + c.state; menu(); }, lb() { lbScreen('rank'); }, lbplayed() { lbScreen(run && MODES[run.mode] && MODES[run.mode].ranked ? run.mode : 'rank'); }, menumore() { menuMore = true; menu(); }, menuclose() { menuMore = false; menu(); }, demo() { startDemo(); }, lbr() { lbScreen(null, true); }, more: moreLb, submit: submitScore, local: saveLocal,
   resume() { ov.style.display = 'none'; st = 'ready'; cd = 3; cdN = 0; },
-  regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (!validName(nm)) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); rememberPlayer(); menu(); setTimeout(maybeInvite, 300); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
+  regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (nm.length < 2) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (nameBlocked(nm)) return registerScreen(NAME_BAD, nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); const cs = readConsent(); if (!cs.ok) return registerScreen(cs.err, nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); saveConsent(cs.a); rememberPlayer(); menu(); setTimeout(maybeInvite, 300); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
   players() { playersScreen(); },
   usep(b) { const c = String(b.dataset.a).split(':')[1], pl = players.find(x => x.contact === c); if (pl) { prof.name = pl.name; prof.contact = pl.contact; LS.set('us_prof', prof); pl.last = Date.now(); LS.set('us_players', players); } menu(); },
   newp() { registerScreen('', '', ''); },
@@ -4227,7 +4228,7 @@ const ACT = {
   copy(b) { const c = $('code').textContent; try { navigator.clipboard.writeText(c); b.textContent = 'Copied '; } catch (e) { b.textContent = c; } }
 };
 /* ---------- circles and events: boards for friends, teams and staff events. They are only a filter over the same verified Ranked scores: nothing here can change a score. ---------- */
-const CIRC_ERR = { device: 'Your device could not be identified. Reload the game.', contact: 'Register with your name and mobile number first.', name: 'Register with your name first.', rate: 'Too many tries. Please wait a little.', busy: 'The server is busy. Try again in a moment.', server: 'Something went wrong. Try again.', net: 'Can’t reach the server. Check your connection.', action: 'Circles are not available on the server yet.', notfound: 'No circle with that code. Check the letters.', code: 'A code has 6 letters and numbers.', closed: 'This circle is closed.', ended: 'This event is over.', removed: 'You were removed from this circle.', full: 'This circle is full.', limit: 'You have reached the limit of circles. Leave or close one first.', owner: 'Only the owner can do that.', cname: 'Give the circle a name (at least 2 letters).', pid: 'Could not find that player.' };
+const CIRC_ERR = { device: 'Your device could not be identified. Reload the game.', contact: 'Register with your name and mobile number first.', name: 'Register with your name first.', rate: 'Too many tries. Please wait a little.', busy: 'The server is busy. Try again in a moment.', server: 'Something went wrong. Try again.', net: 'Can’t reach the server. Check your connection.', action: 'Circles are not available on the server yet.', notfound: 'No circle with that code. Check the letters.', code: 'A code has 6 letters and numbers.', closed: 'This circle is closed.', ended: 'This event is over.', removed: 'You were removed from this circle.', full: 'This circle is full.', limit: 'You have reached the limit of circles. Leave or close one first.', owner: 'Only the owner can do that.', cname: 'Give the circle a name (at least 2 letters).', pid: 'Could not find that player.', badname: 'Your player name can’t be used. Please register again with a different name.', badcname: 'Please choose a different circle name (no bad words, phone numbers or web addresses).' };
 const circErr = e => CIRC_ERR[e] || 'Something went wrong. Try again.';
 let circ = { list: null, events: null, err: '', cur: null, period: 'season', rows: [], meta: null, me: null, roster: null, seq: 0, pid: '', ask: '' };
 const circPid = () => circ.pid || myPid;
@@ -4254,6 +4255,7 @@ function paintCircles(loading) {
 }
 async function circlesScreen() {
   if (!ONLINE) { screen(`<h1>Circles &amp; Events</h1><p class="meta warn">Circles need an internet connection.</p>`, 'circ', 'lb'); return; }
+  if (isRegistered() && !hasConsent()) { consentScreen('circles'); return; }
   if (!circReady()) { screen(`<h1>Circles &amp; Events</h1><p>Register with your name and mobile number first. A circle ranks the Ranked scores of its members, so it needs your player profile.</p><button data-a="newp">Register</button>`, 'circ', 'lb'); return; }
   const seq = ++circ.seq; circ.err = ''; paintCircles(true);
   const [mine, ev] = await Promise.all([circCall('c_mine'), api('GET', { action: 'events' }).catch(() => null)]);
@@ -4299,6 +4301,7 @@ async function circForm(kind) {
 function inviteScreen(code) { screen(`<h1>Join a circle?</h1><p>A friend invited you with the code <b>${fmtCode(code)}</b>.</p><p class="meta" id="cmsg"></p><button data-a="cjoinnow:${code}">Join</button><button class="sec" data-a="cnot">Not now</button>`, 'circinv'); }
 function maybeInvite() { const c = LS.get('us_pcircle', ''); if (!c || !ONLINE || !circReady() || curScr !== 'menu') return; inviteScreen(c); }
 Object.assign(ACT, {
+  consentok() { const cs = readConsent(); if (!cs.ok) return consentScreen(consentAfter, cs.err); saveConsent(cs.a); const a = consentAfter; if (a === 'play') startGame(mode); else if (a === 'circles') circlesScreen(); else menu(); },
   circles: circlesScreen, cview(b) { circleView(String(b.dataset.a).split(':')[1]); }, cper(b) { circleView(circ.cur, String(b.dataset.a).split(':')[1]); },
   ccreate() { circForm('create'); }, cjoin() { circForm('join'); }, cnot() { LS.set('us_pcircle', ''); menu(); },
   async cjoinnow(b) { const code = String(b.dataset.a).split(':')[1]; LS.set('us_pcircle', ''); const m = $('cmsg'); if (m) m.textContent = 'Joining…'; const r = await circCall('c_join', { code }); if (!r.ok) { screen(`<h1>Join a circle?</h1><p class="warn">${esc(circErr(r.err))}</p><button data-a="cnot">OK</button>`, 'circinv'); return; } circleView(r.circle.code); },
@@ -4428,7 +4431,7 @@ function slide(id, act) {
 function carousel(act) { return `<div class="carwrap"><div class="car" id="car">${CHARACTERS.map(c => slide(c.id, act)).join('')}</div></div>`; }
 function carMove(dir) { const c = $('car'); if (c && c.scrollBy) c.scrollBy({ left: dir * c.clientWidth, behavior: 'smooth' }); }
 function carShow(id) { const i = Math.max(0, CHARACTERS.findIndex(c => c.id === id)); setTimeout(() => { const c = $('car'); if (!c) return; c.style.scrollBehavior = 'auto'; c.scrollLeft = i * c.clientWidth; let t; c.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => { const k = CHARACTERS[Math.round(c.scrollLeft / Math.max(1, c.clientWidth))]; if (k) shopFocus = k.id; }, 120); }, { passive: true }); }, 0); }
-function playNow() { if (!isRegistered()) { pendingPlay = true; registerScreen(); } else startGame(mode); }   // nobody flies before registering a name and a mobile number   // the first time: a name and a unicorn before the flight
+function playNow() { if (!isRegistered()) { pendingPlay = true; registerScreen(); } else if (!hasConsent()) consentScreen('play'); else startGame(mode); }   // nobody flies before registering a name and a mobile number   // the first time: a name and a unicorn before the flight
 function setupScreen(err) {
   screen(`<h1>Choose your unicorn</h1>
   <input id="nm0" type="text" maxlength="12" placeholder="Your name" value="${esc(prof.name)}" autocomplete="nickname">${err ? `<p class="meta warn">${esc(err)}</p>` : ''}
@@ -4551,7 +4554,42 @@ function cardsScreen() {                                             // after ev
 /* ---------- players, registration and records ---------- */
 let players = LS.get('us_players', []), hist = LS.get('us_hist', []), pendingPlay = false;
 const cleanPhone = s => String(s || '').replace(/[\s\-().]/g, '');
-const validName = n => String(n || '').trim().replace(/\s+/g, ' ').length >= 2;
+/* ---------- name filter (keep the same as BAD_ROOTS / BAD_WORDS in Code.gs): bad words, phone numbers, e-mails and web addresses are not allowed in names ---------- */
+const BAD_ROOTS = ['fuck', 'shit', 'bitch', 'cunt', 'asshole', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'faggot', 'retard', 'rapist', 'hitler', 'putang', 'tangina', 'tarantado', 'pakyu', 'pakshet', 'kantot', 'jakol', 'hindot', 'pekpek', 'burat', 'kupal', 'ulol', 'puki', 'bayag', 'gago', 'dickhead', 'pussy', 'penis', 'vagina', 'blowjob'];
+const BAD_WORDS = ['cock', 'ass', 'tits', 'sex', 'rape', 'puta', 'bobo', 'tanga', 'tite', 'fag', 'kike', 'nazi', 'porn', 'wtf', 'stfu', 'kys'];
+function nameBlocked(s) {
+  const raw = String(s || '').toLowerCase();
+  if (/\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d[\s.\-]*\d/.test(raw) || /@|https?:|www\.|\.(com|net|org|ph|io)\b/.test(raw)) return true;
+  const map = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i', '|': 'i' }, t = raw.replace(/[01345878@$!|]/g, c => map[c]), sq = x => x.replace(/(.)\1+/g, '$1');
+  const squeezed = sq(t.replace(/[^a-z]/g, ''));
+  if (BAD_ROOTS.some(w => squeezed.indexOf(sq(w)) >= 0)) return true;
+  return t.split(/[^a-z]+/).filter(Boolean).some(w => BAD_WORDS.indexOf(w) >= 0 || BAD_WORDS.indexOf(sq(w)) >= 0);
+}
+const NAME_BAD = 'Please choose a different name. Names can’t contain bad words, phone numbers or web addresses.';
+/* ---------- privacy consent: recorded per mobile number on this device, and sent with every score so the server keeps a record (v1 = this notice, A = adult, M = minor with a parent or guardian's agreement) ---------- */
+const PRIVACY_V = 1;
+const consentMap = () => LS.get('us_consent', {}) || {};
+const consentRec = () => consentMap()[cleanPhone(prof.contact)] || null;
+const hasConsent = () => { const c = consentRec(); return !!(c && c.v >= PRIVACY_V && (c.a === 'A' || c.a === 'M')); };
+const consentCv = () => { const c = consentRec(); return c && hasConsent() ? 'v' + c.v + ':' + c.a : ''; };
+function consentHtml() {
+  return `<div class="consent"><label><input type="checkbox" id="rgc"><span>I have read the <a href="privacy.html" target="_blank" rel="noopener">Privacy Notice &amp; Rules</a> and I agree that Rainbrew Coffee Shop may use my name and mobile number as described there.</span></label>
+  <label><input type="radio" name="rga" value="A"><span>I am 18 or older.</span></label>
+  <label><input type="radio" name="rga" value="M"><span>I am under 18, and my parent or guardian has read this and agrees.</span></label></div>`;
+}
+function readConsent() {
+  const c = $('rgc'), r = document.querySelector('input[name="rga"]:checked');
+  if (!c || !c.checked) return { ok: false, err: 'Please tick the box to agree to the Privacy Notice & Rules.' };
+  if (!r) return { ok: false, err: 'Please choose: 18 or older, or under 18 with a parent or guardian.' };
+  return { ok: true, a: r.value };
+}
+function saveConsent(a, contact) { const m = consentMap(); m[cleanPhone(contact || prof.contact)] = { v: PRIVACY_V, a, at: Date.now() }; LS.set('us_consent', m); }
+let consentAfter = 'menu';
+function consentScreen(after, err) {                                  // a player who registered before the privacy notice existed agrees once, before the next game
+  consentAfter = after || 'menu';
+  screen(`<h1>Before you play</h1><p class="meta">Please read how Rainbrew uses your name and mobile number, then agree to continue.</p>${consentHtml()}${err ? `<p class="meta warn">${esc(err)}</p>` : ''}<button data-a="consentok">Agree and continue</button><button class="sec" data-a="menu">Not now</button>`, 'consent');
+}
+const validName = n => String(n || '').trim().replace(/\s+/g, ' ').length >= 2 && !nameBlocked(n);
 const validPhone = p => /^\+?\d{9,15}$/.test(cleanPhone(p));
 const isRegistered = () => validName(prof.name) && validPhone(prof.contact);
 const maskPhone = p => '••••' + String(p).slice(-4);
@@ -4564,6 +4602,7 @@ function registerScreen(err, nm, ph) {                              // a clean r
   screen(`<h1>Register to play</h1><p class="meta">Your name and mobile number keep every score and game under your own profile.</p>
   <input id="rgn" type="text" maxlength="20" placeholder="Your name" autocomplete="name" value="${esc(nm === undefined ? (prof.name || '') : nm)}">
   <input id="rgp" type="tel" inputmode="tel" maxlength="18" placeholder="Mobile (09171234567)" autocomplete="tel" value="${esc(ph === undefined ? (prof.contact || '') : ph)}">
+  ${consentHtml()}
   ${err ? `<p class="meta warn" id="rgerr">${esc(err)}</p>` : ''}<button data-a="regok">Start playing</button>${players.length ? '<button class="sec" data-a="players">I have played before</button>' : ''}`, 'register');
 }
 function playersScreen() {                                           // returning players pick themselves; someone else can register as a new player
