@@ -35,6 +35,7 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 * **Manual score tool:** `addManualScore()` at the bottom of `Code.gs` records a score by hand after staff have seen proof (fill in the values, choose it in the editor, press Run). Rows are marked MANUAL / REVIEW.
 * **Screen:** purple and green theme with flat fills, no text shadows, pinned Back / Next / Home, pause button top right above the lives, large centered contest countdown, one-time power-up hints, shaking ULT, small spiky enemy shots, full-bleed background.
 * **Home page:** ‹ › arrows beside the flying unicorn and a Select button under it (locked unicorns show a price and open the buy pop-up). With an unfinished run, PLAY becomes **Resume** and **New game**. The Top Rank button glows.
+* **Home bar glow:** the Shop button now glows (it was Top Rank). Look only; no rules change, so `Code.gs` and the sim version (33) stay the same.
 * `sw.js` cache name is `rainbrew-sky-v5-12`. `verify.html`, `manifest.webmanifest` and `make_icons.py` needed no change.
 
 ## What changed in 5.0
