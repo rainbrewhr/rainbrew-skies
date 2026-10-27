@@ -676,6 +676,12 @@ button.sec,.chip{border-color:#2fbf71}
 #box .tabbar button[data-a="unis"]{position:relative;overflow:visible!important;filter:drop-shadow(0 0 8px rgba(255,214,102,.9));animation:rkfilter 2s ease-in-out infinite!important}
 #box .tabbar button[data-a="unis"]::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;animation:rkglow 2s ease-in-out infinite;display:block!important;opacity:1!important;transform:none!important;width:auto;height:auto;background:transparent}
 @keyframes rkfilter{0%,100%{filter:drop-shadow(0 0 5px rgba(255,214,102,.6))}50%{filter:drop-shadow(0 0 16px rgba(255,214,102,1))}}
+/* circles and events */
+#box button.circ{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;margin:6px 0;padding:10px 14px;min-height:0;border-radius:16px;background:var(--soft)!important;color:var(--ink)!important;border:2px solid var(--btn2);box-shadow:none}
+#box button.circ b{font-size:1.02rem}#box button.circ span{font-size:.8rem;opacity:.85}
+.ccode{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.7rem;font-weight:800;letter-spacing:.12em;text-align:center;margin:6px 0}
+.csec{margin:14px 0 4px;font-size:.95rem;font-weight:800;text-align:left}.cmem{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(128,128,128,.25);font-size:.92rem;text-align:left}
+#box .cmem button{width:auto;min-height:0;padding:4px 12px;font-size:.8rem;margin:0}
 .ustrip{gap:2px;padding:4px calc(50% - 56px) 6px;margin:0 -4px 6px;scroll-snap-type:x mandatory}
 #box .ustrip button,#box .ustrip button.on,#box .ustrip button.lk{flex:0 0 112px;background:transparent!important;border:0!important;border-radius:0;padding:4px 0;gap:2px;scroll-snap-align:center}
 .ustrip img{width:92px;height:92px;opacity:.7;transform:scale(.86);transition:transform .2s,opacity .2s;filter:none}
@@ -3875,7 +3881,7 @@ function gateScreen() {                                                         
   <div class="sharebox">${esc(L.plain)}</div><button class="sec" data-a="gatecopy"> Copy the link</button><p class="meta">Then paste it in Chrome or Safari.</p>
   <button class="sec small" data-a="gateskip">Continue here anyway</button>`, 'gate');
 }
-function startFlow() { if (!LS.get('us_seen', 0)) { LS.set('us_seen', 1); menu(); startDemo(); } else menu(); }
+function startFlow() { if (!LS.get('us_seen', 0)) { LS.set('us_seen', 1); menu(); startDemo(); } else { menu(); setTimeout(maybeInvite, 400); } }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; if (curScr === 'menu' && st === 'menu') { menu(); installWhenReady(); } });
 addEventListener('appinstalled', () => { deferredInstall = null; LS.set('us_installed', 1); if (curScr === 'menu' && st === 'menu') menu(); });
 async function installApp() {
@@ -3990,7 +3996,8 @@ function paintLb(loading) {
   ${lbChase(rows)}${m === 'rank' ? '<p class="meta"> Rank is the prize mode.</p>' : ''}${meOut ? `<p class="meta okc">You are #${lbMe.r} with ${lbMe.s} pts</p>` : ''}${recentMissing(m) ? `<p class="meta okc"> Your score of ${LS.get('us_recent', {}).score} was verified. It will show up here within a minute.</p>` : ''}
   ${b && !rows.length && !loading ? '<p>No scores yet. Be the first! </p>' : ''}${!b && loading ? '<div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>' : ''}${podium(rows)}${restRows(rows)}
   ${b && rows.length < b.players ? `<button class="sec" data-a="more">Show more (${b.players - rows.length} more)</button>` : ''}
-  <div class="row"><button class="sec" data-a="lbr">↻ Refresh</button><button class="sec" data-a="invite"> Invite friends</button></div>`, 'lb', 'menu'); if (!loading) lbPop();
+  <div class="row"><button class="sec" data-a="lbr">↻ Refresh</button><button class="sec" data-a="invite"> Invite friends</button></div>
+  <div class="row"><button class="sec" data-a="circles">Circles &amp; Events</button></div>`, 'lb', 'menu'); if (!loading) lbPop();
 }
 async function lbScreen(tab, force) {
   if (tab) lbTab = tab; const m = lbTab; st = st === 'pause' ? st : 'menu';
@@ -4144,6 +4151,14 @@ function parseChallenge() {                                                     
 }
 const ORIG_URL = (typeof location !== 'undefined' && String(location.href)) || '';       // exactly as opened (the challenge in a shared link is kept)
 parseChallenge();
+function parseCircleLink() {                                                      // a circle's invite link: ?circle=ABC123 (the code is kept until the player is registered and can join)
+  try {
+    const q = new URLSearchParams(location.search || ''), c = String(q.get('circle') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/.test(c)) LS.set('us_pcircle', c);
+    if (q.has('circle')) { q.delete('circle'); const rest = q.toString(); history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + (location.hash || '')); }
+  } catch (e) {}
+}
+parseCircleLink();
 const baseUrl = () => CONFIG.SHARE_URL || String(location.href).split('#')[0].split('?')[0];
 const shareText = (sc, m) => sc ? ' I scored ' + sc + ' in ' + MODE_NAME[m] + ' on Rainbrew Sky! Think you can beat me? ' : ' Come play Rainbrew Sky with me and let’s compete for the top of the leaderboard! ';
 const shareLink = (sc, m) => sc ? baseUrl() + '?beat=' + sc + '&by=' + encodeURIComponent((prof.name || '').slice(0, 12)) + '&m=' + m : baseUrl();
@@ -4188,7 +4203,7 @@ const ACT = {
   play() { playNow(); }, unis: unicornsScreen, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
   compclose() { const c = compNow(); if (comp) compHideKey = comp.name + ':' + c.state; menu(); }, lb() { lbScreen('rank'); }, lbplayed() { lbScreen(run && MODES[run.mode] && MODES[run.mode].ranked ? run.mode : 'rank'); }, menumore() { menuMore = true; menu(); }, menuclose() { menuMore = false; menu(); }, demo() { startDemo(); }, lbr() { lbScreen(null, true); }, more: moreLb, submit: submitScore, local: saveLocal,
   resume() { ov.style.display = 'none'; st = 'ready'; cd = 3; cdN = 0; },
-  regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (!validName(nm)) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); rememberPlayer(); menu(); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
+  regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (!validName(nm)) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); rememberPlayer(); menu(); setTimeout(maybeInvite, 300); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
   players() { playersScreen(); },
   usep(b) { const c = String(b.dataset.a).split(':')[1], pl = players.find(x => x.contact === c); if (pl) { prof.name = pl.name; prof.contact = pl.contact; LS.set('us_prof', prof); pl.last = Date.now(); LS.set('us_players', players); } menu(); },
   newp() { registerScreen('', '', ''); },
@@ -4211,6 +4226,90 @@ const ACT = {
   chalplay() { if (chal) { mode = chal.mode; LS.set('us_mode', mode); } playNow(); }, chaldrop() { chal = null; LS.set('us_chal', null); menu(); }, install: installSheet, update: hardUpdate, checksrv() { const o = $('srvmsg'); if (o) checkServer(o); }, comp: compScreen,
   copy(b) { const c = $('code').textContent; try { navigator.clipboard.writeText(c); b.textContent = 'Copied '; } catch (e) { b.textContent = c; } }
 };
+/* ---------- circles and events: boards for friends, teams and staff events. They are only a filter over the same verified Ranked scores: nothing here can change a score. ---------- */
+const CIRC_ERR = { device: 'Your device could not be identified. Reload the game.', contact: 'Register with your name and mobile number first.', name: 'Register with your name first.', rate: 'Too many tries. Please wait a little.', busy: 'The server is busy. Try again in a moment.', server: 'Something went wrong. Try again.', net: 'Can’t reach the server. Check your connection.', action: 'Circles are not available on the server yet.', notfound: 'No circle with that code. Check the letters.', code: 'A code has 6 letters and numbers.', closed: 'This circle is closed.', ended: 'This event is over.', removed: 'You were removed from this circle.', full: 'This circle is full.', limit: 'You have reached the limit of circles. Leave or close one first.', owner: 'Only the owner can do that.', cname: 'Give the circle a name (at least 2 letters).', pid: 'Could not find that player.' };
+const circErr = e => CIRC_ERR[e] || 'Something went wrong. Try again.';
+let circ = { list: null, events: null, err: '', cur: null, period: 'season', rows: [], meta: null, me: null, roster: null, seq: 0, pid: '', ask: '' };
+const circPid = () => circ.pid || myPid;
+const circReady = () => isRegistered() && validPH(prof.contact);
+const fmtCode = c => String(c).slice(0, 3) + '-' + String(c).slice(3);
+const circLink = code => String(location.href).split(/[?#]/)[0] + '?circle=' + code;
+async function circCall(action, extra) {
+  try { const r = await api('POST', null, Object.assign({ action, did, name: String(prof.name || '').trim().slice(0, 12), contact: cleanPhone(prof.contact) }, extra || {}), 30000); if (r && r.pid) circ.pid = r.pid; return r; }
+  catch (e) { return { ok: false, err: 'net' }; }
+}
+function circCard(c) {
+  const ev = c.kind === 'event', when = { upcoming: 'starts ' + new Date(c.start).toLocaleDateString(), live: 'LIVE · ends in ' + fmtCount(c.end - serverNow()), closing: 'closing', ended: 'ended' }[c.state] || '';
+  return `<button class="circ" data-a="cview:${c.code}"><b>${esc(c.name)}</b><span>${ev ? 'Event · ' + esc(when) : (c.members != null ? c.members + ' member' + (c.members === 1 ? '' : 's') : 'Circle')}${c.mine ? ' · yours' : ''}${c.status === 'CLOSED' ? ' · closed' : ''}</span></button>`;
+}
+function paintCircles(loading) {
+  const mine = circ.list || [], seen = {}, ev = (circ.events || []).concat(mine.filter(c => c.kind === 'event')).filter(c => !seen[c.code] && (seen[c.code] = 1));
+  const circles = mine.filter(c => c.kind === 'circle');
+  screen(`<h1>Circles &amp; Events</h1><p class="meta">A circle is a leaderboard for you and your friends. It ranks the Ranked scores of the people in it. Share the code or link to invite them.</p>
+  ${circ.err ? `<p class="meta warn">${esc(circ.err)}</p>` : ''}${loading ? '<div class="skel"></div><div class="skel"></div>' : ''}
+  ${ev.length ? `<div class="csec">Events</div>${ev.map(circCard).join('')}` : ''}
+  <div class="csec">My circles</div>${circles.length ? circles.map(circCard).join('') : (loading ? '' : '<p class="meta">You are not in a circle yet. Create one, or join with a code.</p>')}
+  <div class="csec">Create a circle</div><input id="ccn" type="text" maxlength="24" placeholder="Circle name (e.g. Team Café)" autocomplete="off"><br><button data-a="ccreate">Create circle</button>
+  <div class="csec">Join with a code</div><input id="cjc" type="text" maxlength="9" placeholder="Code (e.g. K7M-2QX)" autocapitalize="characters" autocomplete="off"><br><button data-a="cjoin">Join</button>`, 'circ', 'lb');
+}
+async function circlesScreen() {
+  if (!ONLINE) { screen(`<h1>Circles &amp; Events</h1><p class="meta warn">Circles need an internet connection.</p>`, 'circ', 'lb'); return; }
+  if (!circReady()) { screen(`<h1>Circles &amp; Events</h1><p>Register with your name and mobile number first. A circle ranks the Ranked scores of its members, so it needs your player profile.</p><button data-a="newp">Register</button>`, 'circ', 'lb'); return; }
+  const seq = ++circ.seq; circ.err = ''; paintCircles(true);
+  const [mine, ev] = await Promise.all([circCall('c_mine'), api('GET', { action: 'events' }).catch(() => null)]);
+  if (seq !== circ.seq || curScr !== 'circ') return;
+  circ.list = mine && mine.ok ? mine.circles : null; circ.events = ev && ev.ok ? ev.events : [];
+  circ.err = mine && !mine.ok ? circErr(mine.err) : '';
+  paintCircles(false);
+}
+async function circleView(code, period, quiet) {
+  circ.cur = code; if (period) circ.period = period;
+  const seq = ++circ.seq; circ.ask = '';
+  if (!quiet) { circ.rows = []; circ.meta = null; circ.me = null; circ.roster = null; circ.err = ''; paintCircle(true); }
+  const params = { action: 'circle', code, did, period: circ.period, n: 100, me: 1 }; if (circPid()) params.pid = circPid();
+  let r = null; try { r = await retry(() => api('GET', params), 2); } catch (e) {}
+  if (seq !== circ.seq || curScr !== 'circle') return;
+  if (r && r.ok && r.circle) { circ.rows = r.rows; circ.meta = r; circ.me = r.me || null; circ.roster = r.roster || null; circ.err = ''; } else { circ.err = circErr(r && r.err ? r.err : r && r.ok ? 'action' : 'net'); }   // an older server answers every unknown request with a plain "ok"
+  paintCircle(false);
+}
+function paintCircle(loading) {
+  const m = circ.meta, c = m && m.circle, rows = circ.rows;
+  if (!c) { screen(`<h1>Circle</h1>${circ.err ? `<p class="meta warn">${esc(circ.err)}</p>` : ''}${loading ? '<div class="skel"></div><div class="skel"></div><div class="skel"></div>' : ''}`, 'circle', 'circles'); return; }
+  const ev = c.kind === 'event', stl = ev ? { upcoming: 'Starts ' + new Date(c.start).toLocaleString(), live: 'LIVE · ends in ' + fmtCount(c.end - serverNow()), closing: 'Ended · late scores still count', ended: 'Ended ' + new Date(c.end).toLocaleDateString() }[c.state] : '';
+  rankMoves('c' + c.code, rows);
+  const meOut = circ.me && !rows.some(x => x.p === circPid());
+  const mem = ev ? '' : `<div class="csec">Members</div>${(circ.roster || []).map(x => `<div class="cmem"><span>${esc(x.n)}${x.p === circPid() ? ' (you)' : ''}</span>${x.p === circPid() ? '' : `<button class="sec" data-a="ckick:${x.p}">Remove</button>`}</div>`).join('')}`;
+  screen(`<h1>${esc(c.name)}</h1>
+  <p class="meta">${ev ? `<b>Event</b> · ${esc(stl)}<br>` : `<b>Circle</b> by ${esc(c.owner)} · `}${m.members != null ? m.members + ' member' + (m.members === 1 ? '' : 's') + ' · ' : ''}${m.players} ranked player${m.players === 1 ? '' : 's'}${c.status === 'CLOSED' ? ' · <span class="warn">closed</span>' : ''}</p>
+  ${c.note ? `<p class="note">${esc(c.note)}</p>` : ''}
+  ${ev ? '' : `<div class="tabs"><button class="chip${circ.period === 'season' ? ' on' : ''}" data-a="cper:season">This week</button><button class="chip${circ.period === 'all' ? ' on' : ''}" data-a="cper:all">All time</button></div>`}
+  ${circ.err ? `<p class="meta warn">${esc(circ.err)}</p>` : ''}${meOut ? `<p class="meta okc">You are #${circ.me.r} with ${circ.me.s} pts</p>` : ''}
+  ${!rows.length && !loading ? '<p>No Ranked scores here yet. Play Ranked to put the first one on the board!</p>' : ''}${loading ? '<div class="skel"></div><div class="skel"></div><div class="skel"></div>' : ''}${podium(rows)}${restRows(rows)}
+  ${ev && c.scope === 'all' ? '' : `<div class="csec">Invite</div><div class="ccode">${fmtCode(c.code)}</div><div class="row"><button class="sec" data-a="cshare">Share link</button><button class="sec" data-a="ccopy">Copy code</button></div>`}
+  ${c.mine ? `${mem}<div class="csec">Owner</div><div class="row">${c.status === 'ACTIVE' ? '<button class="sec" data-a="cclose">Close circle</button>' : '<button class="sec" data-a="creopen">Reopen</button>'}<button class="sec" data-a="cdel">${circ.ask === 'del' ? 'Tap again to delete' : 'Delete circle'}</button></div>` : (ev && c.scope === 'all' ? '' : `<div class="row"><button class="sec" data-a="cleave">${circ.ask === 'leave' ? 'Tap again to leave' : 'Leave'}</button></div>`)}
+  <div class="row"><button class="sec" data-a="cview:${c.code}">↻ Refresh</button></div>`, 'circle', 'circles'); if (!loading) lbPop();
+}
+async function circForm(kind) {
+  const ci = $(kind === 'create' ? 'ccn' : 'cjc'), v = String((ci || {}).value || '').trim(); if (!circReady()) return;
+  if (kind === 'create' && v.length < 2) { circ.err = circErr('cname'); return paintCircles(false); }
+  const r = kind === 'create' ? await circCall('c_create', { cname: v }) : await circCall('c_join', { code: v });
+  if (!r.ok) { circ.err = circErr(r.err); return paintCircles(false); }
+  circ.err = ''; circ.meta = null; circleView(r.circle.code);
+}
+function inviteScreen(code) { screen(`<h1>Join a circle?</h1><p>A friend invited you with the code <b>${fmtCode(code)}</b>.</p><p class="meta" id="cmsg"></p><button data-a="cjoinnow:${code}">Join</button><button class="sec" data-a="cnot">Not now</button>`, 'circinv'); }
+function maybeInvite() { const c = LS.get('us_pcircle', ''); if (!c || !ONLINE || !circReady() || curScr !== 'menu') return; inviteScreen(c); }
+Object.assign(ACT, {
+  circles: circlesScreen, cview(b) { circleView(String(b.dataset.a).split(':')[1]); }, cper(b) { circleView(circ.cur, String(b.dataset.a).split(':')[1]); },
+  ccreate() { circForm('create'); }, cjoin() { circForm('join'); }, cnot() { LS.set('us_pcircle', ''); menu(); },
+  async cjoinnow(b) { const code = String(b.dataset.a).split(':')[1]; LS.set('us_pcircle', ''); const m = $('cmsg'); if (m) m.textContent = 'Joining…'; const r = await circCall('c_join', { code }); if (!r.ok) { screen(`<h1>Join a circle?</h1><p class="warn">${esc(circErr(r.err))}</p><button data-a="cnot">OK</button>`, 'circinv'); return; } circleView(r.circle.code); },
+  async cleave() { if (circ.ask !== 'leave') { circ.ask = 'leave'; return paintCircle(false); } const r = await circCall('c_leave', { code: circ.cur }); if (!r.ok) { circ.err = circErr(r.err); circ.ask = ''; return paintCircle(false); } circlesScreen(); },
+  async cdel() { if (circ.ask !== 'del') { circ.ask = 'del'; return paintCircle(false); } const r = await circCall('c_delete', { code: circ.cur }); if (!r.ok) { circ.err = circErr(r.err); circ.ask = ''; return paintCircle(false); } circlesScreen(); },
+  async cclose() { const r = await circCall('c_edit', { code: circ.cur, cname: circ.meta.circle.name, close: true }); if (!r.ok) { circ.err = circErr(r.err); return paintCircle(false); } circleView(circ.cur, null, true); },
+  async creopen() { const r = await circCall('c_edit', { code: circ.cur, cname: circ.meta.circle.name, close: false }); if (!r.ok) { circ.err = circErr(r.err); return paintCircle(false); } circleView(circ.cur, null, true); },
+  async ckick(b) { const pid = String(b.dataset.a).split(':')[1], r = await circCall('c_kick', { code: circ.cur, pid }); if (!r.ok) { circ.err = circErr(r.err); return paintCircle(false); } circleView(circ.cur, null, true); },
+  async cshare(b) { const c = circ.meta && circ.meta.circle; if (!c) return; const text = 'Join my Rainbrew Sky circle “' + c.name + '” (code ' + fmtCode(c.code) + ')', link = circLink(c.code); try { await navigator.share({ title: 'Rainbrew Sky', text, url: link }); award('shared'); } catch (e) { if (e && e.name === 'AbortError') return; try { await navigator.clipboard.writeText(text + ' ' + link); b.textContent = 'Copied: paste it in a chat'; } catch (x) { b.textContent = link; } } },
+  async ccopy(b) { const c = circ.meta && circ.meta.circle; if (!c) return; try { await navigator.clipboard.writeText(fmtCode(c.code)); b.textContent = 'Copied'; } catch (e) { b.textContent = fmtCode(c.code); } }
+});
 box.addEventListener('click', e => {
   const b = e.target.closest('[data-a]'); if (!b || b.disabled) return; auInit(); sfx('click'); if (st === 'menu') musicStart();
   const [a, x, y] = b.dataset.a.split(':');

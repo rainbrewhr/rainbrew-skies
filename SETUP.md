@@ -21,6 +21,15 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 
 
 
+## Circles and Events (new)
+* **Circles:** any registered player can create a circle (a leaderboard for friends, a family, a team or a class) from **Top Rank > Circles & Events**. It gets a 6-letter invite code (like K7M-2QX) and a share link. Members are ranked by their best **verified Ranked** score, **This week** or **All time**. A player can create up to 3 circles and be in up to 10; a circle holds up to 100 members. The owner can remove members, close or delete the circle. Anyone can leave.
+* **Events (staff):** open `verify.html` > **Contest** tab > **New event board**: a name, a start date, how long it lasts, who can play, and an optional prize note. **Everyone** events are listed in the game for all players and rank every Ranked score played in the window. **Code or link only** events are joined with a code or link. Staff can edit, close, hide or reopen any event, and close or hide any player circle (the list shows all of them). The existing single **Competition** still works as before.
+* **No new verification:** circles and events are only a filter over the same verified Ranked scores (same shared weekly course, same replay check). They cannot create or change a score. Phone numbers are never shown.
+* **Privacy:** a circle is private: it has no public list and is found only with its code. Players see names and scores of members only.
+* **Sheets:** the server creates two new tabs the first time they are needed: **Circles** and **Members**. Do not rename them.
+* **Deploy order (important):** 1) paste the new `Code.gs` into Apps Script and choose **Deploy > Manage deployments > Edit > New version**; 2) then upload the game (`index.html`, `Rainbrew_Sky.html`) and `verify.html`. The sim version stays **33** and the release stays **5.0**, so nothing else changes and older copies of the game keep working. A game that is newer than the server shows "Circles are not available on the server yet".
+* **Links:** a link like `https://YOUR-SITE/?circle=K7M2QX` opens the game and offers to join that circle after the player registers.
+
 ## What changed in 5.1
 * **Update everything together:** upload `index.html`, `Rainbrew_Sky.html` and `sw.js` to GitHub, paste the new `Code.gs` into Apps Script and choose **Deploy > Manage deployments > Edit > New version**. The game and server are both at **sim version 33**; a mismatch makes the server refuse ranked scores. Runs recorded on the old version cannot be uploaded any more.
 * **Harder:** Ranked difficulty 1.25 to 1.5, Classic 0.65 to 0.75 (Classic is still the easy, kid-friendly mode: 5 lives and bosses with 40% less health).

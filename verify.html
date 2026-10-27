@@ -53,7 +53,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
     <input id="q" type="search" placeholder="Search a code, name or phone number" autocomplete="off" autocapitalize="off" inputmode="search" enterkeyhint="search">
     <div id="found"></div><div id="list"></div>
   </section>
-  <section id="v-comp" hidden><div id="boards"></div><div id="compcard"></div></section>
+  <section id="v-comp" hidden><div id="boards"></div><div id="compcard"></div><div id="evcard"></div></section>
   <section id="v-tools" hidden><div id="diag"></div><div id="tools"></div></section>
   <nav class="bottom" id="nav" aria-label="Sections">
     <button data-act="view" data-code="winners" id="n-winners"><b>🏆</b>Winners</button>
@@ -129,7 +129,7 @@ function closeModal(result) { const r = modalResolve; modalResolve = null; S.mod
 const norm = c => String(c || '').toUpperCase().replace(/\s/g, '');
 function patchRow(row) { const i = S.rows.findIndex(r => r.code === row.code); if (i >= 0) S.rows[i] = row; if (S.found && S.found.code === row.code) S.found = row; }
 function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Rainbrew Sky (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' at the cashier to claim your prize.'; }
-function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') renderComp(); if (v === 'tools') renderTools(); }
+function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') { renderComp(); loadEvents(); } if (v === 'tools') renderTools(); }
 async function act(a, code, extra) {
   try {
     if (a === 'view') { try { history.pushState({ rbv: 1 }, ''); } catch (e) {} return setView(code); }
@@ -155,6 +155,15 @@ async function act(a, code, extra) {
       renderList(); flash(a === 'give' ? '🎁 Prize recorded for ' + j.row.name : a === 'void' ? 'Score removed' : 'Restored'); return;
     }
     if (a === 'compsave') return saveComp();
+    if (a === 'evsave') return saveEvent();
+    if (a === 'evedit') { S.evEdit = code; renderEvents(true); const f = $('evcard'); if (f && f.scrollIntoView) f.scrollIntoView(); return; }
+    if (a === 'evcancel') { S.evEdit = ''; return renderEvents(true); }
+    if (a === 'evlink') { try { await navigator.clipboard.writeText(extra || ''); flash('Link copied: send it to players'); } catch (e) { flash('Copy is not available on this device', true); } return; }
+    if (a === 'evstatus') {
+      const c = (S.circles || []).find(x => x.code === code), st = extra;
+      if (st === 'HIDDEN') { const r = await ask({ title: 'Hide this board?', body: 'Nobody can open <b>' + esc(c ? c.name : code) + '</b> any more and it leaves the game’s list. The scores stay safe in the Sheet, and you can restore it here.', ok: 'Hide it', danger: true }); if (!r.ok) return; }
+      await call({ action: 'a_circle_status', code, status: st }); flash(st === 'ACTIVE' ? 'Board is open' : st === 'CLOSED' ? 'Board closed: nobody new can join' : 'Board hidden'); return loadEvents();
+    }
     if (a === 'compclear') { const r = await ask({ title: 'Remove the competition?', body: 'Its scores stay in the Sheet. Rank goes back to the normal board.', ok: 'Remove', danger: true }); if (!r.ok) return; const j = await call({ action: 'a_comp_clear' }); S.comp = j.comp; if (S.mode === 'contest') S.mode = 'rank'; flash('Competition removed'); return load(); }
     if (a === 'season') {
       const n = await ask({ title: 'Start a new board now?', body: 'This starts a <b>fresh, empty board</b> for every mode right now (Rank keeps its competition board while a competition runs). Old scores stay safe in the Sheet. Give the new board a name:', input: { label: 'Board name', value: '', placeholder: 'e.g. Grand Finals' }, ok: 'Start new board' });
@@ -215,6 +224,48 @@ function compFormHtml() {
   <label for="cg">Late uploads still count for (minutes)</label><input id="cg" type="number" inputmode="numeric" min="0" max="240" value="${c ? c.grace : 15}">
   <p class="meta" id="compmsg"></p>
   <div class="acts"><button data-act="compsave">Save competition</button><button class="alt" data-act="compclear" id="compclear"${c ? '' : ' hidden'}>Remove it</button></div></div>`;
+}
+
+/* ---------- events and circles ---------- */
+const GAME_URL = () => location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
+const evLink = code => GAME_URL() + '?circle=' + code;
+const fmtCode = c => String(c).slice(0, 3) + '-' + String(c).slice(3);
+async function loadEvents() { try { const j = await call({ action: 'a_circles' }); S.circles = j.circles; S.circlesTotal = j.total; S.circlesErr = ''; } catch (e) { S.circlesErr = e.code === 'action' || /action/.test(e.message) ? 'The server does not have circles yet. Paste the new Code.gs into Apps Script and deploy a New version.' : e.message; } renderEvents(); }
+function evFormHtml() {
+  const e = S.evEdit ? (S.circles || []).find(c => c.code === S.evEdit) : null;
+  const len = e ? Math.round((e.end - e.start) / 3600e3) : 168, unit = e && len % 24 ? 'hours' : 'days', num = unit === 'days' ? Math.max(1, Math.round(len / 24)) : Math.max(1, len);
+  return `<div class="card"><h2>${e ? '✏️ Edit event' : '🎪 New event board'}</h2><p class="meta">An event is its own leaderboard with its own start and end. It ranks every player’s best verified Ranked score played in that time. <b>Everyone</b> events are listed in the game for all players. <b>Code or link only</b> events are joined with a code or link (good for a store, a school or a party).</p>
+  <label for="en">Name</label><input id="en" maxlength="24" value="${esc(e ? e.name : '')}" placeholder="e.g. Anniversary Cup" autocomplete="off">
+  <label for="es">Starts</label><input id="es" type="datetime-local" value="${esc(localInput(e ? e.start : nextHour()))}">
+  <div class="acts"><div><label for="ed">Lasts</label><input id="ed" type="number" inputmode="numeric" min="1" max="120" value="${num}"></div><div><label for="eu">Unit</label><select id="eu"><option value="days"${unit === 'days' ? ' selected' : ''}>days</option><option value="hours"${unit === 'hours' ? ' selected' : ''}>hours</option></select></div></div>
+  <label for="ep">Who can play</label><select id="ep"><option value="all"${!e || e.scope === 'all' ? ' selected' : ''}>Everyone (listed in the game)</option><option value="code"${e && e.scope === 'code' ? ' selected' : ''}>Code or link only</option></select>
+  <label for="eno">Prize note (optional, players see it)</label><input id="eno" maxlength="140" value="${esc(e ? e.note : '')}" placeholder="e.g. Top 3 win a free drink" autocomplete="off">
+  <p class="meta" id="evmsg"></p>
+  <div class="acts"><button data-act="evsave">${e ? 'Save changes' : 'Create event'}</button>${e ? '<button class="alt" data-act="evcancel">Cancel</button>' : ''}</div></div>`;
+}
+async function saveEvent() {
+  const msg = $('evmsg'), name = $('en').value.trim(), start = new Date($('es').value).getTime(), n = +$('ed').value, unit = $('eu').value;
+  const bad = t => { msg.innerHTML = '<span style="color:var(--bad)">' + esc(t) + '</span>'; };
+  if (name.length < 2) return bad('Give the event a name (at least 2 letters).');
+  if (!(start > 0)) return bad('Pick the start date and time.');
+  if (!(n >= 1)) return bad('Say how long it lasts (at least 1).');
+  const end = start + n * (unit === 'hours' ? 3600e3 : 86400e3);
+  msg.textContent = 'Saving…';
+  const editing = !!S.evEdit;
+  try { const j = await call({ action: 'a_event_set', code: S.evEdit || '', name, start, end, scope: $('ep').value, note: $('eno').value.trim() }); S.evEdit = ''; flash((editing ? 'Event saved: ' : 'Event ready: ') + name + ' · code ' + fmtCode(j.circle.code)); await loadEvents(); renderEvents(true); }
+  catch (e) { bad(e.code === 'dates' ? 'Check the dates.' : e.code === 'length' ? 'An event can last from 1 minute to 120 days.' : e.message); }
+}
+function evState(c) { return c.kind === 'event' ? ({ upcoming: 'Starts ' + when(c.start), live: 'LIVE until ' + when(c.end), closing: 'Ended, late uploads still count', ended: 'Ended ' + when(c.end) }[c.state] || '') : (c.members + ' member' + (c.members === 1 ? '' : 's')); }
+function renderEvents(forceForm) {
+  const el = $('evcard'); if (!el) return;
+  if (forceForm || !el.firstChild) { el.innerHTML = evFormHtml() + '<div id="evlist"></div>'; }
+  const l = $('evlist'); if (!l) return;
+  if (S.circlesErr) { l.innerHTML = '<div class="card"><p class="warnc">' + esc(S.circlesErr) + '</p></div>'; return; }
+  const list = S.circles; if (!list) { l.innerHTML = '<div class="card"><p class="meta">Loading boards…</p></div>'; return; }
+  l.innerHTML = '<div class="card"><h2>📋 Events and player circles</h2><p class="meta">Events are made here. Circles are made by players in the game (private, shared with a code). You can close or hide any of them.' + (S.circlesTotal > list.length ? ' Showing the newest ' + list.length + ' of ' + S.circlesTotal + '.' : '') + '</p>' + (list.length ? list.map(c => `<div class="row" style="cursor:default;display:block;opacity:${c.status === 'HIDDEN' ? .55 : 1}"><div class="lbl"><b>${esc(c.name)}</b><span class="chip ${c.kind === 'event' ? 'gift' : ''}">${c.kind === 'event' ? 'Event' : 'Circle'}</span></div>
+    <div class="meta">${esc(evState(c))}${c.kind === 'event' ? ' · ' + (c.scope === 'all' ? 'everyone' : 'code or link only') + ' · ' + (c.scope === 'all' || c.members == null ? '' : c.members + ' joined') : ' · by ' + esc(c.ownerName)}${c.status !== 'ACTIVE' ? ' · <b>' + (c.status === 'CLOSED' ? 'closed' : 'hidden') + '</b>' : ''}</div>
+    ${c.note ? '<div class="meta">' + esc(c.note) + '</div>' : ''}<div class="meta">Code <span class="code">${esc(fmtCode(c.code))}</span></div>
+    <div class="acts"><button class="alt" data-act="evlink" data-code="${esc(c.code)}" data-extra="${esc(evLink(c.code))}">Copy link</button>${c.kind === 'event' ? `<button class="alt" data-act="evedit" data-code="${esc(c.code)}">Edit</button>` : ''}${c.status === 'ACTIVE' ? `<button class="alt" data-act="evstatus" data-code="${esc(c.code)}" data-extra="CLOSED">Close</button>` : `<button class="alt" data-act="evstatus" data-code="${esc(c.code)}" data-extra="ACTIVE">Reopen</button>`}${c.status !== 'HIDDEN' ? `<button class="alt" data-act="evstatus" data-code="${esc(c.code)}" data-extra="HIDDEN">Hide</button>` : ''}</div></div>`).join('') : '<p class="meta">Nothing yet. Create the first event above.</p>') + '</div>';
 }
 
 /* ---------- rendering: each region updates on its own, so inputs and the keyboard are never disturbed ---------- */
