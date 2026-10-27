@@ -662,6 +662,8 @@ function doGet(e) {
     if (p.action === 'start') return out(actStart(p));
     if (p.action === 'lb') return out(actBoard(p));
     if (p.action === 'comp') return out(actComp());
+    if (p.action === 'circle') return out(actCircle(p));
+    if (p.action === 'events') return out(actEvents());
     var w = who(); return out({ ok: true, service: 'rainbrew-sky', rules: w.rules, release: w.release, server: w.server, now: Date.now() });
   } catch (err) { return out({ ok: false, err: 'server' }); }
 }
@@ -684,6 +686,11 @@ function doPost(e) {
       case 'a_adopt': return out(admin(b, adminAdopt));
       case 'a_repair': return out(admin(b, adminRepair));
       case 'a_comp_clear': return out(admin(b, adminCompClear));
+      case 'c_create': case 'c_join': case 'c_leave': case 'c_mine': case 'c_edit': case 'c_delete': case 'c_kick': return out(circleAction(b.action, b));
+      case 'a_event_set': return out(admin(b, adminEventSet));
+      case 'a_circles': return out(admin(b, adminCircles));
+      case 'a_circle_status': return out(admin(b, adminCircleStatus));
+      case 'a_circle_kick': return out(admin(b, adminCircleKick));
     }
     return out({ ok: false, err: 'action' });
   } catch (err) { noteFail('doPost', err); return out({ ok: false, err: 'server' }); }
@@ -1021,6 +1028,269 @@ function dropBoards() {
   c.removeAll(keys);
 }
 
+/* ---------- circles (boards for friends, families, teams) and event boards (made by staff) ----------
+   A circle or event board is NOT a new game. It is a filter over the same verified Ranked scores:
+   same shared course, same replay check, same codes. Nothing here can create or change a score.
+   Circles: a player creates one and shares the invite code or link; members are the players who joined it.
+   Events: staff create them (verify.html). Scope 'all' = every Ranked player counts and it is listed in the game; scope 'code' = invite code only.
+   Sheets "Circles" and "Members" are created automatically the first time they are needed. */
+var CIRCLE = { SHEET: 'Circles', MEMBERS: 'Members', MAX_OWN: 3, MAX_JOIN: 10, MAX_MEMBERS: 100, MAX_EVENT_MEMBERS: 5000, KEEP: 800, CACHE_S: 60 };
+var CIRCLE_HEAD = ['Code', 'Name', 'Kind', 'Owner', 'OwnerName', 'Created', 'Start', 'End', 'Scope', 'Status', 'Note'];
+var MEMBER_HEAD = ['Code', 'PID', 'Name', 'Joined', 'Status'];
+var CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';                      // no 0, 1, I, L, O: a code is easy to read out loud
+
+function cleanCircleCode(s) { s = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/.test(s) ? s : ''; }
+function cleanCircleName(s) { return String(s || '').replace(/[\u0000-\u001f<>&"'`\\\/]/g, '').replace(/^[=+\-@\s]+/, '').replace(/\s+/g, ' ').trim().slice(0, 24); }
+function cleanNote(s) { return String(s || '').replace(/[\u0000-\u001f<>&"'`\\\/]/g, '').replace(/^[=+\-@\s]+/, '').replace(/\s+/g, ' ').trim().slice(0, 140); }
+function newCircleCode(all) {
+  var used = {}; all.forEach(function (c) { used[c.code] = 1; });
+  for (var t = 0; t < 50; t++) { var s = ''; for (var i = 0; i < 6; i++) s += CODE_ALPHA.charAt(Math.floor(Math.random() * CODE_ALPHA.length)); if (!used[s]) return s; }
+  return '';
+}
+function ctab(name, head, textCols) {
+  var ss = SpreadsheetApp.openById(prop('SHEET_ID')), sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name); sh.appendRow(head); sh.setFrozenRows(1); sh.getRange(1, 1, 1, head.length).setFontWeight('bold');
+    textCols.forEach(function (c) { var L = colLetter(c); sh.getRange(L + '2:' + L).setNumberFormat('@'); });   // codes, ids and names stay text (no formulas, no lost characters)
+  }
+  return sh;
+}
+function circleSheet() { return ctab(CIRCLE.SHEET, CIRCLE_HEAD, [1, 2, 3, 4, 5, 9, 10, 11]); }
+function memberSheet() { return ctab(CIRCLE.MEMBERS, MEMBER_HEAD, [1, 2, 3, 5]); }
+function circleObj(r, i) { return { row: i + 2, code: String(r[0]), name: String(r[1]), kind: String(r[2]), owner: String(r[3]), ownerName: String(r[4]), created: +r[5] || 0, start: +r[6] || 0, end: +r[7] || 0, scope: String(r[8]) || 'code', status: String(r[9]) || 'ACTIVE', note: String(r[10] || '') }; }
+function circleRow(c) { return [c.code, c.name, c.kind, c.owner, c.ownerName, c.created, c.start, c.end, c.scope, c.status, c.note]; }
+function memberObj(r, i) { return { row: i + 2, code: String(r[0]), pid: String(r[1]), name: String(r[2]), joined: +r[3] || 0, status: String(r[4]) || 'ACTIVE' }; }
+function readCircles() { var sh = circleSheet(), last = sh.getLastRow(); return last < 2 ? [] : sh.getRange(2, 1, last - 1, CIRCLE_HEAD.length).getValues().map(circleObj); }
+function readMembers() { var sh = memberSheet(), last = sh.getLastRow(); return last < 2 ? [] : sh.getRange(2, 1, last - 1, MEMBER_HEAD.length).getValues().map(memberObj); }
+function findCircle(code, all) { all = all || readCircles(); for (var i = 0; i < all.length; i++) if (all[i].code === code) return all[i]; return null; }
+function writeCircle(c) { circleSheet().getRange(c.row, 1, 1, CIRCLE_HEAD.length).setValues([circleRow(c)]); }
+function memberCounts(members) { var n = {}; members.forEach(function (m) { if (m.status === 'ACTIVE') n[m.code] = (n[m.code] || 0) + 1; }); return n; }
+function circleState(c, now) { return c.kind === 'event' ? compState({ start: c.start, end: c.end, grace: CONFIG.COMP_GRACE_MIN }, now) : (c.status === 'ACTIVE' ? 'open' : 'closed'); }
+function pubCircle(c, members, me) {
+  return { code: c.code, name: c.name, kind: c.kind, scope: c.scope, note: c.note, start: c.start, end: c.end, status: c.status, state: circleState(c, Date.now()), owner: c.ownerName, mine: !!(me && c.owner === me), members: members };
+}
+function dropCircleCache(code) { var c = CacheService.getScriptCache(); c.removeAll(['cb_' + code + '_season', 'cb_' + code + '_all', 'ev_list']); }
+function guessBlocked(did) { return +(CacheService.getScriptCache().get('cg_' + did) || 0) >= 20; }     // a device that keeps trying codes that do not exist is slowed down
+function guessFail(did) { var c = CacheService.getScriptCache(), k = 'cg_' + did; c.put(k, String((+c.get(k) || 0) + 1), 3600); }
+
+/* who is asking: the same identity a Ranked score has (the registered name and the mobile number). The server works out the player id itself, so nobody can act as someone else's id. */
+function circleWho(b, light) {
+  var did = cleanId(b.did), contact = cleanContact(b.contact), name = cleanName(b.name);
+  if (!did) return { err: 'device' };
+  if (!/^09\d{9}$/.test(contact)) return { err: 'contact' };
+  if (!name) return { err: 'name' };
+  var c = CacheService.getScriptCache(), k = (light ? 'cm_' : 'cw_') + did, n = +(c.get(k) || 0);
+  if (n >= (light ? 120 : 40)) return { err: 'rate' };
+  c.put(k, String(n + 1), 3600);
+  return { did: did, name: name, contact: contact, pid: hmacHex('pid|c' + contact).slice(0, 8) };
+}
+
+function circleAction(act, b) {
+  try {
+    var w = circleWho(b, act === 'c_mine');
+    if (w.err) return { ok: false, err: w.err };
+    var lock = LockService.getScriptLock();
+    try { lock.waitLock(10000); } catch (e) { return { ok: false, err: 'busy' }; }
+    try {
+      switch (act) {
+        case 'c_create': return cCreate(w, b);
+        case 'c_join': return cJoin(w, b);
+        case 'c_leave': return cLeave(w, b);
+        case 'c_mine': return cMine(w);
+        case 'c_edit': return cEdit(w, b);
+        case 'c_delete': return cDelete(w, b);
+        case 'c_kick': return cKick(w, b);
+      }
+    } finally { lock.releaseLock(); }
+    return { ok: false, err: 'action' };
+  } catch (e) { noteFail('circle', e, act); return { ok: false, err: 'server' }; }
+}
+function cCreate(w, b) {
+  var name = cleanCircleName(b.cname);
+  if (name.length < 2) return { ok: false, err: 'cname' };
+  var all = readCircles(), mine = all.filter(function (c) { return c.owner === w.pid && c.kind === 'circle' && c.status !== 'HIDDEN'; });
+  if (mine.length >= CIRCLE.MAX_OWN) return { ok: false, err: 'limit' };
+  var code = newCircleCode(all); if (!code) return { ok: false, err: 'server' };
+  var now = Date.now(), c = { code: code, name: name, kind: 'circle', owner: w.pid, ownerName: w.name, created: now, start: 0, end: 0, scope: 'code', status: 'ACTIVE', note: '' };
+  circleSheet().appendRow(circleRow(c));
+  memberSheet().appendRow([code, w.pid, w.name, now, 'ACTIVE']);
+  dropCircleCache(code);
+  return { ok: true, pid: w.pid, circle: pubCircle(c, 1, w.pid) };
+}
+function cJoin(w, b) {
+  var code = cleanCircleCode(b.code);
+  if (!code) return { ok: false, err: 'code' };
+  if (guessBlocked(w.did)) return { ok: false, err: 'rate' };
+  var all = readCircles(), c = findCircle(code, all);
+  if (!c || c.status === 'HIDDEN') { guessFail(w.did); return { ok: false, err: 'notfound' }; }
+  if (c.status !== 'ACTIVE') return { ok: false, err: 'closed' };
+  if (c.scope === 'all') return { ok: true, pid: w.pid, open: true, circle: pubCircle(c, null, w.pid) };   // an open event needs no joining: every Ranked player counts
+  var members = readMembers(), counts = memberCounts(members), mine = null, i;
+  for (i = 0; i < members.length; i++) if (members[i].code === code && members[i].pid === w.pid) { mine = members[i]; break; }
+  if (mine && mine.status === 'ACTIVE') return { ok: true, pid: w.pid, circle: pubCircle(c, counts[code] || 0, w.pid) };
+  if (mine && mine.status === 'REMOVED') return { ok: false, err: 'removed' };
+  if (c.kind === 'event' && Date.now() > c.end + CONFIG.COMP_GRACE_MIN * 60000) return { ok: false, err: 'ended' };
+  if ((counts[code] || 0) >= (c.kind === 'event' ? CIRCLE.MAX_EVENT_MEMBERS : CIRCLE.MAX_MEMBERS)) return { ok: false, err: 'full' };
+  var kinds = {}; all.forEach(function (x) { kinds[x.code] = x; });
+  var joined = members.filter(function (m) { var x = kinds[m.code]; return m.pid === w.pid && m.status === 'ACTIVE' && x && x.kind === 'circle' && x.status !== 'HIDDEN'; }).length;
+  if (joined >= CIRCLE.MAX_JOIN) return { ok: false, err: 'limit' };
+  if (mine) memberSheet().getRange(mine.row, 1, 1, MEMBER_HEAD.length).setValues([[code, w.pid, w.name, mine.joined, 'ACTIVE']]);
+  else memberSheet().appendRow([code, w.pid, w.name, Date.now(), 'ACTIVE']);
+  dropCircleCache(code);
+  return { ok: true, pid: w.pid, circle: pubCircle(c, (counts[code] || 0) + 1, w.pid) };
+}
+function cLeave(w, b) {
+  var code = cleanCircleCode(b.code), c = code && findCircle(code);
+  if (!c) return { ok: false, err: 'notfound' };
+  if (c.owner === w.pid && c.kind === 'circle' && c.status === 'ACTIVE') return { ok: false, err: 'owner' };   // the owner closes the circle instead of leaving it
+  var members = readMembers();
+  for (var i = 0; i < members.length; i++) if (members[i].code === code && members[i].pid === w.pid && members[i].status === 'ACTIVE') {
+    memberSheet().getRange(members[i].row, MEMBER_HEAD.length).setValue('LEFT'); dropCircleCache(code); return { ok: true };
+  }
+  return { ok: true };
+}
+function cMine(w) {
+  var all = readCircles(), members = readMembers(), counts = memberCounts(members), by = {}, out = [];
+  all.forEach(function (c) { by[c.code] = c; });
+  members.forEach(function (m) {
+    var c = by[m.code];
+    if (m.pid !== w.pid || m.status !== 'ACTIVE' || !c || c.status === 'HIDDEN') return;
+    out.push(pubCircle(c, counts[c.code] || 0, w.pid));
+  });
+  out.sort(function (a, b) { return (b.kind === 'event') - (a.kind === 'event') || (b.start || 0) - (a.start || 0); });
+  return { ok: true, pid: w.pid, circles: out };
+}
+function ownedCircle(w, b) {
+  var code = cleanCircleCode(b.code), c = code && findCircle(code);
+  if (!c || c.kind !== 'circle' || c.status === 'HIDDEN') return { err: 'notfound' };
+  if (c.owner !== w.pid) return { err: 'owner' };
+  return { c: c };
+}
+function cEdit(w, b) {
+  var o = ownedCircle(w, b); if (o.err) return { ok: false, err: o.err };
+  var name = cleanCircleName(b.cname); if (name.length < 2) return { ok: false, err: 'cname' };
+  o.c.name = name; if (b.close === true || b.close === false) o.c.status = b.close ? 'CLOSED' : 'ACTIVE';
+  writeCircle(o.c); dropCircleCache(o.c.code);
+  return { ok: true, circle: pubCircle(o.c, null, w.pid) };
+}
+function cDelete(w, b) {
+  var o = ownedCircle(w, b); if (o.err) return { ok: false, err: o.err };
+  o.c.status = 'HIDDEN'; writeCircle(o.c); dropCircleCache(o.c.code);
+  return { ok: true };
+}
+function cKick(w, b) {
+  var o = ownedCircle(w, b); if (o.err) return { ok: false, err: o.err };
+  var pid = String(b.pid || ''); if (!/^[a-f0-9]{8}$/.test(pid) || pid === w.pid) return { ok: false, err: 'pid' };
+  var members = readMembers();
+  for (var i = 0; i < members.length; i++) if (members[i].code === o.c.code && members[i].pid === pid && members[i].status === 'ACTIVE') {
+    memberSheet().getRange(members[i].row, MEMBER_HEAD.length).setValue('REMOVED'); break;
+  }
+  dropCircleCache(o.c.code);
+  return { ok: true };
+}
+
+/* the scores, read cheaply: only the columns a board needs (the long Events column is never read) */
+function readLite() {
+  var sh = sheet(), last = sh.getLastRow();
+  if (last < 2) return [];
+  var a = sh.getRange(2, 1, last - 1, COL.SID).getValues(), u = sh.getRange(2, COL.UNI, last - 1, 1).getValues(), out = new Array(a.length);
+  for (var i = 0; i < a.length; i++) {
+    var r = a[i];
+    out[i] = { ms: +r[COL.MS - 1], season: cellText(r[COL.SEASON - 1]), mode: cellText(r[COL.MODE - 1]), name: String(r[COL.NAME - 1]), pid: String(r[COL.PID - 1]), score: +r[COL.SCORE - 1], status: String(r[COL.STATUS - 1] || ''), sid: String(r[COL.SID - 1] || ''), uni: String(u[i][0] || '') };
+  }
+  return out;
+}
+function buildCircleBoard(c, period) {
+  var mem = null, members = null, roster = null;
+  if (c.scope !== 'all') {
+    mem = {}; members = 0; roster = [];
+    readMembers().forEach(function (m) { if (m.code === c.code && m.status === 'ACTIVE') { mem[m.pid] = 1; members++; roster.push([m.pid, m.name]); } });
+  }
+  var rows = readLite(), best = {}, seen = {}, season = getSeason('rank'), lo = 0, hi = Infinity, i, r, cur;
+  if (c.kind === 'event') { lo = c.start; hi = c.end + CONFIG.COMP_GRACE_MIN * 60000; }
+  for (i = 0; i < rows.length; i++) {
+    r = rows[i];
+    if (r.sid) { if (seen[r.sid]) continue; seen[r.sid] = 1; }                      // one score per session, like the main board
+    if (r.mode !== 'rank' || r.status === 'VOID' || r.status === 'TEST') continue;
+    if (mem && !mem[r.pid]) continue;
+    if (c.kind === 'event') { if (r.ms < lo || r.ms > hi) continue; }
+    else if (period === 'season' && r.season !== season) continue;
+    cur = best[r.pid];
+    if (!cur || r.score > cur.score || (r.score === cur.score && r.ms < cur.ms)) best[r.pid] = r;
+  }
+  var list = Object.keys(best).map(function (k) { return best[k]; });
+  list.sort(function (a, b) { return b.score - a.score || a.ms - b.ms; });
+  return { c: { code: c.code, name: c.name, kind: c.kind, scope: c.scope, note: c.note, start: c.start, end: c.end, status: c.status, state: circleState(c, Date.now()), owner: c.ownerName, ownerPid: c.owner }, members: members, roster: c.kind === 'circle' ? roster : null, players: list.length, updated: Date.now(), list: list.slice(0, CIRCLE.KEEP).map(function (x) { return [x.name, x.score, x.pid, x.uni]; }) };
+}
+function actCircle(p) {
+  var did = cleanId(p.did), code = cleanCircleCode(p.code);
+  if (!did) return { ok: false, err: 'device' };
+  if (!code) return { ok: false, err: 'code' };
+  var period = p.period === 'all' ? 'all' : 'season', cc = CacheService.getScriptCache(), key = 'cb_' + code + '_' + period, raw = cc.get(key), B;
+  if (raw) B = JSON.parse(raw);
+  else {
+    if (guessBlocked(did)) return { ok: false, err: 'rate' };
+    var c = findCircle(code);
+    if (!c || c.status === 'HIDDEN') { guessFail(did); return { ok: false, err: 'notfound' }; }
+    B = buildCircleBoard(c, period);
+    cc.put(key, JSON.stringify(B), CIRCLE.CACHE_S);
+  }
+  var off = Math.max(0, Math.min(CIRCLE.KEEP, parseInt(p.off, 10) || 0)), n = Math.max(1, Math.min(200, parseInt(p.n, 10) || CONFIG.LB_PAGE)), me = String(p.pid || ''), rows = [], i;
+  for (i = off; i < Math.min(B.list.length, off + n); i++) rows.push({ r: i + 1, n: B.list[i][0], s: B.list[i][1], p: B.list[i][2], u: B.list[i][3] || '' });
+  var w = who(), res = { ok: true, rules: w.rules, release: w.release, server: w.server, circle: B.c, members: B.members, players: B.players, period: B.c.kind === 'event' ? 'event' : period, updated: B.updated, off: off, rows: rows };
+  res.circle.mine = /^[a-f0-9]{8}$/.test(me) && B.c.ownerPid === me; delete res.circle.ownerPid;
+  if (res.circle.mine && B.roster) res.roster = B.roster.map(function (x) { return { p: x[0], n: x[1] }; });   // only the owner sees who is in the circle (to remove someone)
+  if (/^[a-f0-9]{8}$/.test(me) && String(p.me) === '1') for (i = 0; i < B.list.length; i++) if (B.list[i][2] === me) { res.me = { r: i + 1, s: B.list[i][1] }; break; }
+  return res;
+}
+function actEvents() {                                              // public: the open events shown in the game (upcoming, live, or finished in the last 30 days)
+  var cc = CacheService.getScriptCache(), raw = cc.get('ev_list'), now = Date.now();
+  if (raw) return JSON.parse(raw);
+  var list = readCircles().filter(function (c) { return c.kind === 'event' && c.scope === 'all' && c.status === 'ACTIVE' && now < c.end + 30 * 86400000; });
+  list.sort(function (a, b) { return b.start - a.start; });
+  var res = { ok: true, now: now, events: list.slice(0, 20).map(function (c) { return pubCircle(c, null, ''); }) };
+  cc.put('ev_list', JSON.stringify(res), CIRCLE.CACHE_S);
+  return res;
+}
+
+/* staff: events and the circle list (all need the staff PIN) */
+function adminEventSet(b) {
+  var name = cleanCircleName(b.name), start = Math.round(+b.start), end = Math.round(+b.end), scope = b.scope === 'code' ? 'code' : 'all', note = cleanNote(b.note);
+  if (name.length < 2) return { ok: false, err: 'name' };
+  if (!(start > 0 && end > start)) return { ok: false, err: 'dates' };
+  if (end - start < 60000 || end - start > 120 * 86400000) return { ok: false, err: 'length' };
+  var all = readCircles(), code = cleanCircleCode(b.code), c = code ? findCircle(code, all) : null;
+  if (code && (!c || c.kind !== 'event')) return { ok: false, err: 'notfound' };
+  if (c) { c.name = name; c.start = start; c.end = end; c.scope = scope; c.note = note; writeCircle(c); }
+  else {
+    code = newCircleCode(all); if (!code) return { ok: false, err: 'server' };
+    c = { code: code, name: name, kind: 'event', owner: 'staff', ownerName: 'Rainbrew', created: Date.now(), start: start, end: end, scope: scope, status: 'ACTIVE', note: note };
+    circleSheet().appendRow(circleRow(c));
+  }
+  dropCircleCache(c.code);
+  return { ok: true, circle: pubCircle(c, null, '') };
+}
+function adminCircles() {
+  var all = readCircles(), counts = memberCounts(readMembers()), now = Date.now();
+  all.sort(function (a, b) { return b.created - a.created; });
+  return { ok: true, now: now, total: all.length, circles: all.slice(0, 200).map(function (c) { var o = pubCircle(c, counts[c.code] || 0, ''); o.ownerName = c.ownerName; o.created = c.created; return o; }) };
+}
+function adminCircleStatus(b) {
+  var code = cleanCircleCode(b.code), status = String(b.status || ''), c = code && findCircle(code);
+  if (!c) return { ok: false, err: 'notfound' };
+  if (['ACTIVE', 'CLOSED', 'HIDDEN'].indexOf(status) < 0) return { ok: false, err: 'status' };
+  c.status = status; writeCircle(c); dropCircleCache(code);
+  return { ok: true, circle: pubCircle(c, null, '') };
+}
+function adminCircleKick(b) {
+  var code = cleanCircleCode(b.code), pid = String(b.pid || '');
+  if (!code || !/^[a-f0-9]{8}$/.test(pid)) return { ok: false, err: 'pid' };
+  var members = readMembers();
+  for (var i = 0; i < members.length; i++) if (members[i].code === code && members[i].pid === pid && members[i].status === 'ACTIVE') { memberSheet().getRange(members[i].row, MEMBER_HEAD.length).setValue('REMOVED'); break; }
+  dropCircleCache(code);
+  return { ok: true };
+}
+
 /* ---------- helpers ---------- */
 var _props = {}, _sheet = null;
 function cellText(v) { if (Object.prototype.toString.call(v) === '[object Date]') return Utilities.formatDate(v, CONFIG.TIMEZONE, 'yyyy-MM'); return v == null ? '' : String(v); }   // a season Sheets turned into a date or number is read back as text
@@ -1207,11 +1477,11 @@ function cleanContact(s) {
    3. Check the log: it prints the verification code. The score appears on the leaderboard at once (marked MANUAL in the Note column). */
 function addManualScore() {
   var P = {
-    name: 'anjiel cute',          // as it should show on the board (12 letters max)
-    contact: '09459613392',       // the player's mobile number (09...)
-    score: 1154476,                     // the score staff saw
+    name: 'PLAYER NAME',          // as it should show on the board (12 letters max)
+    contact: '09000000000',       // the player's mobile number (09...)
+    score: 0,                     // the score staff saw
     mode: 'rank',                 // 'rank' or 'classic'
-    uni: 'solar',                 // frost, solar, void, emerald or golden
+    uni: 'frost',                 // frost, solar, void, emerald or golden
     when: ''                      // optional: 'yyyy-MM-dd HH:mm:ss' of the run; leave empty for now
   };
   var name = cleanName(P.name), contact = cleanContact(P.contact), mode = MODES[P.mode] ? P.mode : '', score = Math.round(+P.score), uni = UNICORNS[P.uni] ? P.uni : 'frost';
