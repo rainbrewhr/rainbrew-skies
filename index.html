@@ -1602,6 +1602,30 @@ function noise(d, f1, f2, v, delay, type, bus) {                        // filte
   src.connect(f); f.connect(g); g.connect(bus || AU.sfxG); src.start(t); src.stop(t + d + .03);
 }
 const arp = (notes, d, type, v, gap) => notes.forEach((f, i) => tone(f, d, type, v, 0, i * gap));
+/* ---------- cinematic building blocks: a deep hit, a brass-like stab, a swelling string pad, a riser, bells ---------- */
+function stab(f, d, v, delay, bright, bus) {                         // a brass-like stab: three detuned saws through a filter that opens and closes (the "hit" of a film score)
+  const a = AU.ctx; if (!a) return;
+  try {
+    const t0 = a.currentTime + Math.max(0, delay || 0), fl = a.createBiquadFilter(), g = a.createGain();
+    fl.type = 'lowpass'; fl.Q.value = 1.3; fl.frequency.setValueAtTime(300, t0); fl.frequency.exponentialRampToValueAtTime(bright ? 5200 : 3000, t0 + .09); fl.frequency.exponentialRampToValueAtTime(500, t0 + d);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + .03); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    fl.connect(g); g.connect(bus || AU.sfxG); if (!bus && AU.echoIn) g.connect(AU.echoIn);
+    for (const dt of [-9, 0, 9]) { const o = a.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0); o.detune.value = dt; o.connect(fl); o.start(t0); o.stop(t0 + d + .05); }
+  } catch (e) {}
+}
+function cinPad(f, d, v, delay, bus) {                               // a slowly swelling low string pad (two detuned saws and a filter that opens, then closes)
+  const a = AU.ctx; if (!a) return;
+  try {
+    const t0 = a.currentTime + Math.max(0, delay || 0), fl = a.createBiquadFilter(), g = a.createGain();
+    fl.type = 'lowpass'; fl.Q.value = .8; fl.frequency.setValueAtTime(250, t0); fl.frequency.exponentialRampToValueAtTime(1400, t0 + d * .55); fl.frequency.exponentialRampToValueAtTime(400, t0 + d);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + d * .35); g.gain.setValueAtTime(v, t0 + d * .7); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    fl.connect(g); g.connect(bus || AU.musG);
+    for (const dt of [-7, 7]) { const o = a.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t0); o.detune.value = dt; o.connect(fl); o.start(t0); o.stop(t0 + d + .05); }
+  } catch (e) {}
+}
+function boom(delay, v) { tone(62, 1.3, 'sine', v, 26, delay); tone(120, .35, 'sine', v * .7, 45, delay); noise(.9, 900, 70, v * .5, delay, 'lowpass'); noise(.05, 6000, 2000, v * .25, delay, 'highpass'); }   // a deep cinematic hit: a sub drop, a thump, a rumble and a tiny click
+function bells(notes, d, gap, v, delay) { notes.forEach((f, i) => { tone(f, d, 'triangle', v, 0, (delay || 0) + i * gap); tone(f * 2, d * .6, 'sine', v * .35, 0, (delay || 0) + i * gap); }); }
+
 const SFX2 = {
   // catching treats: each one sounds different, and the pitch climbs with the combo
   f_fries:    c => { noise(.07, 3000, 2000, .1); tone(660 + c * 20, .08, 'square', .05); },
@@ -1650,7 +1674,12 @@ const SFX2 = {
   spider: () => tone(1400, .35, 'sine', .07, 300),
   logo: () => arp([1319, 1568, 2093], .15, 'sine', .05, .1),
   magic: () => { arp([523, 659, 784, 1047, 1319, 1568, 2093, 2637], .3, 'triangle', .06, .06); noise(.9, 2000, 8000, .05, .1, 'highpass'); tone(262, .9, 'sine', .08, 523, .05); },
-  rbrel: () => { tone(52, 1.2, 'sine', .32, 28); noise(.5, 120, 700, .2, 0, 'lowpass'); noise(1, 500, 9000, .1, .04, 'highpass'); arp([392, 523, 659, 784, 1047, 1319, 1568, 2093], .4, 'triangle', .07, .05); tone(196, 1, 'sawtooth', .08, 784, .05); },
+  rbrel: k => {                                                      // RAINBREW POWER: a deep boom, a golden brass chord in the level's own key, a rising shimmer, then the Rainbrew call (root, fifth, octave)
+    const b = n => mhz((k || 0) + n);
+    boom(0, .44); [0, 7, 12, 19].forEach((n, j) => stab(b(n + 12), 1.2, [.1, .075, .075, .055][j], .01, true));
+    noise(.6, 400, 9000, .09, 0, 'bandpass'); bells([b(36), b(43), b(48), b(55), b(60)], .7, .06, .05, .08);
+    bells([b(36), b(43), b(48)], .95, .17, .07, .55);
+  },
   stage: () => arp([392, 523, 659, 784], .25, 'sine', .07, .12),
   win: () => arp([523, 659, 784, 1047], .2, 'triangle', .09, .09),
   // the bosses: each mythical creature has its own voice and its own attack sound
@@ -1749,7 +1778,7 @@ function voiceTone(f, d, type, v, att, delay, bus, echo, det) {     // a held no
 }
 function musicCtx() {
   const g = typeof G !== 'undefined' ? G : null, menu = typeof st !== 'undefined' && st === 'menu';
-  return { menu, boss: !!(g && !menu && (g.boss || g.phase === 'boss' || g.phase === 'dying')), warn: !!(g && !menu && g.phase === 'warn'), enrage: !!(g && !menu && g.boss && g.boss.lv === 2 && g.phase === 'boss'), magic: !!(g && !menu && g.magic > 0), hype: g && !menu ? (g.hype || 0) : 0, place: menu ? (typeof placeTo !== 'undefined' ? placeTo % 8 : 0) : (g ? g.stage % 8 : 0), lv: g && !menu ? ((g.level - 1) % 5) + 1 : 1 };
+  return { menu, boss: !!(g && !menu && (g.boss || g.phase === 'boss' || g.phase === 'dying')), warn: !!(g && !menu && g.phase === 'warn'), enrage: !!(g && !menu && g.boss && g.boss.lv === 2 && g.phase === 'boss'), magic: !!(g && !menu && g.magic > 0), oc: !!(g && !menu && g.oc > 0), hype: g && !menu ? (g.hype || 0) : 0, place: menu ? (typeof placeTo !== 'undefined' ? placeTo % 8 : 0) : (g ? g.stage % 8 : 0), lv: g && !menu ? ((g.level - 1) % 5) + 1 : 1 };
 }
 function ambience(place, st, d, beat, key, ch, B) {                 // the sound of each sky: crickets, wind, waves, chimes, a rumbling volcano
   const r = Math.random;
@@ -1772,7 +1801,7 @@ function musTick() {
     if (bossM && AU.bmPrev === false) { const d0 = AU.nt - a.currentTime; noise(1.1, 500, 7000, .09, d0, 'bandpass', AU.musG); tone(110, .9, 'sine', .35, 220, d0, AU.musG); }   // the journey swells into the boss theme: a rising wash, no cut
     AU.bmPrev = bossM;
     const prog0 = 0, prog = m.menu ? 0 : Math.min(1, (L - 1) / 4 * 0.55 + (L === 5 ? 0.1 : 0) + m.hype * 0.35);
-    const tgt = m.menu ? 84 : (bossM ? (enr ? 168 : 158) : m.magic ? 132 : 92 + 36 * prog) * pl.t;                                    // slow at first, faster with every level and the build-up, the boss fight is the fastest
+    const tgt = m.menu ? 84 : (bossM ? (enr ? 168 : 158) : m.magic ? 132 : 92 + 36 * prog + (m.oc ? 8 : 0)) * pl.t;                                    // slow at first, faster with every level and the build-up, the boss fight is the fastest
     AU.bpm = AU.bpm ? AU.bpm + (tgt - AU.bpm) * (bossM && tgt > AU.bpm ? 0.35 : 0.06) : tgt;                                                     // the tempo glides: it never jumps
     const bpm = AU.bpm, sl = 60 / bpm / 4, beat = sl * 4;
     const s = AU.step, st = s % 16, bar = Math.floor(s / 16) % 4, loop = Math.floor(s / 64) % 2, d = AU.nt - a.currentTime, ch = (bossM ? bossProg(pl) : m.menu ? CH_ADV : pl.prog)[bar];
@@ -1790,6 +1819,9 @@ function musTick() {
       if (I >= 3 ? st % 2 === 0 : st % 4 === 0) noise(.04, 7500, 7500, (bossM ? .05 : .03) * vs, d, 'highpass', B);                                           // hi-hat
       if (I >= 3 ? BASSP[pl.bass](st) : st % 4 === 0) { const f = mhz(key + ch.r) * (st % 4 === 2 ? 2 : 1); tone(f, .2, 'sawtooth', .12 * vs, 0, d, B); tone(f / 2, .22, 'sine', .15 * vs, 0, d, B); }   // the pumping bass
       if (st === 0) for (let k = 0; k < ch.n.length; k++) { const f = mhz(key + ch.n[k] + 12); voiceTone(f, beat * 3.6, 'sawtooth', .022, .3, d, B, false, -6); voiceTone(f, beat * 3.6, 'sawtooth', .022, .3, d, B, false, 7); }   // strings
+      if (I >= 3 && (st === 0 || (st === 8 && I >= 4))) { tone(66, .6, 'sine', .3 * vs, 34, d, B); noise(.35, 800, 110, .1 * vs, d, 'lowpass', B); }     // cinematic: a deep war-drum hit on the big beats
+      if (I >= 2 && st === 0) cinPad(mhz(key + ch.r - 12), beat * 3.9, .05 * vs, d, B);                                                                    // cinematic: a low, swelling string line
+      if (I >= 4 && bar === 0 && st === 0 && !bossM) { stab(mhz(key + 12), beat * 1.8, .045, d, true, B); stab(mhz(key + 19), beat * 1.8, .032, d, true, B); }   // a heroic brass call to open each phrase
       if (m.warn) { if (st % 2 === 0) noise(.05, 4200, 4200, .09, d, 'highpass', B); if (st === 2) noise(sl * 14, 300, 8000, .11, d, 'bandpass', B); if (st % 4 === 0) tone(150, .1, 'sine', .3, 50, d, B); }   // the swell: a snare roll and a rising whoosh into the boss theme
       if (enr) {                                                                                                                                 // the climactic final push: heavy percussion and a pulsing synth
         if (st % 2 === 0) tone(150, .14, 'sine', .5 * vs, 40, d, B); if (st % 4 === 2) { tone(95, .16, 'triangle', .3 * vs, 55, d, B); noise(.1, 900, 400, .14 * vs, d, 'lowpass', B); }
@@ -1797,7 +1829,9 @@ function musTick() {
         if (AU.enr !== true) { AU.enr = true; noise(1.4, 7000, 2500, .16, d, 'highpass', B); tone(70, .6, 'sine', .5, 30, d, B); }
       }
       if (bossM) {
-        if (st === 0 || st === 6 || st === 10) for (const n of ch.n) tone(mhz(key + n + 12), .2, 'sawtooth', .045, 0, d, B);                                   // brass stabs
+        if (st === 0 || st === 6 || st === 10) for (const n of ch.n) stab(mhz(key + n + 12), .28, .04, d, false, B);
+        if (st === 0 || st === 8) { tone(60, .55, 'sine', .32, 32, d, B); noise(.3, 700, 100, .1, d, 'lowpass', B); }
+        if (st === 0) cinPad(mhz(key + ch.r), beat * 3.9, .045, d, B);                                   // brass stabs
         const rf = pl.riff[st]; if (st % 2 === 0 || rf) voiceTone(mhz(key + ch.r + 24 + rf), sl * 1.5, 'square', .036, .01, d, B, true);                          // a driving riff
         if (bar === 3 && st === 2) noise(sl * 10, 300, 7000, .09, d, 'bandpass', B);                                                                           // a riser before the loop turns over
         if (st % 2 === 1) noise(.03, 8000, 8000, .04, d, 'highpass', B);                                                                                       // sixteenth hats: the boss theme never lets up
@@ -1811,8 +1845,9 @@ function musTick() {
         if (st === 2 && bar % 2 === 1) noise(sl * 14, 300, 8000, .05 + .08 * m.hype, d, 'bandpass', B);
         if (m.hype > 0.6 && st % 2 === 1) tone(150, .1, 'sine', .35, 50, d, B);
       }
+      if (m.oc) { if (st % 2 === 0) tone(mhz(key + ch.r - 12), .1, 'sawtooth', .1, 0, d, B); else tone(mhz(key + ch.n[(s >> 1) % 3] + 36), .06, 'square', .032, 0, d, B); if (st % 4 === 0) stab(mhz(key + ch.r + 12), beat * .6, .03, d, true, B); }   // Overload: an electric pulsing bass and a sparkling line
       ornament(pl.orn, st, bar, I, d, B, key, ch, sl);
-      if (m.magic) tone(mhz(key + ch.n[s % 3] + 36), .1, 'triangle', .04, 0, d, B);                                                                            // sparkling arpeggio while you fly fast
+      if (m.magic) { tone(mhz(key + ch.n[s % 3] + 36), .1, 'triangle', .04, 0, d, B); if (st % 4 === 0) { stab(mhz(key + ch.r + 12), beat * .9, .042, d, true, B); tone(150, .12, 'sine', .4 * vs, 42, d, B); } if (st === 0) cinPad(mhz(key + ch.r + 12), beat * 3.9, .04, d, B); }   // the Rainbrew rush: a heroic beat, brass on every beat and a high pad                                                                            // sparkling arpeggio while you fly fast
       if (I >= 4 && bar === 0 && st === 0 && loop === 0) noise(1.1, 6500, 3200, .1, d, 'highpass', B);                                                  // a crash cymbal to open each phrase
       if (I >= 4 && bar === 3 && st >= 12) { noise(.09, 3000, 1800, .12 + (st - 12) * .02, d, 'highpass', B); tone(200, .06, 'triangle', .08, 0, d, B); }   // a drum fill into the next phrase
     }
@@ -1896,13 +1931,14 @@ Object.assign(SFX2, {
 Object.assign(SFX2, {                                                // new power-ups, the streak, the mystery box and a flawless win
   p_spread: () => arp([523, 659, 784], .09, 'triangle', .07, .06),
   p_mystery: () => arp([659, 784, 988, 1319], .1, 'sine', .07, .06),
-  overload: () => {                                                  // OVERLOAD: a joyful power-up fanfare (about 2 seconds): a bright rising run, a sparkling major chord and twinkles, with no booms or growls
-    [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, k) => tone(f, .55, 'triangle', .11, f * 1.01, k * .07));    // a happy rising run
-    [523, 659, 784, 1047].forEach((f, k) => tone(f, 1.3, 'sine', .08, f, .55 + k * .04));                            // a warm, bright chord
-    tone(262, 1.1, 'sine', .13, 523, .05);                                                                           // a soft lift underneath (never a thud)
-    [2093, 2637, 3136, 2637, 3520].forEach((f, k) => tone(f, .35, 'sine', .045, f * 1.02, .75 + k * .09));           // twinkles
-    noise(.7, 3500, 9000, .035, .2, 'highpass');                                                                     // a little airy shimmer
+  overload: k => {                                                   // OVERLOAD: an electric surge that rises, a drop, a few crackles, then a charged chord and a quick run up (in the level's own key)
+    const b = n => mhz((k || 0) + n);
+    tone(b(12), .4, 'sawtooth', .06, b(12) * 10, 0); tone(b(19), .4, 'square', .03, b(19) * 8, .02); noise(.38, 800, 9000, .08, 0, 'bandpass');
+    boom(.4, .26); for (let i = 0; i < 4; i++) noise(.04, 4500, 6500, .07, .44 + i * .07, 'highpass');
+    [0, 7, 12].forEach((n, j) => stab(b(n + 12), .75, [.07, .05, .045][j], .4, true));
+    [0, 7, 12, 19, 24, 31, 36, 43].forEach((n, j) => tone(b(n + 24), .12, 'triangle', .045, 0, .5 + j * .045));
   },
+  ocend: k => { tone(mhz((k || 0) + 24), .5, 'sine', .07, mhz(k || 0) * 2, 0); noise(.4, 2500, 300, .035, 0, 'lowpass'); },   // the Overload fades out: a soft power-down
   close: () => tone(1800, .06, 'sine', .035, 2600),
   flawless: () => arp([523, 659, 784, 1047, 1319, 1568, 2093], .16, 'triangle', .09, .06)
 });
@@ -3514,7 +3550,7 @@ function drawMenuScene() {                                        // the home sc
 /* ============ playing: one flight = the shared simulation, 30 steps a second ============ */
 const STEP = 1 / SPS, clamp2 = (v, a, b) => v < a ? a : v > b ? b : v;
 let skillQ = 0, skillSteps = [], anchor = null, runUp = '', demoVx = 0, demoVy = 0;
-let rbQ = 0, rbSteps = [], rbRel = { t: 0 }, demoRbT = 0;   // Rainbrew Power: a tap (queued), the taps recorded for the server, the release effect
+let rbQ = 0, rbSteps = [], rbRel = { t: 0 }, demoRbT = 0, ocWas = 0;   // Rainbrew Power: a tap (queued), the taps recorded for the server, the release effect
 const rbStr = () => rbSteps.map(a => a[0] + '-' + a[1]).join(',');
 let perfAcc = 0, perfN = 0, perfDown = 0, backFn = null;
 let G = null, trajD = [], accT = 0, lastTs = 0, tgt = { x: FW / 2, y: FH - 150 }, pressed = false;
@@ -3578,7 +3614,7 @@ function handleEvents() {
     else if (n === 'hit' || n === 'bosshit') { if (n === 'bosshit') bossSquash = Math.min(.05, bossSquash + .02); if (now - lastHitSfx > 70) { lastHitSfx = now; sfx('tick'); } if (n === 'hit' && Math.random() < .5) burst(a, b, ROLE_COL[(ENEMIES[c] || { role: 'a' }).role], 2); }
     else if (n === 'capsule') { sfx('capsule'); }
     else if (n === 'heart') { burst(a, b, '#ff7aa0', 10); pop(a, b - 8, '+1 heart', '#ffb3c8'); sfx('heart'); vib(30); }
-    else if (n === 'overload') { banner = { txt: 'OVERLOAD!', sub: '', l: 1.6 }; burst(g.px, g.py, '#ffe27a', 10); sfx('overload'); duckMusic(1); vib([20, 30, 20]); overloadFx = { t: 1 }; overloadVoice(); for (let k = 0; k < 14; k++) { const an = k * .45, v = 70 + (k % 5) * 30; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v - 30, .8 + (k % 4) * .1, COL[k % 7], 4 + (k % 3) * 2); } }
+    else if (n === 'overload') { banner = { txt: 'OVERLOAD!', sub: '', l: 1.6 }; burst(g.px, g.py, '#ffe27a', 10); sfx('overload', MKEYS[g.stage % 8] || 0); duckMusic(1.6); vib([20, 30, 20]); overloadFx = { t: 1 }; setTimeout(overloadVoice, 350); for (let k = 0; k < 14; k++) { const an = k * .45, v = 70 + (k % 5) * 30; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v - 30, .8 + (k % 4) * .1, COL[k % 7], 4 + (k % 3) * 2); } }
     else if (n === 'mystery') { const m = { jackpot: ['LUCKY!', '+25 gems'], ult: ['POWER CHARGED!', 'Unicorn Power is full'], shield: ['SHIELD!', 'A free shield'], gamble: ['GAMBLE!', '+15 gems, slow fire for 8 s'] }[a] || ['SURPRISE!', '']; banner = { txt: m[0], sub: m[1], l: 1.5 }; burst(g.px, g.py, a === 'gamble' ? '#9a8aff' : '#ffd86a', 30); sfx('p_mystery'); vib(40); }
     else if (n === 'close') { sfx('close'); }
     else if (n === 'flawless') { say('FLAWLESS! A Prismatic card is yours', 2.6); burst(g.px, g.py, '#fff2a8', 40); sfx('flawless'); }
@@ -3609,7 +3645,7 @@ function handleEvents() {
     else if (n === 'icewarn') { say(b + ' ' + shardTheme().name + '! Move!', 1.4); sfx('icewarn', SHARD_THEMES[viewPlace()]); }
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
-    else if (n === 'rbrel') { rbRel = { t: 1 }; sfx('rbrel'); duckMusic(1); magicVoice(false); shake = Math.max(shake, .5); vib([40, 30, 80]); banner = { txt: 'RAINBREW POWER!', sub: '', l: 1.4 }; award('magic'); burst(g.px, g.py, '#ffe27a', 16); if (g.boss) { bossSquash = Math.min(.06, bossSquash + .04); burst(g.boss.x, g.boss.y, '#ffffff', 14); } }
+    else if (n === 'rbrel') { rbRel = { t: 1 }; sfx('rbrel', MKEYS[g.stage % 8] || 0); duckMusic(1.5); setTimeout(() => magicVoice(false), 120); shake = Math.max(shake, .5); vib([40, 30, 80]); banner = { txt: 'RAINBREW POWER!', sub: '', l: 1.4 }; award('magic'); burst(g.px, g.py, '#ffe27a', 16); if (g.boss) { bossSquash = Math.min(.06, bossSquash + .04); burst(g.boss.x, g.boss.y, '#ffffff', 14); } }
     else if (n === 'boss') { bsay(BOSS_NAME[a] + '!', 2.8); sfx('b_' + a); musicBossIn(); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
     else if (n === 'bossatk') { if (now - lastAtk > 250) { lastAtk = now; sfx('a_' + a); } }
     else if (n === 'angry' || n === 'enraged') { bsay(n === 'angry' ? 'IT IS ANGRY!' : 'FINAL PUSH!', 2); sfx('b_' + a); shake = .35; vib(100); }
@@ -3661,6 +3697,7 @@ function update(dt) {
   if (warnFx.t > 0) warnFx.t -= dt; if (skillFx.t > 0) skillFx.t -= dt * 1.4; if (ultFx.t > 0) ultFx.t -= dt * 1.6; if (introQ > 0) { introQ -= dt; if (introQ <= 0 && G && G.phase === 'wave') phaseIntro(G); } if (cardFx.t > 0) cardFx.t -= dt * (cardFx.rar === 3 ? .55 : cardFx.rar === 2 ? .9 : cardFx.rar === 1 ? 1.1 : 1.4); if (prismAura > 0) prismAura -= dt; for (let i = ultBolts.length - 1; i >= 0; i--) { ultBolts[i].l -= dt; if (ultBolts[i].l <= 0) ultBolts.splice(i, 1); } if (boostFx.t > 0) boostFx.t -= dt * 3;
   if (thunderT > 0) thunderT -= dt; if (magicFx.t > 0) magicFx.t -= dt * 3;
   if (rbRel.t > 0) rbRel.t -= dt * 2;
+  if (G && st === 'play') { if (ocWas > 0 && !(G.oc > 0) && G.phase === 'wave') sfx('ocend', MKEYS[G.stage % 8] || 0); ocWas = G.oc; } else ocWas = 0;   // the Overload ran out: a soft power-down
   for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.l -= dt; if (p.l <= 0) { sparks.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .985; p.vy *= .985; }
   if (G && G.boss) { const bb = G.boss; if (!RIG || RIG.kind !== bb.kind) RIG = makeRig(bb.kind); if (RIG && RIG.update) { const rdt = Math.min(dt, .05), sc = 1.22; RIG.update(rdt, lastBossX === null ? 0 : (bb.x - lastBossX) / sc, lastBossY === null ? 0 : (bb.y - lastBossY) / sc, now / 1000, { charge: bossCharge, lv: bb.lv || 0, tx: (G.px - bb.x) / sc, ty: (G.py - bb.y) / sc }); } lastBossY = bb.y; bossCharge += ((bb.tele ? 1 : 0) - bossCharge) * Math.min(1, dt * 9); const vx = lastBossX === null ? 0 : (bb.x - lastBossX) / Math.max(dt, .001); lastBossX = bb.x; bossLean += (Math.max(-.12, Math.min(.12, vx * .0007)) - bossLean) * Math.min(1, dt * 6); bossSquash = Math.max(0, bossSquash - dt * .35); } else { RIG = null; lastBossY = null; lastBossX = null; bossCharge = 0; bossLean = 0; bossSquash = 0; }
   if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
