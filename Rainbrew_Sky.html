@@ -1789,6 +1789,14 @@ function ornament(o, st, bar, I, d, B, key, ch, sl) {              // each place
   else if (o === 'heavy' && (st === 0 || st === 3 || st === 8 || st === 11)) { tone(mhz(key + ch.r - 12), .22, 'sawtooth', .1, 0, d, B); tone(120, .12, 'sine', .3, 40, d, B); }
   else if (o === 'tambo' && st % 4 === 2) noise(.07, 9000, 6000, .07, d, 'highpass', B);
 }
+/* ---------- the Rainbrew theme: ONE heroic tune for the whole game (a film-score leitmotif). Each bar is a list of [step, chord-tone, length]; chord-tone 0-2 are the chord's root, third and fifth, 3-5 the same an octave up, so the tune follows every place's own chords and key. Four phrases of four bars: the call (A), its answer (A2), a broader contrast (B) and the climax (C). ---------- */
+const THEME = [
+  [[[0, 0, 2], [2, 2, 2], [4, 3, 4], [8, 2, 2], [10, 3, 2], [12, 4, 4]], [[0, 0, 2], [2, 2, 2], [4, 3, 4], [8, 4, 2], [10, 3, 2], [12, 2, 4]], [[0, 2, 3], [3, 3, 1], [4, 4, 4], [8, 5, 3], [11, 4, 1], [12, 3, 4]], [[0, 3, 4], [4, 2, 2], [6, 1, 2], [8, 0, 8]]],
+  [[[0, 0, 2], [2, 2, 2], [4, 3, 4], [8, 2, 2], [10, 3, 2], [12, 4, 4]], [[0, 0, 2], [2, 2, 2], [4, 3, 4], [8, 4, 2], [10, 3, 2], [12, 2, 4]], [[0, 2, 3], [3, 3, 1], [4, 4, 4], [8, 5, 3], [11, 4, 1], [12, 3, 4]], [[0, 3, 4], [4, 4, 2], [6, 3, 2], [8, 2, 8]]],
+  [[[0, 3, 6], [6, 4, 2], [8, 5, 6], [14, 4, 2]], [[0, 3, 6], [6, 4, 2], [8, 5, 4], [12, 4, 2], [14, 3, 2]], [[0, 4, 3], [3, 3, 1], [4, 2, 4], [8, 3, 3], [11, 4, 1], [12, 5, 4]], [[0, 5, 8], [8, 4, 2], [10, 3, 2], [12, 2, 4]]],
+  [[[0, 3, 2], [2, 4, 2], [4, 5, 2], [6, 4, 2], [8, 3, 2], [10, 4, 2], [12, 5, 4]], [[0, 3, 2], [2, 4, 2], [4, 5, 2], [6, 4, 2], [8, 5, 2], [10, 4, 2], [12, 3, 4]], [[0, 4, 2], [2, 5, 2], [4, 5, 4], [8, 5, 2], [10, 4, 2], [12, 5, 4]], [[0, 5, 4], [4, 4, 2], [6, 3, 2], [8, 3, 8]]]
+];
+const ctNote = (ch, i) => ch.n[i % 3] + 12 * Math.floor(i / 3);
 const LEAD_T = [['sawtooth', 'square'], ['triangle', 'sine'], ['sawtooth', 'triangle'], ['square', 'sawtooth'], ['triangle', 'square'], ['sine', 'triangle'], ['sawtooth', 'square'], ['square', 'triangle']];   // each sky has its own lead voice
 function voiceTone(f, d, type, v, att, delay, bus, echo, det) {     // a held note with a gentle attack (strings, lead)
   const a = AU.ctx; if (!a) return;
@@ -1836,11 +1844,14 @@ function musTick() {
       ambience(OP, st, d, beat, key, ch, B);
     } else {
       const I = bossM ? 6 : m.magic ? 5 : Math.min(5, L + 1 + Math.floor(m.hype * 2)), vs = 0.55 + 0.09 * Math.min(5, I);   // ONE hype track for all of combat: light at first, adding drums, bass, lead and arpeggios as the levels climb
-      const snare = I >= 2, lead = I >= 3, arps = I >= 4, full = I >= 5;
-      if (I === 1 ? st % 8 === 0 : (KICKS[pl.kick].indexOf(st) >= 0 || (bossM && st === 10))) tone(150, .16, 'sine', .55 * vs, 42, d, B);                       // kick (just beats 1 and 3 at the start)                                         // kick
-      if (snare && (st === 4 || st === 12)) { noise(.13, 2600, 1400, .2 * vs, d, 'highpass', B); tone(190, .1, 'triangle', .14 * vs, 120, d, B); }   // snare
-      if (I >= 3 ? st % 2 === 0 : st % 4 === 0) noise(.04, 7500, 7500, (bossM ? .05 : .03) * vs, d, 'highpass', B);                                           // hi-hat
+      const snare = I >= 2, lead = I >= 3, arps = I >= 4, full = I >= 5, phI = Math.floor(s / 64) % 4, breathe = !bossM && phI === 2 && bar < 2;   // (the contrast phrase opens with space: no kick or snare for two bars)
+      if (I === 1 ? st % 8 === 0 : breathe ? st === 0 : (KICKS[pl.kick].indexOf(st) >= 0 || (bossM && st === 10))) { tone(150, .16, 'sine', .55 * vs, 42, d, B); noise(.012, 4200, 4200, .05 * vs, d, 'highpass', B); }                       // kick (just beats 1 and 3 at the start)                                         // kick
+      if (snare && !breathe && I >= 4 && !bossM && (st === 7 || st === 15)) noise(.05, 2600, 1400, .06 * vs, d, 'highpass', B);   // a ghost snare
+      if (!bossM && I >= 4 && st === 14) noise(.14, 8500, 6000, .05, d, 'highpass', B);                                                  // an open hat before the beat
+      if (snare && !breathe && (st === 4 || st === 12)) { noise(.13, 2600, 1400, .2 * vs, d, 'highpass', B); tone(190, .1, 'triangle', .14 * vs, 120, d, B); }   // snare
+      if (I >= 3 ? st % 2 === 0 : st % 4 === 0) noise(.04, 7500, 7500, (bossM ? .05 : .03) * vs * (st % 4 === 0 ? 1.25 : .8), d, 'highpass', B);                                           // hi-hat
       if (I >= 3 ? BASSP[pl.bass](st) : st % 4 === 0) { const f = mhz(key + ch.r) * (st % 4 === 2 ? 2 : 1); tone(f, .2, 'triangle', .13 * vs, 0, d, B); tone(f / 2, .22, 'sine', .17 * vs, 0, d, B); }   // the pumping bass
+      if (!bossM && I >= 3 && st === 14) { const nr = pl.prog[(bar + 1) % 4].r; tone(mhz(key + nr - 5), .14, 'triangle', .1 * vs, 0, d, B); }   // a bass pickup: the fifth below the next chord's root leads into it
       if (st === 0) for (let k = 0; k < ch.n.length; k++) { const f = mhz(key + ch.n[k] + 12); voiceTone(f, beat * 3.6, 'triangle', .03, .25, d, B, false, 0); }   // strings
       if (I >= 2 && (st === 0 || (st === 8 && I >= 3) || (st === 14 && I >= 4))) { tone(66, .6, 'sine', (st === 14 ? .2 : .3) * vs, 34, d, B); noise(.35, 800, 110, (st === 14 ? .06 : .1) * vs, d, 'lowpass', B); }     // cinematic: a deep war-drum hit on the big beats
       if (!bossM && I >= 2 && st % 2 === 0) pluck(mhz(key + ch.n[[0, 2, 1, 2][(st >> 1) % 4]] + 24), .14, (st % 4 === 0 ? .07 : .045) * vs, d, B);       // cinematic: crisp staccato strings, an eighth-note pulse on the chord
@@ -1861,7 +1872,8 @@ function musTick() {
         if (st % 2 === 1) noise(.03, 8000, 8000, .04, d, 'highpass', B);                                                                                       // sixteenth hats: the boss theme never lets up
         if (st === 0) voiceTone(mhz(key + ch.r - 12), beat * 3.8, 'sawtooth', .05, .1, d, B, false, 5);                                                       // a dark, growling drone
       } else {
-        if (lead && st % 2 === 0) { let off = (bossM ? LEAD_B : loop || L >= 4 ? pl.leadB : pl.leadA)[bar][st >> 1]; if (off >= 0 && pl.maj) off += MAJOR[((off % 12) + 12) % 12] || 0; if (off >= 0) { const f = mhz(key + off + 12) * (m.magic ? 2 : 1), T = LEAD_T[OP]; horn(f, sl * 2.8, .055, d, B); if (full) horn(f * 1.4983, sl * 2.8, .03, d, B); } }   // the heroic lead: a warm horn (and a fifth above in the biggest moments)
+        if (lead) { const phr = Math.floor(s / 64) % 4, bn = THEME[phr][bar]; for (const nt of bn) if (nt[0] === st) {   // the Rainbrew theme: a warm horn (with a fifth above in the big moments and a high shimmer when the music is full)
+          const f = mhz(key + ctNote(ch, nt[1]) + 24) * (m.magic ? 2 : 1), len = sl * nt[2] * .96; horn(f, len, .06, d, B); if (full || (I >= 4 && phr === 3)) horn(f * 1.4983, len, .03, d, B); if (I >= 4) voiceTone(f * 2, len, 'triangle', .014, .03, d, B, true); } }
       }
       if (m.hype > 0.1 && !bossM) {                                                                                                                              // the build-up before a boss: a growing snare roll, a riser and a double kick
         if (st % 2 === 0) noise(.05, 4200, 4200, .04 + .12 * m.hype, d, 'highpass', B);
@@ -1871,8 +1883,8 @@ function musTick() {
       if (m.oc) { if (st % 2 === 0) tone(mhz(key + ch.r - 12), .1, 'sawtooth', .1, 0, d, B); else tone(mhz(key + ch.n[(s >> 1) % 3] + 36), .06, 'square', .032, 0, d, B); if (st % 4 === 0) stab(mhz(key + ch.r + 12), beat * .6, .03, d, true, B); }   // Overload: an electric pulsing bass and a sparkling line
       ornament(pl.orn, st, bar, I, d, B, key, ch, sl);
       if (m.magic) { tone(mhz(key + ch.n[s % 3] + 36), .1, 'triangle', .04, 0, d, B); if (st % 4 === 0) { stab(mhz(key + ch.r + 12), beat * .9, .03, d, true, B); tone(150, .12, 'sine', .28 * vs, 42, d, B); } if (st === 0) cinPad(mhz(key + ch.r + 12), beat * 3.9, .035, d, B); }   // the Rainbrew rush: a heroic beat, brass on every beat and a high pad                                                                            // sparkling arpeggio while you fly fast
-      if (I >= 4 && bar === 0 && st === 0 && loop === 0) noise(1.1, 6500, 3200, .1, d, 'highpass', B);                                                  // a crash cymbal to open each phrase
-      if (I >= 4 && bar === 3 && st >= 12) { noise(.09, 3000, 1800, .12 + (st - 12) * .02, d, 'highpass', B); tone(200, .06, 'triangle', .08, 0, d, B); }   // a drum fill into the next phrase
+      if (I >= 4 && st === 0 && ((bar === 0 && loop === 0) || (!bossM && ((phI === 2 && bar === 2) || (phI === 3 && bar === 0))))) noise(1.1, 6500, 3200, .1, d, 'highpass', B);                                                  // a crash cymbal to open each phrase
+      if (I >= 4 && bar === 3 && st >= 12) { noise(.09, 3000, 1800, .12 + (st - 12) * .02, d, 'highpass', B); tone(200, .06, 'triangle', .08, 0, d, B); if (!bossM) tone(210 - (st - 12) * 32, .2, 'sine', .3 * vs, 90, d, B); }   // a drum fill with falling toms   // a drum fill into the next phrase
     }
     AU.nt += sl; AU.step++;
   }
@@ -2929,7 +2941,7 @@ const CRE_COL = { c_fire: '#ff6a1a', c_frost: '#7fe3ff', c_poison: '#7dff4a', wi
 const WL_COL = ['#8fe0ff', '#9fe8ff', '#ffe27a', '#ff9ad5', '#b6ff8a', '#ffffff'];
 let weaponFx = { t: 0, lv: 0 };
 const POW_COL = { coffee: '#ffb347', triple: '#7fe0ff', helpers: '#d7a8ff', shield: '#6fc8ff', spread: '#ffd86a', pierce: '#ff8a5a', charm: '#ff9ad5', mystery: '#c88aff', core: '#ffd86a' };
-let introQ = 0;
+let introQ = 0, phaseQ = 0;
 function phaseIntro(g) {                                             // "PHASE 1: PUMPKINS!": every phase announces its creatures before they arrive
   const n = ((g.level - 1) % BOSS_EVERY) + 1, kinds = levelKinds(g).map(k => (KIND_NAME[k] || k).toUpperCase()).join(' & ');
   banner = { txt: 'PHASE ' + n + ': ' + kinds + '!', sub: '', l: 2.2 };
@@ -2978,6 +2990,7 @@ function ingSvg(id, on) {                                           // the same 
   const I = ING[id]; return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + I.d + '" fill="' + (on ? I.col : 'rgba(120,80,160,.2)') + '"/>' + (on && I.ln ? '<path d="' + I.ln + '" fill="none" stroke="rgba(40,20,10,.45)" stroke-width="1.3" stroke-linecap="round"/>' : '') + (on && I.dots ? I.dots.map(q => '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="' + q[2] + '" fill="#5a3414"/>').join('') : '') + '</svg>';
 }
 let uniMood = { hop: 0, sad: 0 }, placeCard = { l: 0, l0: 1 }, bossCard = { l: 0, l0: 1 }, cafeDrop = { l: 0, l0: 1 }, rfx = { x: FW / 2, y: FH - 150 };
+function showPlaceCard(i) { const P = PLACES[i % PLACES.length]; placeCard = { n: i + 1, name: P.name, tag: P.tag, l: 3.6, l0: 3.6 }; }
 function drawIntroCards() {                                         // a quiet place card when you arrive somewhere new, a gentle dim and the boss's name and one line when it appears, and the café ingredient it leaves behind
   if (placeCard.l > 0) {
     const c = placeCard, age = c.l0 - c.l, e = Math.min(1, age * 2.2), al = Math.max(0, Math.min(e, c.l * 1.4)), y = FH * .3 + 10 * (1 - e);
@@ -3726,7 +3739,9 @@ function draw() {
     });
     ctx.restore();
     safe(drawHud); safe(drawOverlays); safe(drawBossWarning);                         // the HUD is drawn separately and first of the overlays: nothing can hide it
-    if (st === 'count' || st === 'ready') { T(String(Math.max(1, Math.ceil(cd))), FW / 2, FH * .45, { size: 100, w: 12 }); T(st === 'count' ? 'Get ready to fly!' : 'Ready…', FW / 2, FH * .45 + 76, { size: 18, w: 5 }); }
+    if (st === 'count' || st === 'ready') { T(String(Math.max(1, Math.ceil(cd))), FW / 2, FH * .45, { size: 100, w: 12 }); T(st === 'count' ? 'Get ready to fly!' : 'Ready…', FW / 2, FH * .45 + 76, { size: 18, w: 5 });
+      const cur = Math.max(1, Math.min(3, Math.ceil(cd))), tips = ['DRAG your finger to fly', 'Your unicorn shoots by itself', 'Tap UNICORN when it glows'];   // how to play, one line for each count
+      for (let i = 0; i < 3; i++) { const on = tips[2 - (cur - 1)] === tips[i]; T(tips[i], FW / 2, FH * .45 + 104 + i * 22, { size: on ? fit(tips[i], 15, FW - 28) : fit(tips[i], 12.5, FW - 28), fill: on ? '#ffe27a' : 'rgba(255,255,255,.7)', w: on ? 4.5 : 3.5 }); } T('Boss fights: tap RAINBREW', FW / 2, FH * .45 + 104 + 3 * 22 + 4, { size: 11.5, fill: '#ffb3e6', w: 3.5 }); }
   } else drawMenuScene();
 }
 function drawMenuScene() {                                        // the home screen: a living sky. Your unicorn flies a gentle figure-eight with a rainbow ribbon; the sky drifts through all eight places
@@ -3764,7 +3779,7 @@ function decodeTraj(tr) { const a = []; for (let i = 0; i < tr.length; i++) a.pu
 function startGame(m) {
   if (demo && !demoStarting) { demo = false; skipBtn.hidden = true; }         // any real game start ends a demo
   auInit(); mode = m; if (!demo) LS.set('wg_mode', m); const M = MODES[m]; if (!demo) clearCkpt();
-  placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
+  phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
   session = null; ranked = false; run = null; waitT = 0; cdN = 0; noteUnranked = ''; tgt = { x: FW / 2, y: FH - 150 }; pressed = false; clearInterval(lbTimer);
   G = newGame(1, m, demo ? 'frost' : uniOf()); G.keepEv = true; placeFrom = placeTo = 0; placeMix = 1;     // (a preview while the countdown runs)
   st = 'count'; cd = 3; ov.style.display = 'none'; musicStop(); ++runSeq; sessDone = true;
@@ -3787,7 +3802,7 @@ function begin() {
     runSeed = (Math.random() * 4294967296) >>> 0; ranked = false;
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
-  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
+  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
   placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: 'Boost on: fire fast!', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
   if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
 }
@@ -3856,8 +3871,8 @@ function handleEvents() {
     else if (n === 'bossdying') { bsay(BOSS_NAME[a] + ' IS FALLING!', 1.6); sfx('bossdying'); shake = .5; vib(120); }
     else if (n === 'bossdead') { award('boss'); if (b >= 7) award('all8'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('victory'); musicVictory(); if (!demo && ING[a]) { const nw = cafeAdd(a), all = cafeTotal() >= 8; cafeDrop = { id: a, isNew: nw, n: cafe[a], done: all && !ach.barista, l: 4, l0: 4 }; if (all) award('barista'); } for (let k = 0; k < 60; k++) { const an = k * .37, v = 60 + (k % 6) * 35; spark(FW / 2, 150, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 4) * .2, COL[k % 7], 5 + (k % 3) * 2); } placeFrom = placeTo; placeTo = (b + 1) % PLACES.length; placeMix = 0; }   // the next place starts fading in right away
     else if (n === 'bossflee') bsay('The ' + BOSS_NAME[a].toLowerCase() + ' flew away!', 2.6);
-    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } placeCard = { n: a + 1, name: PLACES[a % PLACES.length].name, tag: PLACES[a % PLACES.length].tag, l: 3.6, l0: 3.6 }; sfx('stage'); if (a >= 2) award('place3'); }
-    else if (n === 'level') { if (!(g.M.boss && a % BOSS_EVERY === 0)) phaseIntro(g); }   // each level is its own creature
+    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } showPlaceCard(a); sfx('stage'); if (a >= 2) award('place3'); }
+    else if (n === 'level') { if (!(g.M.boss && a % BOSS_EVERY === 0)) { if (placeCard.l > 0) phaseQ = placeCard.l + .3; else phaseIntro(g); } }   // the place is introduced first, then its creatures (never both at once)   // each level is its own creature
   }
   g.ev.length = 0;
 }
@@ -3896,7 +3911,7 @@ function update(dt) {
   if (bombFlash > 0) bombFlash -= dt * 2.2; if (weaponFx.t > 0) weaponFx.t -= dt * 1.5; if (slowmo > 0) slowmo -= dt;
   if (placeMix < 1) placeMix = Math.min(1, placeMix + dt / 2.5);                 // the new place fades in over 2.5 seconds
   if (G && G.phase === 'warn') { const cn = Math.ceil(G.warnT / SPS); if (cn !== lastCount) { lastCount = cn; sfx('cdtick', cn); } } else lastCount = 0;
-  if (warnFx.t > 0) warnFx.t -= dt; if (skillFx.t > 0) skillFx.t -= dt * 1.4; if (ultFx.t > 0) ultFx.t -= dt * 1.6; if (introQ > 0) { introQ -= dt; if (introQ <= 0 && G && G.phase === 'wave') phaseIntro(G); } if (cardFx.t > 0) cardFx.t -= dt * (cardFx.rar === 3 ? .55 : cardFx.rar === 2 ? .9 : cardFx.rar === 1 ? 1.1 : 1.4); if (prismAura > 0) prismAura -= dt; for (let i = ultBolts.length - 1; i >= 0; i--) { ultBolts[i].l -= dt; if (ultBolts[i].l <= 0) ultBolts.splice(i, 1); } if (boostFx.t > 0) boostFx.t -= dt * 3;
+  if (warnFx.t > 0) warnFx.t -= dt; if (skillFx.t > 0) skillFx.t -= dt * 1.4; if (ultFx.t > 0) ultFx.t -= dt * 1.6; if (introQ > 0) { introQ -= dt; if (introQ <= 0 && G && G.phase === 'wave') { showPlaceCard(G.stage); phaseQ = placeCard.l + .3; } } if (phaseQ > 0) { phaseQ -= dt; if (phaseQ <= 0 && G && G.phase === 'wave') phaseIntro(G); } if (cardFx.t > 0) cardFx.t -= dt * (cardFx.rar === 3 ? .55 : cardFx.rar === 2 ? .9 : cardFx.rar === 1 ? 1.1 : 1.4); if (prismAura > 0) prismAura -= dt; for (let i = ultBolts.length - 1; i >= 0; i--) { ultBolts[i].l -= dt; if (ultBolts[i].l <= 0) ultBolts.splice(i, 1); } if (boostFx.t > 0) boostFx.t -= dt * 3;
   if (thunderT > 0) thunderT -= dt; if (magicFx.t > 0) magicFx.t -= dt * 3;
   if (rbRel.t > 0) rbRel.t -= dt * 2; if (puFx.length) puFx = puFx.filter(f => (f.t -= dt * 1.7) > 0);
   if (G && st === 'play') { if (ocWas > 0 && !(G.oc > 0) && G.phase === 'wave') sfx('ocend', MKEYS[G.stage % 8] || 0); ocWas = G.oc; } else ocWas = 0;   // the Overload ran out: a soft power-down

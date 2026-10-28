@@ -47,6 +47,12 @@ Every place now has one quiet, slowly moving background layer, like the haunted 
 
 None of this changes the shared rules, so **no Apps Script redeploy is needed** and `SIM_VERSION` stays 36.
 
+## The intro order, the countdown and the Rainbrew theme (visual and sound only, no rules change)
+
+- **Intro order:** a place is always introduced first (its card), then its creatures ("PHASE 1: ...") about half a second after the card fades. This holds at the very start of a run (GO!, then the Haunted Meadows card, then Phase 1) and after a boss and Wild Card (the new place first, then its creatures). They never show at the same time.
+- **The 3-2-1 countdown** now teaches how to play: drag to fly, the unicorn shoots by itself, tap UNICORN when it glows, and tap RAINBREW in boss fights. The line for the current count is highlighted.
+- **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
+
 ## Sound and music: the epic cinematic direction (new, first step)
 * **All sounds and music are still made live by the game (no audio files except the two voice-overs)**, so nothing was added to download. This step upgrades them to a more cinematic feel, starting with Rainbrew Power and Overload.
 * **Building blocks** (in `index.html`, next to `tone` and `noise`): `stab` (a brass-like hit), `cinPad` (a slowly swelling string pad), `boom` (a deep cinematic hit), `bells` (the bright notes).
