@@ -31,12 +31,13 @@ var CONFIG = {
 };
 
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 33;
+var SIM_VERSION = 38;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
 var LEVEL_STEPS = 660, BOSS_EVERY = 5, BOSS_MAX = 3900;           // a level lasts 22 s; every 5th level is a boss; a boss not beaten in 130 s flies away
 var OC_STEPS = 240, POWER_STEPS = 300, COFFEE_STEPS = 240, PR = 12;
+var RB_DMG = 0.22;                                               // RAINBREW POWER (the fixed button, boss fights only, once per boss): one tap = an instant, huge hit (22% of the boss's health), then a fast surge
 var ELEM_MAX = 100, ELEM_KILL = 0.5;                                // every defeated creature charges Rainbrew Power by 0.5%: 200 defeats = a full bar
 var MODES = {
   rank:    { ranked: 1, lives: 3, maxSec: 10800, diff: 1.5, boss: 1, ramp: 1, hype: 1, fair: 1 },   // fair: every unicorn uses its equal base kit and no upgrades, because gems live on each phone and the server cannot check what was bought   // the weekly ranked flight: the same course for everyone; it gets harder with time and builds a hype before every boss
@@ -76,17 +77,19 @@ var ENEMIES = {
   firefly: { role: 'a', hp: 1, pts: 5,  r: 14, sway: 22, fast: 1.1 }, frog: { role: 'b', hp: 6, pts: 16, r: 19 }, mush: { role: 'c', hp: 4, pts: 24, r: 18 },
   gembug:  { role: 'a', hp: 2, pts: 6,  r: 15 }, crystal: { role: 'b', hp: 7, pts: 18, r: 21 }, gemwisp: { role: 'c', hp: 4, pts: 24, r: 16 },
   ashling: { role: 'a', hp: 2, pts: 6,  r: 15, fast: 1.15 }, magma: { role: 'b', hp: 7, pts: 18, r: 20 }, fireimp: { role: 'c', hp: 4, pts: 24, r: 17 },
-  scarab:  { role: 'a', hp: 2, pts: 6,  r: 15 }, mummy: { role: 'b', hp: 7, pts: 18, r: 19 }, sorcerer: { role: 'c', hp: 4, pts: 24, r: 18 }
+  scarab:  { role: 'a', hp: 2, pts: 6,  r: 15 }, mummy: { role: 'b', hp: 7, pts: 18, r: 19 }, sorcerer: { role: 'c', hp: 4, pts: 24, r: 18 },
+  swirl:     { role: 'a', hp: 3, pts: 7, r: 17, sway: 26, fast: 1.15 }, seahorse: { role: 'a', hp: 3, pts: 7, r: 17, sway: 30, fast: 1.1 }, drip: { role: 'a', hp: 3, pts: 7, r: 16, sway: 12, fast: 1.3 }, dragonfly: { role: 'a', hp: 2, pts: 7, r: 15, sway: 36, fast: 1.3 },
+  moth:      { role: 'a', hp: 3, pts: 7, r: 17, sway: 34, fast: 1.05 }, salamander: { role: 'a', hp: 3, pts: 8, r: 16, sway: 18, fast: 1.2 }, cobra: { role: 'a', hp: 3, pts: 8, r: 17, sway: 24, fast: 1.1 }   // the third creature of each world (never one that has already come)
 };
 var PLACE_KINDS = [                                               // which creatures live in which magical place, and which ones come on levels 1 to 4 (level 5 is the boss)
   { a: ['ghost', 'bat'], b: 'pumpkin', c: 'witch', plan: [['pumpkin'], ['ghost'], ['bat'], ['witch']] },              // Matcha Meadows: pumpkins, then ghosts, then bats, then witches
-  { a: ['puff'], b: 'storm', c: 'spark', plan: [['storm'], ['puff'], ['storm', 'puff'], ['spark']] },                 // Cappuccino Clouds
-  { a: ['jelly'], b: 'crab', c: 'puffer', plan: [['crab'], ['jelly'], ['crab', 'jelly'], ['puffer']] },               // Boba Bay
-  { a: ['ember'], b: 'golem', c: 'imp', plan: [['golem'], ['ember'], ['golem', 'ember'], ['imp']] },                  // Caramel Canyon
-  { a: ['firefly'], b: 'frog', c: 'mush', plan: [['frog'], ['firefly'], ['frog', 'firefly'], ['mush']] },             // Blueberry Bog
-  { a: ['gembug'], b: 'crystal', c: 'gemwisp', plan: [['crystal'], ['gembug'], ['crystal', 'gembug'], ['gemwisp']] },   // Mint Grotto
-  { a: ['ashling'], b: 'magma', c: 'fireimp', plan: [['magma'], ['ashling'], ['magma', 'ashling'], ['fireimp']] },    // Cocoa Volcano
-  { a: ['scarab'], b: 'mummy', c: 'sorcerer', plan: [['mummy'], ['scarab'], ['mummy', 'scarab'], ['sorcerer']] }      // Cookie Ruins
+  { a: ['puff'], b: 'storm', c: 'spark', d: 'swirl', plan: [['storm'], ['puff'], ['swirl'], ['spark']] },                 // Cappuccino Clouds
+  { a: ['jelly'], b: 'crab', c: 'puffer', d: 'seahorse', plan: [['crab'], ['jelly'], ['seahorse'], ['puffer']] },               // Boba Bay
+  { a: ['ember'], b: 'golem', c: 'imp', d: 'drip', plan: [['golem'], ['ember'], ['drip'], ['imp']] },                  // Caramel Canyon
+  { a: ['firefly'], b: 'frog', c: 'mush', d: 'dragonfly', plan: [['frog'], ['firefly'], ['dragonfly'], ['mush']] },             // Blueberry Bog
+  { a: ['gembug'], b: 'crystal', c: 'gemwisp', d: 'moth', plan: [['crystal'], ['gembug'], ['moth'], ['gemwisp']] },   // Mint Grotto
+  { a: ['ashling'], b: 'magma', c: 'fireimp', d: 'salamander', plan: [['magma'], ['ashling'], ['salamander'], ['fireimp']] },    // Cocoa Volcano
+  { a: ['scarab'], b: 'mummy', c: 'sorcerer', d: 'cobra', plan: [['mummy'], ['scarab'], ['cobra'], ['sorcerer']] }      // Cookie Ruins
 ];
 var LEVEL_POWER = [['coffee', 'triple', 'charm', 'shield'], ['triple', 'pierce', 'charm', 'coffee'], ['spread', 'pierce', 'charm', 'coffee']];   // the capsule each level brings: it gets stronger as you go on
 var PI = 3.141592653589793, TWO_PI = 6.283185307179586;
@@ -113,10 +116,10 @@ function newGame(seed, mode, uni, up) {
   return { v: SIM_VERSION, mode: MODES[mode] ? mode : 'classic', uni: u, M: M, U: kit, rs: rs, rd: mkRng((seed ^ 0x9E3779B9) >>> 0), keepEv: false, ev: [],
     t: 0, over: 0, reason: '', px: W / 2, py: H - 150, pdx: 0, pdy: 0, lives: M.inf ? 0 : M.lives, score: 0, combo: 0, comboT: 0, maxCombo: 0,
     inv: 0, shield: kit.shield0 ? 1 : 0, star: 0, magic: 0, pw: { coffee: 300, triple: 0, helpers: 0, spread: 0, pierce: 0 }, fireCd: 1, hz: [], stone: 0, usedPow: 0, elem: 0, magnetT: 0, hyper: 0, env: '', freeze: 0, ultK: '', ultT: 0, es: 1, wc: { move: 0, magnet: 0, crit: 0, life: 0, resist: 0, regen: 0, fan: 0, beam: 0, ult: 0, boost2: 0 }, pwBeams: 0, regenT: 0, wv: 0, wvLv: 0, lull: 0, charm: 0, revives: 0, rvLog: [], wcN: 0, wcOff: 0, maxL: M.lives, cards: [], cardRe: 0, cdLog: [], cdCur: '', cm: null, cometDone: -1, cometLv: 2 + (rs() < 0.5 ? 0 : 1), comets: 0, skillsUsed: 0, hype: 0, warnT: 0,
-    level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, boss: null, bossT: 0, powGiven: 0,
+    level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, quiet: 120, boss: null, bossT: 0, powGiven: 0,
     wl: 0, coreOwed: 0, nh: 0, oc: 0, ocs: 0, cc: 0, bp: 0, boxes: 0, jinx: 0, bossHit: 0, flaw: 0, flawless: 0,       // streak (kills without a hit), Overcharged, close calls, most beams at once, mystery boxes, risk debuff, flawless boss wins
-    nextLogo: SPS * (80 + Math.floor(rs() * 30)), nextIce: SPS * (22 + Math.floor(rs() * 8)),
-    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0 };
+    nextIce: SPS * (22 + Math.floor(rs() * 8)),
+    en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbUsed: 0 };
 }
 function bossLevel(G) { return G.M.boss && G.level % BOSS_EVERY === 0; }
 
@@ -193,7 +196,6 @@ function spawnIce(G) {                                           // a volley of 
   E(G, 'icewarn', 0, n); G.shards = (G.shards || 0) + n;
   G.nextIce = G.t + Math.floor(SPS * (13 + Math.floor(G.rs() * 9)) / (G.M.diff * (1 + 0.05 * G.stage)));
 }
-function spawnLogo(G) { var left = G.rs() < 0.5; mkItem(G, 'logo', left ? -30 : W + 30, 170 + Math.floor(G.rs() * 220), left ? 1.5 : -1.5, 0); G.nextLogo = G.t + SPS * (110 + Math.floor(G.rs() * 40)); E(G, 'logo', 0, 0); }
 
 /* ---------------- the boss and its attacks ---------------- */
 /* ---------------- Wild Cards: three to choose from after every boss, in three rarities ---------------- */
@@ -246,12 +248,13 @@ function cometBurst(G) {                                           // a shower o
   for (i = 0; i < n; i++) mkItem(G, 'gem', x0 + Math.floor(i / 3) * 36, c.y - 10 - (i % 3) * 50, 0, 5 + (i % 4) * 0.3);   // three rows, spaced so no two diamonds overlap
   G.pw.coffee = COFFEE_STEPS * (G.wc.boost2 ? 2 : 1); E(G, 'cmkill', c.x, c.y);
 }
-function nextStage(G) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.waveT = 40; G.cometLv = 2 + (G.rs() < 0.5 ? 0 : 1); G.cm = null; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
+function nextStage(G) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.quiet = G.stage < PLACE_KINDS.length ? 120 : 36; G.waveT = 40; G.cometLv = 2 + (G.rs() < 0.5 ? 0 : 1); G.cm = null; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
 function bossHP(s) { s = Math.max(0, s); var i = s % 8, c = Math.floor(s / 8); return 900 + 120 * i + c * (700 + 90 * i); }   // base health: Matcha Dragon 900, then 1600 on the second run (must match the game)
 function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = Math.ceil(bossHP(G.stage) * (G.M && G.M.easy ? 0.6 : 1) * (1 + 1.5 * wcPower(G)));   // endurance fights: bosses have 2.6 times their old life
   G.bossHit = 0;
   G.phase = 'boss'; G.bossT = 0; G.hz = []; G.boss = { kind: kind, x: W / 2, y: -90, hp: hp, max: hp, r: 44, hf: 0, lv: 0, n: 0, inn: 0, t2: 0, tele: 0, dying: 0, ph: 0, cd: 80, m: 0, mode: 0, md: 0, lx: 0 };
+  G.rbReady = 1; G.oc = 0;                                       // every boss fight starts with Rainbrew Power ready (one use per fight); Overload is for creatures only
   E(G, 'boss', kind, G.stage);
 }
 function orb(G, x, y, a, sp, r, k) { G.bl.push({ x: x, y: y, vx: COS(a) * sp, vy: SIN(a) * sp, r: r || 6, k: k }); }   // k: the creature that fired it (its colour is the shot's colour)
@@ -343,11 +346,11 @@ function updateBoss(G) {
   if (b.cd <= 0 && T >= 60) { b.cd = Math.floor(bossMove(G, b, lvl, sp) * (1 - 0.22 * ramp(G)) * (lvl === 2 ? 0.8 : 1)); E(G, 'bossatk', b.kind, 0); }
 }
 function startDying(G) {                                          // a slow, dramatic defeat instead of a sudden pop
-  G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
+  G.rbReady = 0; G.phase = 'dying'; G.clearT = 48; G.boss.dying = 1; G.boss.tele = 0; G.bl = []; G.hz = []; G.inv = Math.max(G.inv, 150);
   E(G, 'bossdying', G.boss.kind, G.stage);
 }
 function endBoss(G, beaten) {
-  var b = G.boss; G.bl = []; G.hz = []; G.boss = null;
+  var b = G.boss; G.bl = []; G.hz = []; G.boss = null; G.rbReady = 0;
   if (beaten) {                                                    // the defeat animation is over: go straight to the Wild Cards (no diamond shower: the cards are the reward)
     G.score += 400 * (G.stage + 1); G.bosses++; if (G.stage % 2 === 1 && G.wl < WL_MAX) G.coreOwed = 1;   /* beating the boss of every second Level (2, 4, 6...) earns a Star Core */ if (!G.bossHit) { G.flaw = 1; G.flawless++; E(G, 'flawless', b.kind, 0); }   // beat it without a single hit: a Prismatic Wild Card is guaranteed
     G.phase = 'cards'; G.cardRe = 0; G.cdCur = ''; drawCards(G);
@@ -385,7 +388,7 @@ function hurt(G) {
   G.lives--; E(G, 'hurt', G.lives, 0);
   if (G.lives <= 0) { G.over = 1; G.reason = 'lives'; }
 }
-function startOc(G) { if (G.nh >= 100 && G.oc <= 0) { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
+function startOc(G) { if (G.nh >= 100 && G.oc <= 0 && G.phase === 'wave') { G.oc = OC_STEPS; G.nh = 0; G.ocs++; E(G, 'overload', 0, 0); } }   // OVERCHARGE: 8 seconds of a stronger attack
 function killEnemy(G, e) { var pts = ENEMIES[e.k].pts * mult(G) * (e.ovHit ? 0.3 : 1);   /* creatures the Overload beams touched are worth 30%: the extra firepower must not inflate the score */ pts = Math.max(1, Math.round(pts)); G.score += pts; G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo; G.comboT = 90; G.kills++; dropGems(G, e.k, e.x, e.y); dropHeart(G, e.k, e.x, e.y); dropWeapon(G, e.k, e.x, e.y); dropMystery(G, e.k, e.x, e.y); if (!e.ocHit && G.oc <= 0) { G.nh++; startOc(G); } var was = G.elem; if (G.ultT <= 0) G.elem = Math.min(ELEM_MAX, G.elem + (ELEM_KILL + G.wc.ult) * (G.env === 'hydra' ? 1 - 0.75 * G.es : 1)); if (G.ultT <= 0 && was < ELEM_MAX && G.elem >= ELEM_MAX) E(G, 'ultready', 0, 0); E(G, 'kill', e.x, e.y, e.k); }
 function damage(G, e, d) { e.hp -= d; e.hf = 3; G.hitsDealt++; E(G, 'hit', e.x, e.y, e.k); if (e.hp <= 0) killEnemy(G, e); }   // every hit scores a little; a defeat scores a lot
 function clearScreen(G) { var i; for (i = 0; i < G.en.length; i++) G.score += ENEMIES[G.en[i].k].pts; G.en = []; G.bl = []; G.ice = []; G.hz = []; }
@@ -444,18 +447,19 @@ function ultStep(G) {
   G.ultT--; if (G.ultT <= 0) G.ultK = '';
 }
 function skillStep(G) { if (G.hyper > 0) G.hyper--; if (G.magnetT > 0) G.magnetT--; ultStep(G); }
-function rainbrewMagic(G) {                                      // the rare Rainbrew logo: every power, a rain of gems, and you fly FAST
-  G.surges++; G.magic = 240; G.inv = Math.max(G.inv, 240); clearScreen(G);
+function rainbrewPower(G) {                                      // RAINBREW POWER: an instant, huge hit on the boss, the screen is cleared, 8 s untouchable with every power on, a rain of gems, and a FAST surge of fire
+  var b = G.boss, dmg = 0;
+  G.surges++; G.rbUsed++; G.magic = 240; G.inv = Math.max(G.inv, 240); clearScreen(G);
   for (var i = 0; i < POWERS.length; i++) G.pw[POWERS[i]] = Math.max(G.pw[POWERS[i]], 240);
-  if (G.boss) { G.boss.hp -= Math.ceil(G.boss.max * 0.12); if (G.boss.hp < 0) G.boss.hp = 0; }
-  G.score += 300 * (G.stage + 1); E(G, 'magic', 0, 0);
+  G.hyper = Math.max(G.hyper, 240);
+  if (b) { dmg = Math.ceil(b.max * RB_DMG); b.hp -= dmg; if (b.hp < 0) b.hp = 0; b.hf = 6; }
+  G.score += 300 * (G.stage + 1); E(G, 'rbrel', 1, dmg);
 }
 function collect(G, it) {
   var k = it.k;
   if (k === 'gem') { G.gems++; E(G, 'gem', it.x, it.y); return; }
   if (k === 'mystery') { mysteryBox(G); return; }
   if (k === 'core') { G.coreOwed = 0; if (!weaponUp(G)) G.gems += 10; return; }
-  if (k === 'logo') { rainbrewMagic(G); return; }
   if (k === 'heart') { if (G.lives < G.maxL) G.lives++; E(G, 'heart', it.x, it.y); return; }
   G.caught++;
   if (k === 'coffee') { G.pw.coffee = COFFEE_STEPS * (G.wc.boost2 ? 2 : 1); E(G, 'power', 'coffee', 0); }
@@ -468,11 +472,11 @@ function collect(G, it) {
 }
 
 /* ---------------- one step of the world ---------------- */
-function stepGame(G, dx, dy, skill) {
+function stepGame(G, dx, dy, skill, rb) {
   if (G.over || G.phase === 'cards') return;                        // nothing moves while you choose a Wild Card
   var M = G.M, i, j, e, b, s, it, sp, k;
   G.t++;
-  if (G.oc > 0) G.oc--;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
+  if (G.oc > 0) G.oc = G.phase === 'boss' || G.phase === 'dying' ? 0 : G.oc - 1;                                                                           // Overcharged: a stronger attack for a few seconds (see fire)
   if (G.jinx > 0) G.jinx--;
   k = Math.min(MAXBEAMS, G.U.lanes + (G.pw.triple > 0 ? G.pwBeams : 0) + G.wc.beam) + ((G.pw.spread > 0 || G.wc.fan) ? 2 : 0) + (G.oc > 0 ? 4 : 0); if (k > G.bp) G.bp = k;
   var env = envOf(G); G.env = env; G.es = envStr(G); var lim = G.stone > 0 ? 13 : Math.floor(32 * (1 + moveBonus(G))); if (G.stone > 0) G.stone--; if (env === 'griffin') lim = Math.max(6, Math.floor(lim * (1 - 0.6 * G.es)));        // High Winds: slow flying                     // Medusa's gaze slows you for a moment
@@ -480,6 +484,7 @@ function stepGame(G, dx, dy, skill) {
   var nx = clamp(G.px + dx, 20, W - 20), ny = clamp(G.py + dy, 130, H - 36); if (env === 'griffin') nx = clamp(nx + Math.round(5 * G.es * SIN(G.t * 0.05)), 20, W - 20); else if (env === 'kraken') ny = clamp(ny + Math.round(4 * G.es), 130, H - 36); else if (env === 'cyclops' && G.t % 60 === 0) nx = clamp(nx + Math.round(((G.t / 60 | 0) % 2 ? -30 : 30) * G.es), 20, W - 20);   // gusts, an undertow, tremors
   G.pdx = nx - G.px; G.pdy = ny - G.py; G.px = nx; G.py = ny;
   if (skill) useSkill(G);
+  if (rb && G.rbReady && G.phase === 'boss' && G.boss && G.boss.inn && G.boss.hp > 0) { G.rbReady = 0; rainbrewPower(G); }   // Rainbrew Power: only in a boss fight, once the boss has arrived, once per fight
   var frozen = G.freeze > 0; if (frozen) G.freeze--;
   var sl = G.ultK === 'frost' && G.ultT > 0 ? 0.35 : 1;                              // Starfall Barrage: time crawls
   if (G.inv > 0) G.inv--; if (G.star > 0) G.star--; if (G.magic > 0) G.magic--;
@@ -490,7 +495,7 @@ function stepGame(G, dx, dy, skill) {
   var rp = ramp(G), fast = (G.magic > 0 ? 2.2 : 1) * (1 + 0.45 * G.hype);                 // Rainbrew Magic: the world rushes past 2.2x faster; before a boss (Ranked) it speeds up too
   // levels and bosses
   if (G.phase === 'wave') {
-    G.levelT++;
+    if (G.quiet > 0) G.quiet--; else G.levelT++;                  // a new world opens with a short calm: nothing spawns while its title card is up, and the level clock waits
     if (!bossLevel(G) && G.levelT === 300 && !(G.magic > 0)) givePower(G);
     if (!bossLevel(G) && G.levelT === 120 && G.coreOwed && G.wl < WL_MAX && G.it.every(function (o) { return o.k !== 'core'; })) { mkItem(G, 'core', 90 + Math.floor(G.rd() * 180), -20, 0, 1.5); E(G, 'capsule', 'core', 0); }   // the Star Core you earned by beating the boss of every second Level falls in the next Level's phases (each phase again until you catch it)
     G.hype = M.hype && !bossLevel(G) && levelIn(G) === BOSS_EVERY - 1 ? clamp((G.levelT - (LEVEL_STEPS - 360)) / 360, 0, 1) : 0;     // Ranked: the last 12 seconds before a boss build up tension
@@ -501,7 +506,7 @@ function stepGame(G, dx, dy, skill) {
         if (M.boss && G.level % BOSS_EVERY === BOSS_EVERY - 1) { G.phase = 'warn'; G.warnT = 90; G.hype = M.hype ? 1 : 0; E(G, 'bosswarn', BOSS_KINDS[G.stage % BOSS_KINDS.length], 0); }   // the warning screen: BOSS APPROACHING
         else { G.level++; G.levelT = 0; E(G, 'level', G.level, 0); }
       }
-      if (!bossLevel(G)) {
+      if (!bossLevel(G) && G.quiet <= 0) {
         G.waveT--; if (G.magic > 0) G.waveT--; if (G.levelT < LEVEL_STEPS && G.en.length < 3 && G.waveT > 8 && G.magic <= 0 && G.ultT <= 0 && G.hyper <= 0 && !G.noRefill) G.waveT = 8; if (G.waveT <= 0 && G.levelT < LEVEL_STEPS) spawnWave(G);   // no new creatures once the phase's last group is out
       }   // the screen is never left empty: the next group comes within a quarter of a second whenever almost nobody is left
     }
@@ -518,8 +523,7 @@ function stepGame(G, dx, dy, skill) {
   }
   if (G.phase !== 'wave') G.cm = null; else if (!G.cm && G.cometDone !== G.stage && levelIn(G) === G.cometLv && G.levelT >= 240 && G.magic === 0 && !bossLevel(G)) spawnComet(G);
   if (G.cm) updateComet(G);
-  if (G.t >= G.nextIce && G.magic === 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
-  if (G.t >= G.nextLogo && G.phase !== 'clear') spawnLogo(G);
+  if (G.t >= G.nextIce && G.magic === 0 && G.quiet <= 0 && G.levelT >= 150 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
   if (G.magic > 0) { if (G.magic % 8 === 0) mkItem(G, 'gem', 24 + Math.floor(G.rd() * (W - 48)), -12, 0, 4.5); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 0); }   // a rain of gems
   // shooting
   G.fireCd -= G.jinx > 0 ? 0.5 : 1; if (G.fireCd <= 0) { fire(G, false); G.fireCd += Math.max(1.1, (G.pw.coffee > 0 || G.hyper > 0 ? Math.max(1.25, G.U.cd * 0.5) : G.U.cd) * (G.env === 'medusa' ? 1 + 1.0 * G.es : 1) * WL_RATE[G.wl] / (1 + 0.06 * G.charm)); }   // coffee: twice the fire rate (and a little more damage and piercing); Freezing Air slows shooting          // (the remainder carries over, so an upgraded rate like 3.7 steps is exact on average)   // coffee: an energy boost, you shoot faster
@@ -560,7 +564,7 @@ function stepGame(G, dx, dy, skill) {
     if (s.dead) continue;
     if (G.cm && G.cm.hp > 0 && Math.abs(s.x - G.cm.x) < 26 + s.w && Math.abs(s.y - G.cm.y) < 30) { G.cm.hp -= s.dmg; G.cm.hf = 3; G.hitsDealt++; E(G, 'cmhit', G.cm.x, G.cm.y); if (s.pierce > 0) s.pierce--; else s.dead = 1; if (G.cm.hp <= 0) cometBurst(G); }
     if (s.dead) continue;
-    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); if (!s.oc && G.oc <= 0) { G.nh = Math.min(100, G.nh + 0.4); startOc(G); } }   // hitting a boss charges the Overcharge
+    b = G.boss; if (b && b.y > 30 && b.hp > 0 && Math.abs(s.x - b.x) < 58 + s.w && Math.abs(s.y - b.y) < 58) { b.hp -= s.dmg; b.hf = 3; G.hitsDealt++; s.dead = 1; if (b.hp < 0) b.hp = 0; E(G, 'bosshit', s.x, s.y); }   // (Overload is for creatures only: hitting a boss does not charge it)
   }
   // getting hurt: creatures, orbs, ice shards, the boss and its attacks
   for (j = 0; j < G.en.length && !G.over; j++) { e = G.en[j]; if (e.hp <= 0) continue; var cx = e.x - G.px, cy = e.y - G.py, cr = e.r + PR; if (cx * cx + cy * cy <= cr * cr) { var safe = G.inv > 0 || G.star > 0 || G.magic > 0; hurt(G); if (!safe || G.star > 0 || G.magic > 0) { e.hp = 0; E(G, 'crash', e.x, e.y); if (G.star > 0 || G.magic > 0) killEnemy(G, e); } } }
@@ -580,8 +584,9 @@ function stepGame(G, dx, dy, skill) {
 
 /* ---------------- recording a flight: one character per step per axis; ULT presses listed by step ---------------- */
 function encodeTraj(deltas) { var s = ''; for (var i = 0; i < deltas.length; i++) s += String.fromCharCode(79 + clamp(deltas[i] | 0, -MAXSTEP, MAXSTEP)); return s; }
-function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives) {
-  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch; G.keepEv = !!keepEv; skills = skills || [];
+function parseRb(str) { var o = { s: [], e: [] }, a = String(str || '').split(','), i, p; for (i = 0; i < a.length; i++) { p = a[i].split('-'); if (p.length === 2) { o.s.push(+p[0]); o.e.push(+p[1]); } } return o; }   // the steps where the Rainbrew Power button was tapped: "12-12,300-300"
+function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives, rbs) {
+  var G = newGame(seed, mode, uni, up), n = Math.floor(traj.length / 2), ki = 0, ci = 0, scr = cards ? String(cards).split(';') : [], rv = revives ? String(revives).split(',').map(Number) : [], j, ch, rbp = parseRb(rbs), rbI = 0, held; G.keepEv = !!keepEv; skills = skills || [];
   for (var i = 0; i < n; i++) {
     if (G.over) { if (rv.length && rv[0] === G.t && revive(G)) { rv.shift(); } else break; }       // the player paid to continue: the flight goes on
     if (G.phase === 'cards') {                                    // the Wild Card screen: replay the choices the player made (picks and reshuffles)
@@ -589,7 +594,8 @@ function simulate(seed, mode, uni, traj, keepEv, skills, up, cards, revives) {
       if (G.phase === 'cards') break;
     }
     var kk = 0; while (ki < skills.length && skills[ki] <= i + 1) { if (skills[ki] === i + 1) kk = 1; ki++; }
-    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk); G.used = i + 1;
+    while (rbI < rbp.s.length && rbp.e[rbI] < i + 1) rbI++; held = rbI < rbp.s.length && rbp.s[rbI] <= i + 1 ? 1 : 0;
+    stepGame(G, traj.charCodeAt(2 * i) - 79, traj.charCodeAt(2 * i + 1) - 79, kk, held); G.used = i + 1;
   }
   if (G.over && rv.length && rv[0] === G.t) revive(G);
   if (G.used === undefined) G.used = 0; return G;
@@ -936,7 +942,13 @@ function verifyRun(tok, b, now) {
   var rvS = String(b.rv || ''); if (rvS && !/^\d{1,6}(,\d{1,6}){0,1}$/.test(rvS)) return { ok: false, err: 'format' };      // when the player paid to Continue (at most twice)
   var cdS = String(b.cd || ''); if (cdS && !/^[r0-2;]{1,4000}$/.test(cdS)) return { ok: false, err: 'format' };      // the Wild Card choices (picks and reshuffles) after each boss
   var upS = String(b.up || ''); if (upS && !/^d[0-5]r[0-5]t[0-3]$/.test(upS)) return { ok: false, err: 'format' };                // weapon upgrades (Classic only; Ranked ignores them)
-  var G = simulate(tok.seed, mode, uni, tr, false, sk, upS, cdS, rvS), steps = G.used || 0, secs = steps / SPS, tReal = secs * 1000;
+  var rbS = String(b.rb || '');                                                                                                      // when Rainbrew Power was tapped: "first-last" step pairs, in order, at most one per boss fight
+  if (rbS) {
+    if (rbS.length > 4000 || !/^\d{1,6}-\d{1,6}(,\d{1,6}-\d{1,6})*$/.test(rbS)) return { ok: false, err: 'format' };
+    var rbA = rbS.split(','), prevE = 0; if (rbA.length > 200) return { ok: false, err: 'format' };
+    for (i = 0; i < rbA.length; i++) { var rp = rbA[i].split('-'), r0 = +rp[0], r1 = +rp[1]; if (!(r0 >= 1 && r1 >= r0 && r1 <= tr.length / 2 && r0 > prevE)) return { ok: false, err: 'format' }; prevE = r1; }
+  }
+  var G = simulate(tok.seed, mode, uni, tr, false, sk, upS, cdS, rvS, rbS), steps = G.used || 0, secs = steps / SPS, tReal = secs * 1000;
   if (steps < 20 || isNaN(tEnd) || Math.abs(tEnd - tReal) > 1500) return { ok: false, err: 'time' };
   if (tReal > (now - tok.iat) + 5000) return { ok: false, err: 'clock' };       // a run cannot last longer than the time since its session was issued
   if (+b.score !== G.score) return { ok: false, err: 'mismatch' };
@@ -1576,7 +1588,7 @@ function addManualScore() {
    It only READS: it never writes a score, a circle or a setting. It times the things that make the server slow or fast:
    reading the Sheet, building a leaderboard, a cache round trip, and replaying a real recorded flight (the heavy part of checking a score).
    The recorded flight is a real Ranked run by the game's autopilot (about 2 minutes of play); replaying it many times acts like a long flight. */
-var BENCH = {"seed":1111,"mode":"rank","uni":"frost","score":8966,"steps":3949,"tr":"O?OLONOOOOOOiOZOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O7OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOO:O:O:O:N:O:N:O=OKONOOOOOOOOOO5O5O8OOOOOOOOOOOOOOOOOOOiOiOZOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVcVcUcUcUcTcTcSdPVOQOOOOOOOOOOiO^OOOOOOOOOOOOO5O5O5O5O5O5O5OLOOOOOiOiOiO\\=[=[==@=@>?>?gGgGgGfFfE[EIJUPLMRPNNPPROQNONPPOOPOOORPONOPROOOPPQOOORPONRPOOOPOOMOLPOOOOPOOOOOOOOOOOOOOOOOOOOOLOOOOOOO5O5O5O5OFOOOOO>_>_>_?_?_@`E^P[O^I`B_>XVE[N\\H\\BW<Q:M:L:L:M:N:OKLdLdLdLdLdNbFX@`E^WRGPWOGOWOGOWOGOWOGOWOGOWOGO[:R:R:R:Q:Q:Q:Q=OKONOOOOOOOOOOOOOOOOOOOOiOiOiOiOiO^OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO]a5R5S6TTcTcSd\\=[=Z<X<TAOMONOOiOiOPO5O5O5O5O5O5OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOROQOROQOROQO9OVOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOXOOOOOOOOO5OFOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiO[OOOOOOOOOOO5OEOBaCaCaDbDbDbEbNcqPiPiQiQiQiQiQiQiQiQeV[SIPNO-L5KCMONOOOOOOOOOOOOO:O:O:O:O:O:O:O@OIiNiOcNGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OfO8OI[N[OZNZOYNXOXNWOVOVOUNUOTOTOTOSOSORORORORNQOQOQOQOQOQOPOPOPPPQQPQOPNOMONPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5P5P5O5PBPNOOOOOOOOOOOOOOO5O5PIOOOPOOOOOOOPOOOOOOOOOGONONOOONONOOONONONOOONONOOOHOOOOOOOOOiOiO_?_?_?^>^>^>]=\\=[=UAOMONGcGcGcRdRdRdQdPdOSOPNOOOOOOONOOOOO5O5O5O5O5O8ONOOOOONOOONOOONOOONOOONONOOONONOOONONOiOiOiOWONONOOONONOOONONOOONONOOONOOONOOO5O5O5O5ONOOOPOS:S:S:S:S:R:R:Q=OKONOOOOOOOOOOOOOOOOOOOONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO@OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOb]b]b^a^a^a^`^`___^`Z]PROPPOPOOOPOPOOOPOPOOOPOPOPOOOPO5O5O6OOONOOONOOONOOOOONOOOB=C=C=C<D<D<E<F<I>iNiOiNiNiOeNOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!OgO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(OvO(PuO!fpF!jhD!?}G;FmPcP@OWOBO[O>O`O<OgO7O}O=^=^U]N\\O[NZNYNXOXNWOVNUOTOTOSOSORORNQOQOQOPOPOPOPOPOPOPOPOO5O5O5P5P5O8POOPOOOROOONOOONOOONOOONOLOOOOOOOOOOOiOPOOOPOOO9OOONOOONOOOiOiOiOiOiOiOeOOOOONOOOOOOONOOOOOOOOOOOiOPOOOOOOONOOONOOOOONOOONOOONO5O5O5O5O5OE<E<F<F<F;G;H;H;MDOMONOOOOOOOOOOOOOdOdOdOdOdOdOdOaOSNPOOOOiOOOOOOONOOONOOONOOOiOiOiOiOiOiOeONOOONONOOONONOOONONOOONONOOONONOOONONOOONO5O5O5O5O5O5O<OOOPOPOOOPOPOPOOOPOPOOOPOPOOOPOOOPOOOFONONOOONOiO]OPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONPMPNOONQNQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOIOOOOOOOOOOOOOOOOOOOOOiOiOiO4OiO6OiO5OiO5OiO5OiO5OiOUOMOOOPOOOOOOOPOOOOOOOOOOOOOOOOOOOOONO5O5O5O5O5O5O5O6OOOOONOOOOONOOOOONOOONOOONOOONONOOONONOcBcBcBcBcBcBcBcBdCdC]IT;QBOMONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO@`@`A`A`AaBaBaCaDbLXOQNOOOOONOOOOOOOOOOOOOOO5O5O5O:OPOPOOOPOPOOOPO]>]=]=\\=\\=[=[<Y<X;OKONOOOOOOOO@`A`A`LdLdLdMdfXfYfYTTOPPO}OGOVO!OQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOg:6:i:2;p:(<p:!ArG!M}f\"C}@!OtJ!TrQ!ORO=^>^>_>_?_?_@`@`BaDbOSPPOOPOPOOOPOOOPOiOiOiOiOiOiOiOiOiORONOOONOOONOOOOONOO:O:O:O:O:O:O:O=OKLNOOOOOOOOOOOOOO]OMOOONONOOONOH`H_G_G_G^G^F]F]F\\E[EYDWLROPOOOOOOOOOOOOOOOONOPONOPOIOOOOO6O9O<O>O?OAOMONONONOMONONONONONONOP:P:P:P:P:P:P:O=fKiNiOGOOOOOOO6TMK5NYOgOhPGN=OPOiQ5M;OcOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOJdVcGcUcDbyYKZPXPWOVPTOSOSORPQOQOPOPOPOOOOOOOPOOOOOOOOOOOOOOOOOOOOOO!OHOOPQPPOONMNMOOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOP5OiOiO\\OPOOOOOOOOOOOOOOOOOOOiOiOiOiOiOiOeOPR5N5N7MNOOONO5O5O5O5O5O5O=OPOPOOOPOPOPOPOOOiOiOiOiOiOiOiOiOiO[ONONONOOONONONO5O5O5O5OCOOOPOPOOOPOPOOOO:O:O:O:O:P:O:\\a\\a\\a\\a[aZbZbU^PRPPOOPOOOPOPOPOOOPOPOPOOOPOPOPOPO5O5O5O5O5O5O5O5O6OPOPOPOOOPOPOOOPOPOOOPOPOOOPOOOPOOOPOiOfOPOOOOOPOOOPOOOPOOOPOPOOOPOPOOOPOiOiOiOiOiOgOOOOONOOOO:O:O:P:O:P:O:O=OKONOOOOOOOOOOOOOOOOOO5O5O5O5O5OKOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBaBaCaCbDbEbEbGcK_PRPPOOPOPOPOOOPOPOPOPOOOPOPOiOHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOiOiOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5ONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO;OD<D<D<D<E<F<F;U;>BgM7NgO7OgO7OgO7O}OiOiOiOIOTOKOROMOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!OGO]`]aQaP`P_Q^Q]P[QYPXPVPTOSPQOQOPOPOPOOOOOOOOOOOOOOOOOOOOOOOONPMPNOONQNQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiO`P8OfO8OfO8OfO8OfO8OfO8OfOOOOOOOOOOOOOOOOOOOO:O:KBAIJ?Q;\\==^=^>_>_?_@`D_OROPOOOOOOOOiOiOiOiOeNTD[MXZOQOPOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5O@OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOMOK:L:L:L:L:L:L:M=OKONOOOOOOOOOOOOOOOOOO5O;OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOd[d\\c\\b]a^`^__^`[aPdO\\OQOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5OOOeOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOiOiOOOOOO:N:O:O:N:O:N:O=OKONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5OCOOOOOOOOOhVLdLdLdMdMdMdMd6S6T6TMQOOOOOOOOOOOOOOOOOOOOOOOO!OXOMOQOPOOOOO8:_;A;a<?;d=<<aBGAUKLOQOLQPONPMPNOOSOTOUPUOVQUOVPUOUPUOVOUPUMYPWPVOVOUPTOTOSOSOSORORPQOQOQOQOP8;_;:;c<D<e><<YCRFPLNNPONOPONOPONOPOH^P]SXPXOXPWOWOVOVOUPUOTOTOTOSiShShSKSOSORORORPQOQOQOQOQOPOPOPOPNPNQMQOPPOQOPOOOOPOPOPOOOOOOOOOO9;X;I;Z<F<S>Q?RARDgHOYSMJVROKZUPRp_`^`]_]a\\aTZIJVWLLSTNOQQOOOPOOOOOOOOOO5OKOOOOOOOOOOOPPOPPQOPQQOORQOOsT`DOMONOONPOONPOObOCZZHBUZHAQ]JAL^OEJ[RIKVSMMQQN9P:O:P:O:O:P;ZOOGWPHNWQFXYTDUTjAb=a;]<]=^>^FZOQOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOOOOOPOPOOOPOPOPOQOPOQOPOQOQOQOQOROQOQOROQOROROQOROROQOROQOQOROQOQOQOQOQOQOQOQOPOQOQOPOQOPOQOPOPOQOPOPOPOPOPOPOPOOOPOPOOOPOOOPOOOOOOOOOOOOOOOOOOOOONOOONOOONOOONONONONOOOMONONONONONOMONOMONOMONOMOMONOMO:C:C:C:C:B;B;B;A<A=@?>l\\c\\c]b]b]a^`_^`\\aRYLQMPLOMOLOMOLOMOLOLOMOLOMOLOMOLOL:L:L:M:M:M:M:N=OKONOOOO7OOOOOOOOOOOOPNPOPNPUPNSPNMSPMLUQJIZUB@iZ<FZVB=d\\>AYXC;X_DH__RMe]CD^RBCZRDCTTGCSZJ?NXDNDZBbBhLhS_SOPOPOOOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOROQOROQOROOOOOOOOOOO5O>OiOiOiOROOOOOaPONOOOPPPPPOOQQOORQONRQPNRP>QQb@MPeF@lgT;ZCTAAIWB?NSB>XMFL[PGNYOJOVOM5N5Q5RBQOPOOOOOOOOOOOOiOiOiOOOOO}l<@FDOMON8Otl<AEC5Ntk8F9ECFOMiOWOOO@OOOOOOOOOOOOO5OHOOOOOOOOOOOOOOOiOiOQOOOOOOOOOOOOOOOOO5O<OOOOOOOOOOOOOOOOOOOOOOO5O5O5O5OBOOOOOOOOOOOiOiOiOWOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOPOQOQORORNROROROSOSOSOSOSOSOSOSOSOSOSOTOSOTOSOTOSOTOSOTOSOTOSOTNTNTNTNSPSPSPSPSOTOTOSOTOSOTOSOTOSOTOSOTOSOTOSOTOSOTOShThUhVJXPVPUOONPOQNRORORNSOSfSaX<;;<:B:C:C9D8E^>]>^>^>6I5L`?`?_?_>^>]>\\=SEOMONOOOOOOOOOOOOOO5O5OGOOOOOOOOOOOOOOOOOOOOOOOOO^`^`<]<]fYeZeZeZeZd[d[c]^\\GQOPOOOOOOOOOOOOOOOOOO-O5O5O5O5O5O5O5O5O5O5OWOOOOOU:K:K:S:EDmDdCdBcBbAXEOMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOFcGcGcd\\c\\c\\c\\b]b^`^XZOQO:O:O:O:O:NH7[9Z9[eZeZeZd[c\\b]JTOPOOOOOOOOOOOOI:T;L;[?.U6V6V7V7V7W7W7W8X@WOQOOOOOOOOOOOOOOOOOOOOOOOO5O5OOOOOOOOOOOOOOOqOKOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOeOOOOOOOOOOOOOOOOOOOOOOOOOO:O:O:O:O:O:O:>?MIONOOOOOOOOOOOOOObO<OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO$OzO$OzO$OzO$OzO$OzO$OzO$OzP$N{P$N{Q$M|R$M}S$K}T$J}V#I}V#H}X#G}X#F}X\"G}X\"F}W!G}V!H}T!I}R!K}N!N}J!Q}H![}E!s}I!b}M!P}F!&}I","sk":"2533","cd":"0","rv":"1671,2482"};
+var BENCH = {"seed":1111,"mode":"rank","uni":"frost","score":5748,"steps":3928,"tr":"O?OLONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOgOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5OE<E<E<F<F<F;H;I;MCOMONOOOOAaBaBaBaCaDbDbEbHaOSOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiO^OOOOOOOOOOOOOOOOOOOOOOOOOOOOOZ<Y<Y<Y<X<X;V;U;QCOMONOOOOOO5O5O5O5O5OMOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOWOGOqQiRhTgVYbYbXbXbXcWcVcR]OQOPOOOOOOO:O:O:O:O:O:O:O=OKZbYbYbYbXbXcWcVcQZOQOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO:O:O:O:O:O:O:O=NLNPQMONiOfOGOOOOOOOOO-O5O7OOOOOOOOOOOOOOOOOOOOOiO_OOOOOOOOOOOOOOOOOOOOOOOOOiOWOGOWOGOWOGOWOGOWOGOWOGO5O;OOOOOOOOOOOOOOOOOOOOOOOOOOOOOcOb]7H@IONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOVcUcUcUcTcTcTc5Q5Q5Q5R:L=C=PP\\AJ[l)6e}*<Ri`O>?QUMULVJXFXBWVLU;U;T;T;T;T;T;R:S:fEdCWION5P5N5NLOPOOOOOPOOOOOkONOOOOOOOiO[RSMONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOXOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOOOOOOOOOOOOOOOOOOOOO<OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOcOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5O5O5ODOOOOOOOOOOOOOOOOOOOOOOOd[d[d\\c\\c\\c\\c]b]b]a^`__`-O5O5O5O5O5P5P5OiOiOiOiOiOiOiPiPUOGOWOGOP:P:P:P:L:L:M:M=OKONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO?`8Y9Y9Z9Z:[:\\;\\<]=^>_?_A`CbiGiLiLiKhKSMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O6OOONOOOOONOOONOOONOOONOOONOOONONOOONONOOONOiOiOiOiOiOiOiOiOPOOONONOOONONOOONONOOONONOOONONOOONONOOONOOONOOONOAOOONONOOO5O>@>?>?>????>@>A>B=D=ALONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiPiQiQiShTgVeZQ:PFOMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO;];\\;\\;\\;\\;]<]<]<]=^>_B]OQlP!OtO!OsO!OsO!OrO!OrO!OrO!OrO!OrO!O}O.O}O.O}OQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMORPNPSPINUMEOXOGOVOIOTOKOROKSOWKZPXIYTS>PqI43rNyNiNiMiMiMiMVMEO\\O@N^PBO[ODOYOEOXOFOWOGOWOGOVOGOVO=:T;T;H;W;V;V;T;PHOMOOOOOOOOCbDbDbDbEbEbGcHcL\\OQPPOOOOPOPOOOPOOOWOPOPOOOPOPOOOPOPOOOPOOO5O5O5O5O5OKOPOOOPOOOPOOOPOPOOOPOPOOOPOPOPOOOPOPOOOPOPOiOiOiOiOiOiOUOOOOOOOOOOOOOOOOOPOOOOOOOPOOOOOPOOOPO5O5O5O5O5O5OOONOOOOOOONOOOOONOOONOOONOOONOOONONOOONONOiOiOiOiOiOiOiOVOOOPOOOOOOOOOOOOOOOOOOOOONOOOOOOONO5O5O5OB=?????>@>@>A=B=C<KDOMONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOUcTcTcSdRdRdRdPdOSOPOOOOOOPOiOiOiOeOOOPOPOOOPOPOPOOOPOPOA=A=B=B=C=C=D<E<G<OKONOOOOOOOOOO`_`_`_`______`^`]`[aPSPPOOPOPOOOPOOOPOOOPOOOWONOOONONOOONONOOONO5O5O5OhO9ObO>O^OBO[ODOYOFOWOHOUOJOSOLOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOSSOWTZLVZYAOtI!JQBHLUMJMSMLNQNMNQNMNQOMOQOMOQOMOQO!O5O5N5NUOIOUOIOTOIOUOHOUOIO=ONOOOiOPONOOONONOOONONOiOiOiOiOiOiOiOVOOOOOPOOOOOOOOOOOOOOOOOOO5O5O5O5O5O5O5O5O8OOOPOOOOOPOOOPOOOPOOOY<X<X<X;W;W;V;U;QEOMONOOOOOOOOOOOOOOiOiOiOiOiO]OOOOOOOOOOOMdMdI;L=OLONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO;\\;\\;\\;]<]<]<^=^>^?_A`KXPQOOPOPOOOPOPOPOOOPOPOPOOOPOiOiOiOW;W;W;V;V;U;U;T;PGOMOOOOOOOOOOOOOO[a[b[bZbZbYbXbXcT]OROPPOOOOOPOOOPOOOPOPOOOOONONOOONOOONOOOOONOOO5O5OFONONOOONONONONOOONONONOOONONOOONONO5O5OMOPOOOOOPOOOOOPOOOOOOOOOV;V;V;V;F;Z<H<V?SBKMSNKOSOKOSOKOSOKOSOKO0a^bM`N_N_M]N\\M[NYNWNVNTOSORNQOQOPOPOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPPQPPOONMNMOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O5OGPQONOQONOQONORONOPOaO,OPOfOV=V=V=V=W>W>W>X?Y@[BNMPNPOPOOOY_X_X_X_X^X^X]Y]Y\\Y[ZYZWTSOPPOPOPOOOPOPOOOPOOOPOOO0O6O:O>OBOCOCOCOCOCOCOCOCODONOOOOONOOONOOONOOONONOOO@ONOiOiOiOiOiOiOiOiOYOPOOOPOOO5O5O5O5O5O5O5O5O8OOOPOPOPOOOPOPOPOPOOOPOPOPOOOiOiOiOiOiOiOiOiOXOPOOOPOOOPOPOPOOOPOPOPOOOPOPO5O5O5O5O5OEOOOOOOOPOOOOOOOOOOOOOOOOOOONOOOOOiOiOiOPONOOOOONOOOOONOOONOOONOOONONOOOiOiOJOOOOOOOOOOOOOOOOOOOOOOOOOOO.;>?>?????M>M?MALCMFNHNKOLNMONOOOOOOOOOOOOOOOOOOQOQPONNNMONOOOOOOOOOOOOOOOOOOOOPOPOQOQOPOQOQOPOQOQOQOPOQOQOPOQOQOPOQOQ5Q8RhUgWfXeZb]OdOdOdOdOdOdOd7H7G7G7G7F8E<EPMONPOPOPOPOOOPOPOPOPOO:O:O:O:O:O:O:O=OKONOOOOOOOOOOOOOOOOiOiOiOiOiOiOQOOOOOOOOOOOOOOOOOOOXcWcWcWcVcUcTcSdOVOQNOOONOOONOZONONOOONONOOONO5O5O5O5O5O5O5O5O5OMOOOPOOOOOPOOOPOOOPOPOOOPOOOPOPOPOOOVONONONOOONOiOiOiOgONOOOOOOOOOOOOOOOOOOOPOOOOOOOPOOO_?_?_>^>^>^>]=\\=[<TCOMONOO5O5O5O5O5OHOOOOOOOOOOOOOOOOOOOOOOOOOJcJcJcJcKdKdKdLdOTOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O7OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOiOiOiOiOiOeOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO>?>?>?>????>@>A>B=E>OLONb]a^a^a^a^`_`___^`]aTYOQOPOOOOOOOOOOOOOOOOOOOOiOiOgOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO5O5O6P@]<Z\\OEVWPIUTQKTSQLTRRMTQRNSPSOSOSPSOSOSOSPSOSOSOSPMOVOROSPTOROTPYQ`Vf\\[>Cj!!DGAUBGEVFGHVIHJUKJLSMLNQNMNQNMOQNMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOQOMOPOKQROKMWNINUOJOSOLOQOMOQOOSTYMVXYFQjQ!Ia6/NkN7O5O5O:NOOOOOOOOOOOOOOOOOOOOOOW;W;W;V;TA6T=^=^>_?_A`KWZ<Y<Y<Y<\\?[=U;OONUNRMSMRLSLPJPJLHFM:\\=^R\\ka_A>CADSHMHMJIMFRDUGUMROQQOQPPOQPPOQOOOPOOOOOOOOOOMOLOMOLOMOLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOhUiNiNiNdOCS[LAR]L?P^L@L_NBI^QEG[UWUOQOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!OTPOOPOOPPONOQPMORPLOSQJNVQGMZSAKRLPNONOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOPOQOQOQOQOQOQOQOQOQOROQOQOQOQOQOQOQOQOQOQOQOQOROQOQOQOQOQOQOQOQOQNRNRMQOPPPPQPRPQOQOROQOQOQOQOQOQOROQOQOQOQOQOQOROQOQOQOQOQOROQiQQ:Q=O:O:O:O:ODOMONOOOO?`?`@`@`A`AaBaBaDbLYOOOPOPOOOOOOOOOOO:Q=Y?P:dBcBcBbAb@`?UGOMOOOOOOOOOOOOOOOOOOOOOOPOOOOOOOOOOOOOOOOONOOOOOOOiS:^?_H\\TZP^NbGd@c=`EbEbFbGcGcHcIcI]e>e>eDeDeDdCdCcBbAI;EF?HB?J:O:P:P:P:P:OJ?_?`@`@`A`AaBaBaEbRWMQPONOOONONOOONONPOONOOPOOO:O:O:O:O:O:O:KdKdLdLdLdLdM`OROPOOOOOOOOOOOOiOiOiOiOiOiOSOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO:O:O:O:O:O:O:OMOWOMO]OJOaOGI}HdIcJcJcNXOQOOOOOOOOOOO:O:O:FBE=S:Y;TIEbEbFbFcGcGcIbOSOPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPOOOOOPOPOOOPOPOPOQOPOQOPOQOQOQOQOROQOQOROQOROROQOROROQOROQOQOROQOQOQOQOQOQOQOQOPOQOQOPOQOPOQOPOPOQOPOPOPOPOPOPOPOOOPOPOOOPOOOPOOOOOOOOOOOOOOOOOOOOONOOONOOONOOONONONONOOOMONONONONONOMONOMONOMONOMOMONOMOMOMOMOMOMOMOMOMOMOMOMOMOLOMOMOMOLO!YgH!T!PiL!N!OiN!L!LiO!J!IqQ!G!F!F!F!F!E!E!E!E!E\"E#D$D%D'Cg`]`]a\\a[aZbXcUcOYMQMPMOMOMOMOMONOMOMONOMOMONONOMONONOMONONONONONONONOOONONOOONOOONOOOOOOOOONOOOPOOOOOOOOOPOOOPOOOPOPOOOPOPOPOPOPOPOPOPOQOPOPOQOPOQOPOQOPOQOQOQOPOQOQOQOQOQOQOQOROQOQOQOQOROQOQOROQOQOQOQOQOQOPOROPNQORNPNSOPNSOQNRORNRORORORPRORPROQPRPQORPQORPQOQOQOQOROQOQOQOQOQOQOQOPOQOQOQOPOQOPOQOPOQOPOQOPOPOPOPOPOPOPOPOPOPOOOPOOOPOOOPOOOOOOOOOPOOONOOOOOOOOONOOONOOONONONOOONONOOPNPOPNPOQNOORNOORMPORNOOSLOOTLPMTKRJSIPIQLNMONONNMLOFH5RCLVMNNQLPMOLPMO}Z4F}U5K}Q5M}O}N5O}L5O}I}I-Q}G-Q}E}D}D}C}C}C|C{BzBxBwAuAt@3]<]<]<]<]<]=^=^=^=^>^?_MRMPMONOMONOMOMONONOMONONONOMONONONOOONONONOOONONOOOOONOOOOOOONOOOOOPOOOOOOOPOOOOOPOPOOOPOPOPOPOOOPOQOPOPOPOPOQOPPPPPPQPPQQPPQQPPQQPQQPQQPQQPPQQPQQPPRPRPQPRPRQRQRQRRRRRTQVQXNZJXCQ=H;LJPOQPQPROQOROQOROQOROQOROQOQOROQOROQOQOROQOQOQOROQOQOQOQOQOQOQOQOQOQOQOPOQOQOPOQOQOPOPOQOPOPOQOPOPOPOPOPOPOPOOOPOPOOOPOOOPOOOOOOOOOPOOONOOOOOOOOONOOONOOONONOOONONONONOOPNPNPOPNPOQNPNQNPNRNPNRMPMRLQLRKQJQKQLPMPNPMPOOLOQMIJY<42\\\\LNNQLOMPLPLOMPLO!ZgH!T!PiK!O!OiN!L!LiO!J!IqQ!G!F!F!F!F","sk":"","cd":"","rv":"2620,2733"};
 function benchmark() {
   var out = [], t, ms = function (t0) { return Math.round(Date.now() - t0); }, log = function (s) { out.push(s); Logger.log(s); };
   log('Rainbrew Sky speed check · release ' + CODE_VERSION + ' · rules ' + RULES_VERSION);
