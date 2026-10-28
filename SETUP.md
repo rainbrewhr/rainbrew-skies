@@ -37,6 +37,16 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 
 Every place now has one quiet, slowly moving background layer, like the haunted first stage: drifting cream clouds and steam (Cappuccino Clouds), light ripples and bubbles (Boba Bay), heat shimmer, dust and embers (Caramel Canyon), mist, ripples and fireflies (Blueberry Bog), light shafts, glints and drips (Mint Grotto), a breathing glow, embers and ash (Cocoa Volcano), blowing sand and crumbs (Cookie Ruins). It is drawn by `drawPlaceFx` and only follows the scenery scroll and the clock, so it changes nothing in the game rules: **no Apps Script redeploy is needed** and `SIM_VERSION` stays 36. On Low quality only the lightest parts are drawn.
 
+## Immersion: place cards, boss entrances, a living unicorn and the Rainbrew Café (visual only, no rules change)
+
+- **Place cards:** a quiet card (level, place name, its tagline) fades in for a few seconds when you reach a new place.
+- **Boss entrances:** the screen dims very slightly and the boss's name appears with one line of its own (the lines are in `BOSS_TAUNT` in `index.html`; edit them to change the words). If you record voice lines later, they can be played from the same `boss` event.
+- **A living unicorn:** it breathes, hops for joy on hearts, power-ups and level-ups, and droops with a tear when hurt. With one heart left it looks worried now and then.
+- **Weather that notices you:** a few small lights drift around the unicorn in the colour of the place (fireflies in the bog, embers at the volcano and so on); a few more join when you power up.
+- **Rainbrew Café:** every boss you beat brings one ingredient back (eight in all). They are kept **on the player's phone only** (`us_cafe`), shown in *More > Rainbrew Café*, and bringing all eight earns the *Rainbrew Barista* badge. It has no effect on score, rank or prizes, so Ranked fairness is unchanged.
+
+None of this changes the shared rules, so **no Apps Script redeploy is needed** and `SIM_VERSION` stays 36.
+
 ## Sound and music: the epic cinematic direction (new, first step)
 * **All sounds and music are still made live by the game (no audio files except the two voice-overs)**, so nothing was added to download. This step upgrades them to a more cinematic feel, starting with Rainbrew Power and Overload.
 * **Building blocks** (in `index.html`, next to `tone` and `noise`): `stab` (a brass-like hit), `cinPad` (a slowly swelling string pad), `boom` (a deep cinematic hit), `bells` (the bright notes).

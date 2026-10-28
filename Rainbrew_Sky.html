@@ -211,6 +211,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .pfhead{display:flex;align-items:center;gap:12px;margin:2px 0 10px;justify-content:center}.avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:1.6rem;font-weight:800;color:#fff;background:#7b3fe4;box-shadow:0 0 18px rgba(170,130,255,.6)}.pfwho{display:flex;flex-direction:column;text-align:left}.pfwho b{font-size:1.15rem}.pfwho span{font-size:.78rem;opacity:.7}
 .pstats{display:flex;gap:8px;margin:6px 0}.pst{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.1);border-radius:14px;padding:8px 4px}.pst i{display:grid;width:24px;height:24px}.pst svg{width:24px;height:24px}.pst b{font-size:1.05rem}
 .bdgcount{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0 4px;font-size:.95rem}.bdgcount svg{width:22px;height:22px}
+.cfbar{height:10px;border-radius:6px;background:rgba(120,80,160,.2);margin:8px 6px 0;overflow:hidden}.cfbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd86a,#ff9ad5,#6a7aff);border-radius:6px}.cfgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.cfcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px dashed rgba(120,80,160,.3);border-radius:14px;text-align:center}.cfcell.on{border:2px solid #e8a820;background:rgba(255,216,106,.2)}.cfic svg{width:46px;height:46px}.cfcell b{font-size:.88rem}.cfcell span{font-size:.72rem;opacity:.8}
 .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;margin:4px 0 8px}.bdgcell{display:flex;flex-direction:column;align-items:center;gap:2px}.bdgcell svg{width:58px;height:58px}.bdgcell.on svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}.bdgcell span{font-size:.62rem;opacity:.9;min-height:1em;text-align:center;line-height:1.05}
 #box[data-s="prof"] .topbar{background:rgba(26,12,60,.96);color:#fff;border-bottom:1px solid rgba(255,255,255,.18)}#box[data-s="prof"] .topbar .back{background:rgba(255,255,255,.14);color:#fff}#box[data-s="prof"] .topbar .ttl{color:#fff}
 .who{font-size:.78rem;opacity:.72;margin:0}.hrow{display:none}button.inst{width:auto;margin:6px auto 0;padding:8px 16px;font-size:.85rem;display:inline-flex;gap:6px;align-items:center;min-height:0}.social{margin:6px 0 0;gap:6px}.soc{padding:7px 8px;font-size:.74rem;opacity:.9}
@@ -1414,7 +1415,7 @@ const ACH = {
   first: ['First flight', 'Shoot your first creature'], c10: ['Combo x10', '10 catches and hits in a row'], c25: ['Combo x25', '25 in a row'],
   magic: ['Rainbrew Power', 'Use Rainbrew Power in a boss fight'], boss: ['Monster tamer', 'Defeat a mythical boss'], all8: ['Legend', 'Defeat all eight mythical bosses'],
   place3: ['Explorer', 'Reach Boba Bay'], shards: ['Shard dodger', 'Dodge 12 falling shards in one flight'], s10k: ['2,000 club', 'Score 2,000 in one flight'], s50k: ['10,000 club', 'Score 10,000 in one flight'],
-  shop: ['New wings', 'Unlock a unicorn in the shop'], shared: ['Team player', 'Invite a friend to play'], rival: ['Rival beaten', 'Beat a friend\u2019s challenge score']
+  shop: ['New wings', 'Unlock a unicorn in the shop'], shared: ['Team player', 'Invite a friend to play'], rival: ['Rival beaten', 'Beat a friend\u2019s challenge score'], barista: ['Rainbrew Barista', 'Bring back all eight café ingredients from the bosses']
 };
 const bestAny = () => Math.max(0, ...Object.values(stats.best || {}));
 /* ---------- the unicorns and the gem shop (gems are collected in flights; kept on this phone) ---------- */
@@ -2948,6 +2949,71 @@ const PLACES = [                                                    // eight mag
   { name: 'Cookie Ruins',      tag: 'The Cookie Cyclops rules the crumbs', sky: ['#e6c48c', '#f2daab', '#fbeccb'], far: '#e0bd84', mid: '#caa26a', near: '#ae844f', light: '255,245,210', motif: 'column' }
 ];
 let placeFrom = 0, placeTo = 0, placeMix = 1;
+/* ---------- immersion: place cards, boss entrances, a living unicorn, weather that notices you, and the Rainbrew Café (all visual or kept on this phone: nothing here touches the rules or the score) ---------- */
+const BOSS_TAUNT = { dragon: 'Who dares wake me from my tea nap?', griffin: 'I am the foam on top of every storm!', kraken: 'My pearls are many, and so are my arms!', phoenix: 'Caramel-sweet and fire-hot. Try not to melt!', hydra: 'Pop one berry and two more roll in!', medusa: 'One cold look and you will be minty fresh!', cerberus: 'Three noses can smell your cocoa from afar!', cyclops: 'I see every crumb you drop!' };
+const ING = {                                                       // one café ingredient per boss, drawn (no emoji) so it looks the same on every phone
+  dragon:   { name: 'Matcha leaf',    boss: 'Matcha Dragon',   col: '#7fc96a', d: 'M4 20C4 11 9 5 20 4c0 10-6 16-16 16z', ln: 'M5 19C9 14 13 10 17 7' },
+  griffin:  { name: 'Latte foam',     boss: 'Latte Griffin',   col: '#f1dcc0', d: 'M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 9.5h1.5a2.5 2.5 0 0 1 0 5H17v-1.6h1.5a.9.9 0 0 0 0-1.8H17z', ln: 'M7 11.5c2 1.4 5 1.4 7 0' },
+  kraken:   { name: 'Tapioca pearls', boss: 'Boba Kraken',     col: '#6b4a3a', d: 'M12 4a3.6 3.6 0 1 1 0 7.200 3.6 3.6 0 0 1 0-7.2zM7 12.5a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2zM17 12.5a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2z' },
+  phoenix:  { name: 'Caramel drop',   boss: 'Brûlée Phoenix',  col: '#e8902a', d: 'M12 3C8 9 6 12 6 15a6 6 0 0 0 12 0c0-3-2-6-6-12z', ln: 'M9 15a3 3 0 0 0 3 3' },
+  hydra:    { name: 'Blueberry',      boss: 'Blueberry Hydra', col: '#5a5eaf', d: 'M12 6a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM9 4l3 2.2L15 4l-.8 3h-4.4z' },
+  medusa:   { name: 'Mint leaf',      boss: 'Mint Medusa',     col: '#3fc9a8', d: 'M12 12C6 12 4 8 4 5c5 0 8 2 8 7zM12 12c6 0 8-4 8-7-5 0-8 2-8 7zM11 12h2v8h-2z' },
+  cerberus: { name: 'Cocoa bean',     boss: 'Cocoa Cerberus',  col: '#8a5236', d: 'M12 3c5 0 8 4 8 9s-3 9-8 9-8-4-8-9 3-9 8-9z', ln: 'M8 15c3-1 5-4 6-9' },
+  cyclops:  { name: 'Cookie crumb',   boss: 'Cookie Cyclops',  col: '#d9a860', d: 'M12 3a9 9 0 1 0 9 9c-3 0-4-2-4-4-2 0-5-1-5-5z', dots: [[9, 10, 1.3], [14, 15, 1.4], [8, 15.5, 1.1], [15, 11.5, 1]] }
+};
+const ING_ORDER = ['dragon', 'griffin', 'kraken', 'phoenix', 'hydra', 'medusa', 'cerberus', 'cyclops'];
+let cafe = LS.get('us_cafe', {}); if (!cafe || typeof cafe !== 'object') cafe = {};
+const cafeTotal = () => ING_ORDER.filter(k => cafe[k] > 0).length;
+function cafeAdd(kind) {                                            // an ingredient came back from a boss fight; true if it is a new one
+  if (!ING[kind]) return false; const isNew = !(cafe[kind] > 0); cafe[kind] = (cafe[kind] || 0) + 1; LS.set('us_cafe', cafe); return isNew;
+}
+function ingDraw(c, id, x, y, s) {                                  // an ingredient on the canvas
+  const I = ING[id]; if (!I || typeof Path2D !== 'function') return; c.save(); c.translate(x - s / 2, y - s / 2); c.scale(s / 24, s / 24);
+  c.fillStyle = I.col; c.fill(new Path2D(I.d));
+  if (I.ln) { c.strokeStyle = 'rgba(40,20,10,.45)'; c.lineWidth = 1.3; c.lineCap = 'round'; c.stroke(new Path2D(I.ln)); }
+  if (I.dots) { c.fillStyle = '#5a3414'; for (const q of I.dots) { c.beginPath(); c.arc(q[0], q[1], q[2], 0, 6.283); c.fill(); } }
+  c.restore();
+}
+function ingSvg(id, on) {                                           // the same ingredient as a small SVG for the Café screen (a dim silhouette until you have it)
+  const I = ING[id]; return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + I.d + '" fill="' + (on ? I.col : 'rgba(120,80,160,.2)') + '"/>' + (on && I.ln ? '<path d="' + I.ln + '" fill="none" stroke="rgba(40,20,10,.45)" stroke-width="1.3" stroke-linecap="round"/>' : '') + (on && I.dots ? I.dots.map(q => '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="' + q[2] + '" fill="#5a3414"/>').join('') : '') + '</svg>';
+}
+let uniMood = { hop: 0, sad: 0 }, placeCard = { l: 0, l0: 1 }, bossCard = { l: 0, l0: 1 }, cafeDrop = { l: 0, l0: 1 }, rfx = { x: FW / 2, y: FH - 150 };
+function drawIntroCards() {                                         // a quiet place card when you arrive somewhere new, a gentle dim and the boss's name and one line when it appears, and the café ingredient it leaves behind
+  if (placeCard.l > 0) {
+    const c = placeCard, age = c.l0 - c.l, e = Math.min(1, age * 2.2), al = Math.max(0, Math.min(e, c.l * 1.4)), y = FH * .3 + 10 * (1 - e);
+    const bg = ctx.createLinearGradient(0, y - 54, 0, y + 54); bg.addColorStop(0, 'rgba(20,10,40,0)'); bg.addColorStop(.5, 'rgba(20,10,40,.62)'); bg.addColorStop(1, 'rgba(20,10,40,0)'); ctx.globalAlpha = al; ctx.fillStyle = bg; ctx.fillRect(0, y - 54, FW, 108);
+    ctx.strokeStyle = 'rgba(255,226,122,.75)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(FW / 2 - 74, y - 12); ctx.lineTo(FW / 2 + 74, y - 12); ctx.stroke();
+    T('LEVEL ' + c.n, FW / 2, y - 26, { size: 11, fill: '#ffe27a', w: 3 }); T(c.name, FW / 2, y + 8, { size: fit(c.name, 30, FW - 40), w: 6 }); T(c.tag, FW / 2, y + 36, { size: fit(c.tag, 13, FW - 40), fill: 'rgba(255,255,255,.9)', w: 3 }); ctx.globalAlpha = 1;
+  }
+  if (bossCard.l > 0) {
+    const c = bossCard, age = c.l0 - c.l, e = Math.min(1, age * 3), al = Math.max(0, Math.min(e, c.l * 1.5)), y = FH * .44 + 8 * (1 - e);
+    ctx.globalAlpha = al * .24; ctx.fillStyle = '#10001c'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
+    ctx.globalAlpha = al; T(c.name, FW / 2, y, { size: fit(c.name, 30, FW - 30), fill: '#ffe27a', stroke: '#6a1030', w: 8 }); TW('“' + c.taunt + '”', FW / 2, y + 34, { size: 14, max: FW - 44, fill: 'rgba(255,255,255,.95)', w: 4 }); ctx.globalAlpha = 1;
+  }
+  if (cafeDrop.l > 0) {
+    const c = cafeDrop, age = c.l0 - c.l, e = Math.min(1, age * 3), al = Math.max(0, Math.min(e, c.l * 1.5)), y = FH * .62;
+    ctx.globalAlpha = al; ctx.fillStyle = 'rgba(30,14,60,.8)'; ctx.strokeStyle = 'rgba(255,226,122,.7)'; ctx.lineWidth = 1.6; rrect(ctx, FW / 2 - 112, y - 32, 224, 64, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(FW / 2 - 78, y, 22, 0, 6.283); ctx.fill(); ingDraw(ctx, c.id, FW / 2 - 78, y, 30);
+    T(c.done ? 'RAINBOW LATTE BREWED!' : c.isNew ? 'NEW INGREDIENT!' : 'BACK TO THE CAFÉ', FW / 2 + 22, y - 14, { size: 11, fill: '#ffe27a', w: 3 });
+    T(ING[c.id].name + (c.isNew ? '' : ' ×' + c.n), FW / 2 + 22, y + 4, { size: fit(ING[c.id].name, 15, 130), w: 4 }); T(c.done ? 'You are a Rainbrew Barista!' : cafeTotal() + ' of 8 in your Rainbrew Café', FW / 2 + 22, y + 21, { size: 10, fill: 'rgba(255,255,255,.85)', w: 3 }); ctx.globalAlpha = 1;
+  }
+}
+const RFX = [{ c: '#b9a6ff', k: 'g' }, { c: '#fff2c8', k: 's' }, { c: '#ffffff', k: 'r' }, { c: '#ffcf85', k: 'd' }, { c: '#d9ff8a', k: 'g' }, { c: '#dffff2', k: 's' }, { c: '#ff9a4a', k: 'd' }, { c: '#f0d8a0', k: 'd' }];
+function drawReactFx(g) {                                           // weather that notices your unicorn: a few lights drift around it, in the colour of the place (fireflies in the bog, embers at the volcano ...), and a few more join when you power up
+  const R = RFX[viewPlace()], t = now / 1000, boost = g.pw.coffee > 0 || g.pw.triple > 0 || g.pw.helpers > 0 || g.magic > 0 || g.oc > 0 || g.hyper > 0 || g.ultT > 0, n = (QUAL[cfg.quality] || QUAL.med).layers >= 2 ? (boost ? 7 : 4) : 2;
+  for (let k = 0; k < n; k++) {
+    const an = t * (.5 + .12 * (k % 3)) + k * 6.283 / n, rad = 58 + 20 * Math.sin(t * .7 + k * 1.9) + (k % 3) * 9, rise = R.k === 'r' ? (t * 14 + k * 20) % 30 : 0, x = rfx.x + Math.cos(an) * rad, y = rfx.y + Math.sin(an) * rad * .7 - 6 - rise, s2 = Math.sin(t * 1.3 + k * 2.1), al = (.3 + .28 * s2 * s2) * (boost ? 1 : .85);
+    if (R.k === 'g') glowDot(ctx, x, y, 9, R.c, al * 1.5); else if (R.k === 's') sparkle4(x, y, 3 + (k % 2) * 1.5, R.c, al * 1.4); else if (R.k === 'r') { ctx.globalAlpha = al * (1 - rise / 30); ctx.strokeStyle = R.c; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x, y, 2.6 + (k % 2), 0, 6.283); ctx.stroke(); } else { ctx.globalAlpha = al; ctx.fillStyle = R.c; ctx.fillRect(x, y, 2.2, 2.2); }
+  }
+  ctx.globalAlpha = 1;
+}
+function cafeScreen() {                                             // the Rainbrew Café: every boss leaves an ingredient behind; all eight brew the Rainbrew Rainbow Latte
+  const n = cafeTotal(), done = n >= 8;
+  screen(`<h1>Rainbrew Café</h1><p class="meta" style="text-align:center">Beat a boss and it leaves an ingredient at the café. Collect all eight to brew the <b>Rainbrew Rainbow Latte</b>.</p>
+  <div class="cfbar" role="img" aria-label="${n} of 8 ingredients"><i style="width:${n * 12.5}%"></i></div><p class="bdgcount"><b>${n}</b>/8 ingredients</p>
+  <div class="cfgrid">${ING_ORDER.map(k => { const on = cafe[k] > 0, I = ING[k]; return `<div class="cfcell${on ? ' on' : ''}"><div class="cfic">${ingSvg(k, on)}</div><b>${on ? esc(I.name) : '???'}</b><span>${on ? 'Collected ×' + cafe[k] : 'Beat the ' + esc(I.boss)}</span></div>`; }).join('')}</div>
+  ${done ? '<div class="note okc"><b>Your Rainbow Latte is brewed!</b> You are a Rainbrew Barista. Thank you for playing.</div>' : '<p class="meta" style="text-align:center">Bosses can be beaten in any mode. This is just for fun and does not change your score.</p>'}`, 'cafe', 'menu');
+}
 const viewPlace = () => (G ? G.stage % PLACES.length : 0);
 function ridge(side, col, base, a1, f1, a2, f2, speed, ph) {         // one calm silhouette along an edge: a smooth, slowly drifting contour (parallax: the far ones drift slower)
   const off = bgT * speed; ctx.fillStyle = col; ctx.beginPath(); const y0 = -150, y1 = FH + 150, X = side < 0 ? -40 : FW + 40;
@@ -3289,9 +3355,14 @@ function drawPlayer(al) {
       const full = k === 'coffee' ? COFFEE_STEPS : POWER_STEPS, r = 52 + ring * 6; ctx.strokeStyle = POW_COL[k]; ctx.lineWidth = 2.6; ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + 6.283 * Math.min(1, g.pw[k] / full)); ctx.stroke(); ctx.globalAlpha = 1; ring++; } }
   if (g.pw.helpers > 0) for (const sd of [-1, 1]) art('buddy', x + sd * 46, y + 6 + Math.sin(now / 200 + sd) * 4, 30);   // the two little helpers
   const im = UIMG[g.uni], S = 92;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(Math.max(-.22, Math.min(.22, g.pdx * .03)));
+  const mh = uniMood.hop > 0 ? Math.sin((1 - uniMood.hop) * Math.PI) : 0, ms = uniMood.sad > 0 ? uniMood.sad : 0, bsc = (1 + .012 * Math.sin(now / 650)) * (1 + .07 * mh - .03 * ms);   // a living unicorn: it breathes, hops for joy and droops when it is hurt
+  ctx.save(); ctx.translate(x, y - 9 * mh + 3 * ms); ctx.rotate(Math.max(-.22, Math.min(.22, g.pdx * .03)) + .1 * ms); ctx.scale(bsc, bsc);
   if (!drawFit(im, 0, 0, S)) { ctx.fillStyle = (charById(g.uni) || CHARACTERS[0]).color; ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(18, 18); ctx.lineTo(-18, 18); ctx.closePath(); ctx.fill(); }
   ctx.restore();
+  if (mh > 0) sparkle4(x + 22, y - 46 - 8 * (1 - uniMood.hop), 4 + 2 * mh, '#ffb3d0', mh * .9);
+  const worry = !demo && g.lives === 1 && g.phase !== 'dying' && (now / 1000) % 4 < 1.4;
+  if (ms > 0 || worry) { const dy = ms > 0 ? 14 * (1 - ms) : 6 * ((now / 1000) % 4) / 1.4, al = ms > 0 ? ms : .8 * (1 - ((now / 1000) % 4) / 1.4); ctx.globalAlpha = Math.max(0, al); ctx.fillStyle = '#8fd8ff'; ctx.beginPath(); ctx.moveTo(x + 20, y - 30 + dy); ctx.quadraticCurveTo(x + 25, y - 22 + dy, x + 20, y - 17 + dy); ctx.quadraticCurveTo(x + 15, y - 22 + dy, x + 20, y - 30 + dy); ctx.fill(); ctx.globalAlpha = 1; }
+  drawReactFx(g);
 }
 function drawMagic() {                                               // Rainbrew Magic: fast, snappy and clean. A quick flash and ring, a rainbow edge, and nothing else on the screen
   const g = G;
@@ -3628,6 +3699,7 @@ function drawOverlays() {
   if (bombFx.t > 0) { const k = 1 - bombFx.t / .9; for (let i = 0; i < 4; i++) { const kk = Math.max(0, k - i * .08); ctx.strokeStyle = i % 2 ? 'rgba(255,170,60,' + (1 - kk).toFixed(2) + ')' : 'rgba(255,245,190,' + (1 - kk).toFixed(2) + ')'; ctx.lineWidth = (16 - i * 3) * (1 - kk) + 2; ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, 16 + kk * 560, 0, 6.283); ctx.stroke(); } ctx.fillStyle = 'rgba(255,200,90,' + (.5 * (1 - k)).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, 30 + k * 160, 0, 6.283); ctx.fill(); }
   if (bombFlash > 0) { ctx.fillStyle = 'rgba(255,250,225,' + Math.min(.55, bombFlash).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
   if (flashT > 0) { ctx.globalAlpha = Math.min(1, flashT * 2); TW(flash, FW / 2, FH * .24, { size: 18, max: FW - 30, w: 6 }); ctx.globalAlpha = 1; }
+  drawIntroCards();
   if (bossBanner.l > 0) { ctx.globalAlpha = Math.min(1, bossBanner.l * 2); TW(bossBanner.txt, FW / 2, FH * .48, { size: 28, max: FW - 24, w: 8, fill: '#ffe27a', stroke: '#6a1030' }); ctx.globalAlpha = 1; }
   if (banner.l > 0) {                                               // banners snap in (a quick pop) and fade out
     if (!banner.l0 || banner.l > banner.l0) banner.l0 = banner.l; const age = banner.l0 - banner.l, pop = age < .16 ? 1.12 - .75 * age : 1;
@@ -3692,7 +3764,7 @@ function decodeTraj(tr) { const a = []; for (let i = 0; i < tr.length; i++) a.pu
 function startGame(m) {
   if (demo && !demoStarting) { demo = false; skipBtn.hidden = true; }         // any real game start ends a demo
   auInit(); mode = m; if (!demo) LS.set('wg_mode', m); const M = MODES[m]; if (!demo) clearCkpt();
-  trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
+  placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
   session = null; ranked = false; run = null; waitT = 0; cdN = 0; noteUnranked = ''; tgt = { x: FW / 2, y: FH - 150 }; pressed = false; clearInterval(lbTimer);
   G = newGame(1, m, demo ? 'frost' : uniOf()); G.keepEv = true; placeFrom = placeTo = 0; placeMix = 1;     // (a preview while the countdown runs)
   st = 'count'; cd = 3; ov.style.display = 'none'; musicStop(); ++runSeq; sessDone = true;
@@ -3715,7 +3787,7 @@ function begin() {
     runSeed = (Math.random() * 4294967296) >>> 0; ranked = false;
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
-  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
+  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
   placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: 'Boost on: fire fast!', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
   if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
 }
@@ -3740,10 +3812,10 @@ function handleEvents() {
   for (let i = 0; i < g.ev.length; i++) {
     const e = g.ev[i], n = e[0], a = e[1], b = e[2], c = e[3];
     if (n === 'kill') { const D = ENEMIES[c], role = D ? D.role : 'b'; burst(a, b, ROLE_COL[role], role === 'a' ? 9 : 14); sfx(role === 'b' ? 'k_pumpkin' : role === 'c' ? 'k_witch' : c === 'bat' ? 'k_bat' : 'k_ghost'); if (role !== 'a') pop(a, b - 6, '+' + (D ? D.pts : 0) * Math.max(1, mult(g)), '#ffe27a'); award('first'); if (g.combo >= 4 && g.combo % 2 === 0) sfx('combo', g.combo); if (g.combo >= 10) award('c10'); if (g.combo >= 25) award('c25'); }
-    else if (n === 'gem') { gemChain = now - lastGem < 650 ? gemChain + 1 : 0; lastGem = now; sfx('gem', gemChain); }
+    else if (n === 'gem') { gemChain = now - lastGem < 650 ? gemChain + 1 : 0; lastGem = now; sfx('gem', gemChain); if (gemChain === 3) uniMood.hop = 1; }
     else if (n === 'hit' || n === 'bosshit') { if (n === 'bosshit') bossSquash = Math.min(.05, bossSquash + .02); if (now - lastHitSfx > 70) { lastHitSfx = now; sfx('tick'); } if (n === 'hit' && Math.random() < .5) burst(a, b, ROLE_COL[(ENEMIES[c] || { role: 'a' }).role], 2); }
-    else if (n === 'capsule') { sfx('capsule'); }
-    else if (n === 'heart') { burst(a, b, '#ff7aa0', 10); pop(a, b - 8, '+1 heart', '#ffb3c8'); sfx('heart'); vib(30); }
+    else if (n === 'capsule') { sfx('capsule'); uniMood.hop = 1; }
+    else if (n === 'heart') { uniMood.hop = 1; burst(a, b, '#ff7aa0', 10); pop(a, b - 8, '+1 heart', '#ffb3c8'); sfx('heart'); vib(30); }
     else if (n === 'overload') { banner = { txt: 'OVERLOAD!', sub: '', l: 1.6 }; burst(g.px, g.py, '#ffe27a', 10); sfx('overload', MKEYS[g.stage % 8] || 0); duckMusic(1.6); vib([20, 30, 20]); overloadFx = { t: 1 }; setTimeout(overloadVoice, 350); for (let k = 0; k < 14; k++) { const an = k * .45, v = 70 + (k % 5) * 30; spark(g.px, g.py, Math.cos(an) * v, Math.sin(an) * v - 30, .8 + (k % 4) * .1, COL[k % 7], 4 + (k % 3) * 2); } }
     else if (n === 'mystery') { const m = { jackpot: ['LUCKY!', '+25 gems'], ult: ['POWER CHARGED!', 'Unicorn Power is full'], shield: ['SHIELD!', 'A free shield'], gamble: ['GAMBLE!', '+15 gems, slow fire for 8 s'] }[a] || ['SURPRISE!', '']; banner = { txt: m[0], sub: m[1], l: 1.5 }; burst(g.px, g.py, a === 'gamble' ? '#9a8aff' : '#ffd86a', 30); sfx('p_mystery'); vib(40); }
     else if (n === 'close') { sfx('close'); }
@@ -3765,8 +3837,8 @@ function handleEvents() {
     else if (n === 'revive') { banner = { txt: 'CONTINUE!', sub: '+1 life', l: 1.4 }; sfx('revive'); burst(g.px, g.py, '#ffe27a', 30); shake = Math.max(shake, .4); vib(80); }
     else if (n === 'regen') { sfx('shield'); }
     else if (n === 'bosswarn') { warnFx = { t: 3, kind: a }; }                       // a plain, static warning sign (the music keeps building)
-    else if (n === 'levelup') { sfx('levelup'); }
-    else if (n === 'hurt') { shake = .4; hurtT = .5; sfx('hit'); vib(120); say(a < 0 ? '−100 points' : a > 0 ? a + (a === 1 ? ' heart' : ' hearts') + ' left!' : '', 1.1); }
+    else if (n === 'levelup') { sfx('levelup'); uniMood.hop = 1; }
+    else if (n === 'hurt') { uniMood.sad = 1; shake = .4; hurtT = .5; sfx('hit'); vib(120); say(a < 0 ? '−100 points' : a > 0 ? a + (a === 1 ? ' heart' : ' hearts') + ' left!' : '', 1.1); }
     else if (n === 'shield') { sfx('shield'); shake = .1; }
     else if (n === 'power') { sfx('p_' + a, MKEYS[g.stage % 8] || 0); const pi = PW_INFO[a]; if (pi) { puFx.push({ k: a, t: 1, c: pi.c }); if (puFx.length > 3) puFx.shift(); burst(g.px, g.py, pi.c, 6); if (a === 'triple' && !b) say('BEAMS MAXED! +10 GEMS', 1.2); } if (a === 'coffee') { boostFx = { t: 1 }; burst(g.px, g.py, '#ffb347', 20); vib(40); } else if (!pi) say(POW_NAME[a] || 'Power-up!', 1.4); }
     else if (n === 'hzwarn') { if (now - lastWarn > 450) { lastWarn = now; sfx('hzwarn'); } }
@@ -3776,15 +3848,15 @@ function handleEvents() {
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
     else if (n === 'rbrel') { rbRel = { t: 1 }; sfx('rbrel', MKEYS[g.stage % 8] || 0); duckMusic(1.5); setTimeout(() => magicVoice(false), 120); shake = Math.max(shake, .5); vib([40, 30, 80]); banner = { txt: 'RAINBREW POWER!', sub: '', l: 1.4 }; award('magic'); burst(g.px, g.py, '#ffe27a', 16); if (g.boss) { bossSquash = Math.min(.06, bossSquash + .04); burst(g.boss.x, g.boss.y, '#ffffff', 14); } }
-    else if (n === 'boss') { bsay(BOSS_NAME[a] + '!', 2.8); sfx('b_' + a); musicBossIn(); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
+    else if (n === 'boss') { bossCard = { name: BOSS_NAME[a], taunt: BOSS_TAUNT[a] || '', l: 3.2, l0: 3.2 }; sfx('b_' + a); musicBossIn(); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
     else if (n === 'bossatk') { if (now - lastAtk > 250) { lastAtk = now; sfx('a_' + a); } }
     else if (n === 'angry' || n === 'enraged') { bsay(n === 'angry' ? 'IT IS ANGRY!' : 'FINAL PUSH!', 2); sfx('b_' + a); shake = .35; vib(100); }
     else if (n === 'thunder') { thunderT = .4; shake = .3; sfx('thunder'); }
     else if (n === 'sparkle') { pop(a, b - 34, '+' + c, '#ffe27a'); sfx('sparkle'); }
     else if (n === 'bossdying') { bsay(BOSS_NAME[a] + ' IS FALLING!', 1.6); sfx('bossdying'); shake = .5; vib(120); }
-    else if (n === 'bossdead') { award('boss'); if (b >= 7) award('all8'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('victory'); musicVictory(); for (let k = 0; k < 60; k++) { const an = k * .37, v = 60 + (k % 6) * 35; spark(FW / 2, 150, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 4) * .2, COL[k % 7], 5 + (k % 3) * 2); } placeFrom = placeTo; placeTo = (b + 1) % PLACES.length; placeMix = 0; }   // the next place starts fading in right away
+    else if (n === 'bossdead') { award('boss'); if (b >= 7) award('all8'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('victory'); musicVictory(); if (!demo && ING[a]) { const nw = cafeAdd(a), all = cafeTotal() >= 8; cafeDrop = { id: a, isNew: nw, n: cafe[a], done: all && !ach.barista, l: 4, l0: 4 }; if (all) award('barista'); } for (let k = 0; k < 60; k++) { const an = k * .37, v = 60 + (k % 6) * 35; spark(FW / 2, 150, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 4) * .2, COL[k % 7], 5 + (k % 3) * 2); } placeFrom = placeTo; placeTo = (b + 1) % PLACES.length; placeMix = 0; }   // the next place starts fading in right away
     else if (n === 'bossflee') bsay('The ' + BOSS_NAME[a].toLowerCase() + ' flew away!', 2.6);
-    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } banner = { txt: 'LEVEL ' + (a + 1), sub: PLACES[a % PLACES.length].name, l: 3.2 }; sfx('stage'); if (a >= 2) award('place3'); }
+    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } placeCard = { n: a + 1, name: PLACES[a % PLACES.length].name, tag: PLACES[a % PLACES.length].tag, l: 3.6, l0: 3.6 }; sfx('stage'); if (a >= 2) award('place3'); }
     else if (n === 'level') { if (!(g.M.boss && a % BOSS_EVERY === 0)) phaseIntro(g); }   // each level is its own creature
   }
   g.ev.length = 0;
@@ -3833,6 +3905,8 @@ function update(dt) {
   if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
   if (G && G.magic > 0 && st === 'play') { trail.push({ x: G.px - G.pdx * .5, y: G.py + 30 }); if (trail.length > 28) trail.shift(); if (Math.random() < .3) spark(G.px + (Math.random() - .5) * 26, G.py + 22, (Math.random() - .5) * 50, 20 + Math.random() * 60, .7, COL[Math.floor(Math.random() * 7)], 4 + Math.random() * 4); } else if (trail.length) trail.shift();
   if (bombFx.t > 0) bombFx.t -= dt; if (flashT > 0) flashT -= dt; if (shake > 0) shake -= dt; if (hurtT > 0) hurtT -= dt; if (bossBanner.l > 0) bossBanner.l -= dt; if (banner.l > 0) banner.l -= dt; if (overloadFx.t > 0) overloadFx.t -= dt * .9; if (pwCard.l > 0) pwCard.l -= dt;
+  if (placeCard.l > 0) placeCard.l -= dt; if (bossCard.l > 0) bossCard.l -= dt; if (cafeDrop.l > 0) cafeDrop.l -= dt; if (uniMood.hop > 0) uniMood.hop = Math.max(0, uniMood.hop - dt * 2.2); if (uniMood.sad > 0) uniMood.sad = Math.max(0, uniMood.sad - dt * 1.1);
+  if (G) { rfx.x += (G.px - rfx.x) * Math.min(1, dt * 1.8); rfx.y += (G.py - rfx.y) * Math.min(1, dt * 1.8); }
   for (let i = ps.length - 1; i >= 0; i--) { const p = ps[i]; p.l -= dt; if (p.l <= 0) { ps.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; }
   for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i]; p.l -= dt; p.y -= 44 * dt; if (p.l <= 0) pops.splice(i, 1); }
   if (st === 'count') {
@@ -4176,7 +4250,7 @@ function menu() {
   const rjb = rej.length ? `<div class="note warn"> ${rej.length} saved score${rej.length > 1 ? 's' : ''} could not be accepted: ${esc([...new Set(rej.map(x => ERR[x.err] || x.err))].join(' '))} <button class="sec" data-a="rejclear">OK</button></div>` : '';
   const pend = pendingList().length, [dot, ctext] = connState(), note = menuNote && Date.now() - menuNoteAt < 9000 ? menuNote : '';   // a confirmation stays visible for a few seconds even if the menu redraws menuNoteAt = Date.now();
   const drawer = menuMore ? `<div class="drawer-bg" data-a="menuclose"></div><aside class="drawer" aria-label="Menu"><div class="dhead"><b>Menu</b><button class="sec" style="width:auto;margin:0" data-a="menuclose" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <button class="sec" data-a="how"> How to play</button><button class="sec" data-a="demo"> Watch the demo</button><button class="sec" data-a="players">Switch player</button><button class="sec" data-a="recs:me">My records</button><button class="sec" data-a="prof">Profile and badges</button><button class="sec" data-a="set">Settings</button>
+    <button class="sec" data-a="cafe"> Rainbrew Café</button><button class="sec" data-a="how"> How to play</button><button class="sec" data-a="demo"> Watch the demo</button><button class="sec" data-a="players">Switch player</button><button class="sec" data-a="recs:me">My records</button><button class="sec" data-a="prof">Profile and badges</button><button class="sec" data-a="set">Settings</button>
     ${isStandalone() ? '' : '<button class="sec" data-a="install"> Install the app</button>'}
     ${socialLinks()}<p class="meta pill" id="conn">${dot} ${esc(ctext)}</p></aside>` : '';
   screen(`<button class="gear" data-a="set" aria-label="Settings">${ico('gear')}</button><div class="mtop"><img class="logo" src="${LOGO}" alt="Rainbrew Coffee Shop logo"><h1>${esc(CONFIG.GAME_NAME)}</h1><p class="tag">FLY THE CAFÉ SKIES</p></div><div class="mbot">
@@ -4453,7 +4527,7 @@ function chalLine(r) {                                                          
   return `<p class="note"> <b>${chal.score - r.score + 1}</b> more point${chal.score - r.score ? 's' : ''} to beat <b>${esc(chal.by)}</b>’s ${chal.score}. Try again!</p>`;
 }
 const ACT = {
-  play() { playNow(); }, unis: unicornsScreen, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
+  play() { playNow(); }, unis: unicornsScreen, cafe: cafeScreen, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
   compclose() { const c = compNow(); if (comp) compHideKey = comp.name + ':' + c.state; menu(); }, lb() { lbScreen('rank'); }, lbplayed() { lbScreen(run && MODES[run.mode] && MODES[run.mode].ranked ? run.mode : 'rank'); }, menumore() { menuMore = true; menu(); }, menuclose() { menuMore = false; menu(); }, demo() { startDemo(); }, lbr() { lbScreen(null, true); }, more: moreLb, submit: submitScore, local: saveLocal,
   resume() { ov.style.display = 'none'; st = 'ready'; cd = 3; cdN = 0; },
   regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (nm.length < 2) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (nameBlocked(nm)) return registerScreen(NAME_BAD, nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); const cs = readConsent(); if (!cs.ok) return registerScreen(cs.err, nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); saveConsent(cs.a); rememberPlayer(); menu(); setTimeout(maybeInvite, 300); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
@@ -4645,9 +4719,9 @@ const BADGE_GLYPH = {
   magic: '<path d="M10 32a14 14 0 0 1 28 0M15 32a9 9 0 0 1 18 0M20 32a4 4 0 0 1 8 0" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>', boss: '<path d="M11 34l3-16 7 8 3-12 3 12 7-8 3 16z"/>', all8: '<path d="M15 10h18v8a9 9 0 0 1-18 0zM11 12h4v5a4 4 0 0 1-4-4zM37 12h-4v5a4 4 0 0 0 4-4zM21 27h6v6h5v4H16v-4h5z"/>',
   place3: '<path d="M24 8a9 9 0 0 1 9 9c0 7-9 17-9 17s-9-10-9-17a9 9 0 0 1 9-9zm0 6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z"/>', shards: '<path d="M24 8l9 14-9 18-9-18z"/>', s10k: '<path d="M24 8l4.4 10 10.6 1-8 7 2.4 10.6L24 31l-9.4 5.6L17 26l-8-7 10.6-1z"/>',
   s50k: '<path d="M24 6l3.6 8.4 9-2.4-3.6 8.4 7.6 5.6-9.4.6-1.6 9.4L24 29l-5.6 7 -1.6-9.4-9.4-.6 7.6-5.6-3.6-8.4 9 2.4z"/>', shop: '<path d="M8 28c7 0 12-5 14-14 3 5 5 9 5 14 4-1 8-4 12-10-1 9-8 18-20 18-6 0-10-3-11-8z"/>',
-  shared: '<path d="M24 36C14 28 11 23 11 19a6 6 0 0 1 13-2 6 6 0 0 1 13 2c0 4-3 9-13 17z"/>', rival: '<path d="M13 36l18-18 4 4-18 18zM30 12l6-2-2 6zM11 38l-3 2 2-3z"/>'
+  shared: '<path d="M24 36C14 28 11 23 11 19a6 6 0 0 1 13-2 6 6 0 0 1 13 2c0 4-3 9-13 17z"/>', rival: '<path d="M13 36l18-18 4 4-18 18zM30 12l6-2-2 6zM11 38l-3 2 2-3z"/>', barista: '<path d="M12 18h20v10a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8zM32 20h3a4 4 0 0 1 0 8h-3v-2.4h3a1.6 1.6 0 0 0 0-3.2h-3zM15 40h18v2H15z"/>'
 };
-const BADGE_TIER = { first: 'b', c10: 'b', c25: 's', magic: 'g', boss: 's', all8: 'p', place3: 'b', shards: 's', s10k: 'b', s50k: 'g', shop: 'b', shared: 's', rival: 'g' };
+const BADGE_TIER = { first: 'b', c10: 'b', c25: 's', magic: 'g', boss: 's', all8: 'p', place3: 'b', shards: 's', s10k: 'b', s50k: 'g', shop: 'b', shared: 's', rival: 'g', barista: 'p' };
 const BADGE_COL = { b: ['#f6c79a', '#b0662a'], s: ['#f2f5fb', '#8a97b0'], g: ['#fff0a0', '#d08a10'], p: ['#ff9ad5', '#6a7aff'] };
 function badgeSvg(id, on) {                                          // a hexagon medal, tinted by tier; unearned ones are dim with a lock
   const [a, b] = BADGE_COL[BADGE_TIER[id] || 'b'];
@@ -4899,9 +4973,9 @@ const BI = {                                                         // small ou
   list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.1M4 12h.1M4 18h.1"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
   dl: '<path d="M12 3v12M7 10l5 5 5-5M5 20h14"/>', share: '<circle cx="6" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8 11l7-4M8 13l7 4"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>', upload: '<path d="M12 17V5M7 10l5-5 5 5M5 20h14"/>', shuffle: '<path d="M4 7h4l8 10h4M4 17h4l2-2.5M14 9.5L16 7h4M18 5l2 2-2 2M18 15l2 2-2 2"/>',
-  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 20h8"/>', arrow: '<path d="M14 6l-6 6 6 6"/>', arrowr: '<path d="M10 6l6 6-6 6"/>'
+  cup: '<path d="M5 9h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.2 2.2 0 0 1 0 4.4H16M8 4v2M12 4v2"/>', trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 20h8"/>', arrow: '<path d="M14 6l-6 6 6 6"/>', arrowr: '<path d="M10 6l6 6-6 6"/>'
 };
-const BTN_ICO = { play: 'play', regok: 'play', ckres: 'play', chalplay: 'play', resume: 'play', demo: 'play', again: 'refresh', usep: 'user', newp: 'user', players: 'users', recs: 'list', cont: 'heart', endcont: 'flag', endrun: 'flag', endyes: 'flag', quit: 'home', menu: 'home', install: 'dl', how: 'help', prof: 'user', set: 'gear', update: 'refresh', sendunsent: 'upload', share: 'share', sharenative: 'share', sharecopy: 'share', copy: 'share', gatecopy: 'share', invite: 'share', reset: 'refresh', cardre: 'shuffle', checksrv: 'refresh', ckdrop: 'x', rejclear: 'x', chaldrop: 'x', setgo: 'check', submit: 'check', pwaok: 'check', pwano: 'x', comp: 'trophy', hwprev: 'arrow', hwnext: 'arrowr', pausebk: 'arrow' };
+const BTN_ICO = { play: 'play', regok: 'play', ckres: 'play', chalplay: 'play', resume: 'play', demo: 'play', again: 'refresh', usep: 'user', newp: 'user', players: 'users', recs: 'list', cont: 'heart', endcont: 'flag', endrun: 'flag', endyes: 'flag', quit: 'home', menu: 'home', install: 'dl', how: 'help', cafe: 'cup', prof: 'user', set: 'gear', update: 'refresh', sendunsent: 'upload', share: 'share', sharenative: 'share', sharecopy: 'share', copy: 'share', gatecopy: 'share', invite: 'share', reset: 'refresh', cardre: 'shuffle', checksrv: 'refresh', ckdrop: 'x', rejclear: 'x', chaldrop: 'x', setgo: 'check', submit: 'check', pwaok: 'check', pwano: 'x', comp: 'trophy', hwprev: 'arrow', hwnext: 'arrowr', pausebk: 'arrow' };
 function bi(k) { return `<svg class="bi" viewBox="0 0 24 24" aria-hidden="true">${BI[k]}</svg>`; }
 function decorate(h) {                                               // a small icon in front of each button's label, matched to what the button does
   return h.replace(/(<button\b(?![^>]*class="[^"]*\b(?:chip|back|arr|tab|link|wcard)\b)[^>]*\bdata-a="(\w+)(?::[^"]*)?"[^>]*>)(?!\s*(?:<svg|<i\b|<span class="gem"|<canvas))/g, (m, open, act) => BTN_ICO[act] ? open + (act === 'hwnext' ? '' : bi(BTN_ICO[act])) : m);
