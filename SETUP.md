@@ -49,8 +49,8 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 
 ## The intro order, the countdown and the Rainbrew theme (visual and sound only, no rules change)
 
-- **Intro order:** a place is always introduced first (its card), then its creatures ("PHASE 1: ...") about half a second after the card fades. This holds at the very start of a run (GO!, then the Haunted Meadows card, then Phase 1) and after a boss and Wild Card (the new place first, then its creatures). They never show at the same time.
-- **The 3-2-1 countdown** now teaches how to play: drag to fly, the unicorn shoots by itself, tap UNICORN when it glows, and tap RAINBREW in boss fights. The line for the current count is highlighted.
+- **Intro order:** a place is introduced on its own. The card takes the whole screen: the game dims, the HUD and every other message fade away, and only the place name and its tagline remain. Then everything fades back. This holds at the start of a run (GO!, then the Haunted Meadows card) and after a boss and Wild Card. A message that arrives during a card (for example a badge) waits until the card ends. Only one centre message shows at a time. The big "PHASE 1: ..." banner was removed because the HUD already shows the phase.
+- **The 3-2-1 countdown** teaches one thing per number: 3 "Drag to fly", 2 "Collect gems", 1 "Defeat the enemies". Nothing else is on screen except the number.
 - **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
 
 ## Sound and music: the epic cinematic direction (new, first step)

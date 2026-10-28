@@ -2887,7 +2887,7 @@ function makeRig(kind) {
 }
 
 /* ============ the field, pictures and effects ============ */
-const cv = $('c'), ctx = cv.getContext('2d'), ov = $('ov'), box = $('box');
+const cv = $('c'), ov = $('ov'), box = $('box'); let ctx = cv.getContext('2d');
 const FW = 360, FH = 640;                                                       // the field is always 360 x 640 "units", scaled to fit any screen
 let cssW = 360, cssH = 640, DPR = 1, K = 1, OXp = 0, OYp = 0, now = 0, bgT = 0;
 const SPR = new Map();
@@ -2944,7 +2944,7 @@ const POW_COL = { coffee: '#ffb347', triple: '#7fe0ff', helpers: '#d7a8ff', shie
 let introQ = 0, phaseQ = 0;
 function phaseIntro(g) {                                             // "PHASE 1: PUMPKINS!": every phase announces its creatures before they arrive
   const n = ((g.level - 1) % BOSS_EVERY) + 1, kinds = levelKinds(g).map(k => (KIND_NAME[k] || k).toUpperCase()).join(' & ');
-  banner = { txt: 'PHASE ' + n + ': ' + kinds + '!', sub: '', l: 2.2 };
+  /* the HUD already shows "PHASE n · creatures", so there is no big banner for it any more (n and kinds stay for reference) */
 }
 const KIND_NAME = { ghost: 'Ghosts', bat: 'Bats', pumpkin: 'Pumpkins', witch: 'Witches', puff: 'Puffs', storm: 'Storm clouds', spark: 'Sparks', jelly: 'Jellies', crab: 'Crabs', puffer: 'Pufferfish', ember: 'Embers', golem: 'Golems', imp: 'Imps', firefly: 'Fireflies', frog: 'Frogs', mush: 'Mushrooms', gembug: 'Gem bugs', crystal: 'Crystals', gemwisp: 'Gem wisps', ashling: 'Ashlings', magma: 'Magma blobs', fireimp: 'Fire imps', scarab: 'Scarabs', mummy: 'Mummies', sorcerer: 'Sorcerers' };
 const POW_NAME = { coffee: 'RAINBREW BOOST', triple: 'BEAM UP', helpers: 'LITTLE HELPERS', shield: 'SHIELD', spread: 'FAN SHOT', pierce: 'PIERCING', charm: 'RAINBREW CHARM', core: 'STAR CORE' };
@@ -2990,17 +2990,28 @@ function ingSvg(id, on) {                                           // the same 
   const I = ING[id]; return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + I.d + '" fill="' + (on ? I.col : 'rgba(120,80,160,.2)') + '"/>' + (on && I.ln ? '<path d="' + I.ln + '" fill="none" stroke="rgba(40,20,10,.45)" stroke-width="1.3" stroke-linecap="round"/>' : '') + (on && I.dots ? I.dots.map(q => '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="' + q[2] + '" fill="#5a3414"/>').join('') : '') + '</svg>';
 }
 let uniMood = { hop: 0, sad: 0 }, placeCard = { l: 0, l0: 1 }, bossCard = { l: 0, l0: 1 }, cafeDrop = { l: 0, l0: 1 }, rfx = { x: FW / 2, y: FH - 150 };
+const hudCv = document.createElement('canvas'); let hudCtx = null;
+function withFade(a, fn) {                                          // draws fn() at the given opacity by way of a scratch canvas (everything inside sets its own alpha, so this is the only way to fade a whole layer)
+  if (a >= .995) { fn(); return; } if (a <= .005) return;
+  if (!hudCtx || hudCv.width !== cv.width || hudCv.height !== cv.height) { hudCv.width = cv.width; hudCv.height = cv.height; hudCtx = hudCv.getContext('2d'); hudCtx.imageSmoothingQuality = 'high'; }
+  const main = ctx, tr = main.getTransform(); hudCtx.setTransform(1, 0, 0, 1, 0, 0); hudCtx.clearRect(0, 0, hudCv.width, hudCv.height); hudCtx.setTransform(tr); ctx = hudCtx;
+  try { fn(); } finally { ctx = main; }
+  main.save(); main.setTransform(1, 0, 0, 1, 0, 0); main.globalAlpha = a; main.drawImage(hudCv, 0, 0); main.restore();
+}
+const introBusy = () => placeCard.l > 0 || bossCard.l > 0;           // while an intro card is up, no other message is drawn (they wait, or are dropped): texts never layer over each other
+const ease = x => x * x * (3 - 2 * x);
+function placeCardA() { if (!(placeCard.l > 0)) return 0; const age = placeCard.l0 - placeCard.l; return ease(Math.max(0, Math.min(1, age / .5, placeCard.l / .7))); }
 function showPlaceCard(i) { const P = PLACES[i % PLACES.length]; placeCard = { n: i + 1, name: P.name, tag: P.tag, l: 3.6, l0: 3.6 }; }
 function drawIntroCards() {                                         // a quiet place card when you arrive somewhere new, a gentle dim and the boss's name and one line when it appears, and the café ingredient it leaves behind
   if (placeCard.l > 0) {
-    const c = placeCard, age = c.l0 - c.l, e = Math.min(1, age * 2.2), al = Math.max(0, Math.min(e, c.l * 1.4)), y = FH * .3 + 10 * (1 - e);
-    const bg = ctx.createLinearGradient(0, y - 54, 0, y + 54); bg.addColorStop(0, 'rgba(20,10,40,0)'); bg.addColorStop(.5, 'rgba(20,10,40,.62)'); bg.addColorStop(1, 'rgba(20,10,40,0)'); ctx.globalAlpha = al; ctx.fillStyle = bg; ctx.fillRect(0, y - 54, FW, 108);
-    ctx.strokeStyle = 'rgba(255,226,122,.75)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(FW / 2 - 74, y - 12); ctx.lineTo(FW / 2 + 74, y - 12); ctx.stroke();
-    T('LEVEL ' + c.n, FW / 2, y - 26, { size: 11, fill: '#ffe27a', w: 3 }); T(c.name, FW / 2, y + 8, { size: fit(c.name, 30, FW - 40), w: 6 }); T(c.tag, FW / 2, y + 36, { size: fit(c.tag, 13, FW - 40), fill: 'rgba(255,255,255,.9)', w: 3 }); ctx.globalAlpha = 1;
+    const c = placeCard, al = placeCardA(), y = FH * .42;
+    ctx.globalAlpha = al * .8; ctx.fillStyle = '#0c0620'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);   // the whole screen dims; the HUD and every message have faded away
+    ctx.globalAlpha = al; ctx.strokeStyle = 'rgba(255,226,122,.8)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(FW / 2 - 80, y - 34); ctx.lineTo(FW / 2 + 80, y - 34); ctx.moveTo(FW / 2 - 80, y + 62); ctx.lineTo(FW / 2 + 80, y + 62); ctx.stroke();
+    T('LEVEL ' + c.n, FW / 2, y - 18, { size: 13, fill: '#ffe27a', w: 3 }); T(c.name, FW / 2, y + 16, { size: fit(c.name, 32, FW - 40), w: 6 }); T(c.tag, FW / 2, y + 46, { size: fit(c.tag, 13.5, FW - 40), fill: 'rgba(255,255,255,.92)', w: 3 }); ctx.globalAlpha = 1;
   }
   if (bossCard.l > 0) {
     const c = bossCard, age = c.l0 - c.l, e = Math.min(1, age * 3), al = Math.max(0, Math.min(e, c.l * 1.5)), y = FH * .44 + 8 * (1 - e);
-    ctx.globalAlpha = al * .24; ctx.fillStyle = '#10001c'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
+    ctx.globalAlpha = al * .3; ctx.fillStyle = '#10001c'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
     ctx.globalAlpha = al; T(c.name, FW / 2, y, { size: fit(c.name, 30, FW - 30), fill: '#ffe27a', stroke: '#6a1030', w: 8 }); TW('“' + c.taunt + '”', FW / 2, y + 34, { size: 14, max: FW - 44, fill: 'rgba(255,255,255,.95)', w: 4 }); ctx.globalAlpha = 1;
   }
   if (cafeDrop.l > 0) {
@@ -3172,7 +3183,8 @@ function drawHaunt(a, Q) {                                         // HAUNTED ME
 let bossHit = 0, menuT = 0, bossCharge = 0, bossLean = 0, bossSquash = 0, lastBossX = null, lastBossY = null, bombFlash = 0, slowmo = 0, sparks = [], trail = [], thunderT = 0, magicFx = { t: 0 }, bossShow = 0, ps = [], pops = [], flash = '', flashT = 0, shake = 0, hurtT = 0, bossBanner = { txt: '', l: 0 }, banner = { txt: '', sub: '', l: 0 }, bombFx = { t: 0, x: 0, y: 0 };
 function burst(x, y, c, n) { const Q = QUAL[cfg.quality] || QUAL.med; n = Math.ceil((n || 12) * Q.part * .75); for (let i = 0; i < n && ps.length < (Q.part >= 1 ? 260 : Q.part >= .6 ? 150 : 70); i++) { const a = Math.random() * 6.283, v = 40 + Math.random() * 170; ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, l: .5 + Math.random() * .4, c: c || COL[i % 7], s: 1.5 + Math.random() * 2.5 }); } }
 function pop(x, y, txt, col) { if (pops.length < 16) pops.push({ x, y, txt, l: .9, col: col || '#ffffff' }); }
-function say(s, d) { flash = s; flashT = d || 1.3; }
+let sayPend = null;
+function say(s, d) { if (typeof introBusy === 'function' && introBusy()) { sayPend = { s, d, t: 5 }; return; } flash = s; flashT = d || 1.3; }   // a message that arrives during an intro card waits for it to end
 function bsay(txt, d) { bossBanner = { txt, l: d || 3 }; }
 function fit(txt, size, max) { ctx.font = 'bold ' + size * 1.06 + 'px ' + UIFONT; const w = ctx.measureText(txt).width; return w > max && w > 0 ? Math.max(12, size * max / w) : size; }   // shrinks long text so it always fits the screen
 function T(txt, x, y, o) {
@@ -3389,7 +3401,7 @@ function drawMagic() {                                               // Rainbrew
 }
 function drawBoostFx(g) {                                            // the Rainbrew Boost: a warm edge aura while it lasts, and a punchy burst when it starts
   if (g.pw.coffee > 0 && !(g.magic > 0)) edgeAura('rgba(255,150,40,A)', .4 * Math.min(1, g.pw.coffee / 20));
-  if (boostFx.t > 0) { const k = 1 - boostFx.t; ctx.fillStyle = 'rgba(255,200,120,' + (.4 * (1 - k)).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); ctx.strokeStyle = 'rgba(255,170,60,' + (1 - k).toFixed(2) + ')'; ctx.lineWidth = 14 * (1 - k) + 2; ctx.beginPath(); ctx.arc(g.px, g.py, 20 + k * 420, 0, 6.283); ctx.stroke(); }
+  if (boostFx.t > 0) { const k = 1 - boostFx.t; ctx.strokeStyle = 'rgba(255,170,60,' + (1 - k).toFixed(2) + ')'; ctx.lineWidth = 14 * (1 - k) + 2; ctx.beginPath(); ctx.arc(g.px, g.py, 20 + k * 420, 0, 6.283); ctx.stroke(); }
 }
 const SKILL_NAME = { frost: 'BLIZZARD', solar: 'SUN BURST', void: 'BLACK HOLE', golden: 'SUN WALL', emerald: 'OVERGROWTH' };
 let TOKCOL = '#8fe0ff', skillFx = { kind: '', t: 0 }, warnFx = { t: 0, kind: '' }, boostFx = { t: 0 }, ultFx = { t: 0, kind: '', n: 0 };
@@ -3711,10 +3723,10 @@ function drawOverlays() {
   if (g.hype > 0 && g.phase === 'wave') edgeAura('rgba(170,80,230,A)', .26 * g.hype);                 // the tension before a boss: a soft violet edge, nothing moving
   if (bombFx.t > 0) { const k = 1 - bombFx.t / .9; for (let i = 0; i < 4; i++) { const kk = Math.max(0, k - i * .08); ctx.strokeStyle = i % 2 ? 'rgba(255,170,60,' + (1 - kk).toFixed(2) + ')' : 'rgba(255,245,190,' + (1 - kk).toFixed(2) + ')'; ctx.lineWidth = (16 - i * 3) * (1 - kk) + 2; ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, 16 + kk * 560, 0, 6.283); ctx.stroke(); } ctx.fillStyle = 'rgba(255,200,90,' + (.5 * (1 - k)).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, 30 + k * 160, 0, 6.283); ctx.fill(); }
   if (bombFlash > 0) { ctx.fillStyle = 'rgba(255,250,225,' + Math.min(.55, bombFlash).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
-  if (flashT > 0) { ctx.globalAlpha = Math.min(1, flashT * 2); TW(flash, FW / 2, FH * .24, { size: 18, max: FW - 30, w: 6 }); ctx.globalAlpha = 1; }
-  drawIntroCards();
-  if (bossBanner.l > 0) { ctx.globalAlpha = Math.min(1, bossBanner.l * 2); TW(bossBanner.txt, FW / 2, FH * .48, { size: 28, max: FW - 24, w: 8, fill: '#ffe27a', stroke: '#6a1030' }); ctx.globalAlpha = 1; }
-  if (banner.l > 0) {                                               // banners snap in (a quick pop) and fade out
+  if (flashT > 0 && !introBusy()) { ctx.globalAlpha = Math.min(1, flashT * 2); TW(flash, FW / 2, FH * .24, { size: 18, max: FW - 30, w: 6 }); ctx.globalAlpha = 1; }
+  const busy = introBusy();
+  if (bossBanner.l > 0 && !busy && !(banner.l > 0)) { ctx.globalAlpha = Math.min(1, bossBanner.l * 2); TW(bossBanner.txt, FW / 2, FH * .48, { size: 28, max: FW - 24, w: 8, fill: '#ffe27a', stroke: '#6a1030' }); ctx.globalAlpha = 1; }
+  if (banner.l > 0 && !busy) {                                      // banners snap in (a quick pop) and fade out
     if (!banner.l0 || banner.l > banner.l0) banner.l0 = banner.l; const age = banner.l0 - banner.l, pop = age < .16 ? 1.12 - .75 * age : 1;
     ctx.globalAlpha = Math.max(0, Math.min(1, banner.l * 1.5, age * 8 + .2)); ctx.save(); ctx.translate(FW / 2, FH * .36); ctx.scale(pop, pop); T(banner.txt, 0, 0, { size: fit(banner.txt, 44, FW - 36), fill: '#ffe27a', stroke: '#6a1030', w: 9 }); if (banner.sub) T(banner.sub, 0, 40, { size: 18, w: 5 }); ctx.restore(); ctx.globalAlpha = 1;
   }
@@ -3733,15 +3745,18 @@ function draw() {
     safe(() => {
       drawEnvFx(G); drawWorld(al); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawPuFx(G); drawCardFx(G);
       for (const p of ps) { ctx.globalAlpha = Math.max(0, Math.min(1, p.l * 2)); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); } ctx.globalAlpha = 1;
-      for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); T(p.txt, p.x, p.y, { size: 13, w: 4, fill: p.col }); } ctx.globalAlpha = 1;
+      if (!introBusy()) for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); T(p.txt, p.x, p.y, { size: 13, w: 4, fill: p.col }); } ctx.globalAlpha = 1;
       drawMagic(); drawRbFx(G);
       if (hurtT > 0) { ctx.fillStyle = 'rgba(255,40,70,' + (hurtT * .22).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
     });
     ctx.restore();
-    safe(drawHud); safe(drawOverlays); safe(drawBossWarning);                         // the HUD is drawn separately and first of the overlays: nothing can hide it
-    if (st === 'count' || st === 'ready') { T(String(Math.max(1, Math.ceil(cd))), FW / 2, FH * .45, { size: 100, w: 12 }); T(st === 'count' ? 'Get ready to fly!' : 'Ready…', FW / 2, FH * .45 + 76, { size: 18, w: 5 });
-      const cur = Math.max(1, Math.min(3, Math.ceil(cd))), tips = ['DRAG your finger to fly', 'Your unicorn shoots by itself', 'Tap UNICORN when it glows'];   // how to play, one line for each count
-      for (let i = 0; i < 3; i++) { const on = tips[2 - (cur - 1)] === tips[i]; T(tips[i], FW / 2, FH * .45 + 104 + i * 22, { size: on ? fit(tips[i], 15, FW - 28) : fit(tips[i], 12.5, FW - 28), fill: on ? '#ffe27a' : 'rgba(255,255,255,.7)', w: on ? 4.5 : 3.5 }); } T('Boss fights: tap RAINBREW', FW / 2, FH * .45 + 104 + 3 * 22 + 4, { size: 11.5, fill: '#ffb3e6', w: 3.5 }); }
+    withFade(1 - placeCardA(), () => { safe(drawHud); safe(drawOverlays); safe(drawBossWarning); });   // the HUD is drawn separately and first of the overlays: nothing can hide it (it only fades away while a place card has the whole screen)
+    safe(drawIntroCards);
+    if (st === 'count' || st === 'ready') {                                  // 3 - 2 - 1, and each number teaches one thing (nothing else on screen)
+      const n = Math.max(1, Math.min(3, Math.ceil(cd))), pr = Math.max(0, Math.min(1, 1 - (cd - (n - 1)))), k = 1 + .22 * Math.pow(1 - pr, 3), lab = st === 'count' ? ['Defeat the enemies', 'Collect gems', 'Drag to fly'][n - 1] : '';
+      ctx.save(); ctx.translate(FW / 2, FH * .45); ctx.scale(k, k); ctx.globalAlpha = Math.min(1, pr * 5 + .25); T(String(n), 0, 0, { size: 100, w: 12 }); ctx.restore();
+      if (lab) { ctx.globalAlpha = Math.min(1, pr * 5); T(lab, FW / 2, FH * .45 + 78, { size: fit(lab, 24, FW - 40), fill: '#ffe27a', stroke: '#6a1030', w: 6 }); ctx.globalAlpha = 1; }
+    }
   } else drawMenuScene();
 }
 function drawMenuScene() {                                        // the home screen: a living sky. Your unicorn flies a gentle figure-eight with a rainbow ribbon; the sky drifts through all eight places
@@ -3803,7 +3818,7 @@ function begin() {
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
   runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
-  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: 'Boost on: fire fast!', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
+  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: '', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
   if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
 }
 function endRun(reason) {
@@ -3920,6 +3935,7 @@ function update(dt) {
   if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
   if (G && G.magic > 0 && st === 'play') { trail.push({ x: G.px - G.pdx * .5, y: G.py + 30 }); if (trail.length > 28) trail.shift(); if (Math.random() < .3) spark(G.px + (Math.random() - .5) * 26, G.py + 22, (Math.random() - .5) * 50, 20 + Math.random() * 60, .7, COL[Math.floor(Math.random() * 7)], 4 + Math.random() * 4); } else if (trail.length) trail.shift();
   if (bombFx.t > 0) bombFx.t -= dt; if (flashT > 0) flashT -= dt; if (shake > 0) shake -= dt; if (hurtT > 0) hurtT -= dt; if (bossBanner.l > 0) bossBanner.l -= dt; if (banner.l > 0) banner.l -= dt; if (overloadFx.t > 0) overloadFx.t -= dt * .9; if (pwCard.l > 0) pwCard.l -= dt;
+  if (sayPend) { sayPend.t -= dt; if (sayPend.t <= 0) sayPend = null; else if (!introBusy()) { const q = sayPend; sayPend = null; say(q.s, q.d); } }
   if (placeCard.l > 0) placeCard.l -= dt; if (bossCard.l > 0) bossCard.l -= dt; if (cafeDrop.l > 0) cafeDrop.l -= dt; if (uniMood.hop > 0) uniMood.hop = Math.max(0, uniMood.hop - dt * 2.2); if (uniMood.sad > 0) uniMood.sad = Math.max(0, uniMood.sad - dt * 1.1);
   if (G) { rfx.x += (G.px - rfx.x) * Math.min(1, dt * 1.8); rfx.y += (G.py - rfx.y) * Math.min(1, dt * 1.8); }
   for (let i = ps.length - 1; i >= 0; i--) { const p = ps[i]; p.l -= dt; if (p.l <= 0) { ps.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; }
