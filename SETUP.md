@@ -33,6 +33,10 @@ Files: **`Rainbrew_Sky.html`** is the complete game in ONE self-contained file (
 * **Deploy carefully:** the rules version is now **36**. A game and a server on different versions refuse each other's Ranked scores, and a refused score is not kept. So do it at a quiet time, in this order: (1) merge the game; (2) **right away** paste the new `Code.gs` into Apps Script and deploy a **New version** (GitHub Pages takes a minute or two to publish, so the server will be ready first); (3) players with the old page open will see an "update" notice and need to reload. Runs recorded on an older version and not yet uploaded cannot be uploaded any more.
 * The `benchmark()` recorded flight was regenerated for version 36.
 
+## Animated places (visual only, no rules change)
+
+Every place now has one quiet, slowly moving background layer, like the haunted first stage: drifting cream clouds and steam (Cappuccino Clouds), light ripples and bubbles (Boba Bay), heat shimmer, dust and embers (Caramel Canyon), mist, ripples and fireflies (Blueberry Bog), light shafts, glints and drips (Mint Grotto), a breathing glow, embers and ash (Cocoa Volcano), blowing sand and crumbs (Cookie Ruins). It is drawn by `drawPlaceFx` and only follows the scenery scroll and the clock, so it changes nothing in the game rules: **no Apps Script redeploy is needed** and `SIM_VERSION` stays 36. On Low quality only the lightest parts are drawn.
+
 ## Sound and music: the epic cinematic direction (new, first step)
 * **All sounds and music are still made live by the game (no audio files except the two voice-overs)**, so nothing was added to download. This step upgrades them to a more cinematic feel, starting with Rainbrew Power and Overload.
 * **Building blocks** (in `index.html`, next to `tone` and `noise`): `stab` (a brass-like hit), `cinPad` (a slowly swelling string pad), `boom` (a deep cinematic hit), `bells` (the bright notes).
