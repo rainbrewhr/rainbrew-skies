@@ -759,7 +759,7 @@ html,body{background:#1a1040!important}
 <script>
 'use strict';
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 37;
+var SIM_VERSION = 38;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
@@ -805,17 +805,19 @@ var ENEMIES = {
   firefly: { role: 'a', hp: 1, pts: 5,  r: 14, sway: 22, fast: 1.1 }, frog: { role: 'b', hp: 6, pts: 16, r: 19 }, mush: { role: 'c', hp: 4, pts: 24, r: 18 },
   gembug:  { role: 'a', hp: 2, pts: 6,  r: 15 }, crystal: { role: 'b', hp: 7, pts: 18, r: 21 }, gemwisp: { role: 'c', hp: 4, pts: 24, r: 16 },
   ashling: { role: 'a', hp: 2, pts: 6,  r: 15, fast: 1.15 }, magma: { role: 'b', hp: 7, pts: 18, r: 20 }, fireimp: { role: 'c', hp: 4, pts: 24, r: 17 },
-  scarab:  { role: 'a', hp: 2, pts: 6,  r: 15 }, mummy: { role: 'b', hp: 7, pts: 18, r: 19 }, sorcerer: { role: 'c', hp: 4, pts: 24, r: 18 }
+  scarab:  { role: 'a', hp: 2, pts: 6,  r: 15 }, mummy: { role: 'b', hp: 7, pts: 18, r: 19 }, sorcerer: { role: 'c', hp: 4, pts: 24, r: 18 },
+  swirl:     { role: 'a', hp: 3, pts: 7, r: 17, sway: 26, fast: 1.15 }, seahorse: { role: 'a', hp: 3, pts: 7, r: 17, sway: 30, fast: 1.1 }, drip: { role: 'a', hp: 3, pts: 7, r: 16, sway: 12, fast: 1.3 }, dragonfly: { role: 'a', hp: 2, pts: 7, r: 15, sway: 36, fast: 1.3 },
+  moth:      { role: 'a', hp: 3, pts: 7, r: 17, sway: 34, fast: 1.05 }, salamander: { role: 'a', hp: 3, pts: 8, r: 16, sway: 18, fast: 1.2 }, cobra: { role: 'a', hp: 3, pts: 8, r: 17, sway: 24, fast: 1.1 }   // the third creature of each world (never one that has already come)
 };
 var PLACE_KINDS = [                                               // which creatures live in which magical place, and which ones come on levels 1 to 4 (level 5 is the boss)
   { a: ['ghost', 'bat'], b: 'pumpkin', c: 'witch', plan: [['pumpkin'], ['ghost'], ['bat'], ['witch']] },              // Matcha Meadows: pumpkins, then ghosts, then bats, then witches
-  { a: ['puff'], b: 'storm', c: 'spark', plan: [['storm'], ['puff'], ['storm', 'puff'], ['spark']] },                 // Cappuccino Clouds
-  { a: ['jelly'], b: 'crab', c: 'puffer', plan: [['crab'], ['jelly'], ['crab', 'jelly'], ['puffer']] },               // Boba Bay
-  { a: ['ember'], b: 'golem', c: 'imp', plan: [['golem'], ['ember'], ['golem', 'ember'], ['imp']] },                  // Caramel Canyon
-  { a: ['firefly'], b: 'frog', c: 'mush', plan: [['frog'], ['firefly'], ['frog', 'firefly'], ['mush']] },             // Blueberry Bog
-  { a: ['gembug'], b: 'crystal', c: 'gemwisp', plan: [['crystal'], ['gembug'], ['crystal', 'gembug'], ['gemwisp']] },   // Mint Grotto
-  { a: ['ashling'], b: 'magma', c: 'fireimp', plan: [['magma'], ['ashling'], ['magma', 'ashling'], ['fireimp']] },    // Cocoa Volcano
-  { a: ['scarab'], b: 'mummy', c: 'sorcerer', plan: [['mummy'], ['scarab'], ['mummy', 'scarab'], ['sorcerer']] }      // Cookie Ruins
+  { a: ['puff'], b: 'storm', c: 'spark', d: 'swirl', plan: [['storm'], ['puff'], ['swirl'], ['spark']] },                 // Cappuccino Clouds
+  { a: ['jelly'], b: 'crab', c: 'puffer', d: 'seahorse', plan: [['crab'], ['jelly'], ['seahorse'], ['puffer']] },               // Boba Bay
+  { a: ['ember'], b: 'golem', c: 'imp', d: 'drip', plan: [['golem'], ['ember'], ['drip'], ['imp']] },                  // Caramel Canyon
+  { a: ['firefly'], b: 'frog', c: 'mush', d: 'dragonfly', plan: [['frog'], ['firefly'], ['dragonfly'], ['mush']] },             // Blueberry Bog
+  { a: ['gembug'], b: 'crystal', c: 'gemwisp', d: 'moth', plan: [['crystal'], ['gembug'], ['moth'], ['gemwisp']] },   // Mint Grotto
+  { a: ['ashling'], b: 'magma', c: 'fireimp', d: 'salamander', plan: [['magma'], ['ashling'], ['salamander'], ['fireimp']] },    // Cocoa Volcano
+  { a: ['scarab'], b: 'mummy', c: 'sorcerer', d: 'cobra', plan: [['mummy'], ['scarab'], ['cobra'], ['sorcerer']] }      // Cookie Ruins
 ];
 var LEVEL_POWER = [['coffee', 'triple', 'charm', 'shield'], ['triple', 'pierce', 'charm', 'coffee'], ['spread', 'pierce', 'charm', 'coffee']];   // the capsule each level brings: it gets stronger as you go on
 var PI = 3.141592653589793, TWO_PI = 6.283185307179586;
@@ -1249,7 +1251,7 @@ function stepGame(G, dx, dy, skill, rb) {
   }
   if (G.phase !== 'wave') G.cm = null; else if (!G.cm && G.cometDone !== G.stage && levelIn(G) === G.cometLv && G.levelT >= 240 && G.magic === 0 && !bossLevel(G)) spawnComet(G);
   if (G.cm) updateComet(G);
-  if (G.t >= G.nextIce && G.magic === 0 && G.quiet <= 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
+  if (G.t >= G.nextIce && G.magic === 0 && G.quiet <= 0 && G.levelT >= 150 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
   if (G.magic > 0) { if (G.magic % 8 === 0) mkItem(G, 'gem', 24 + Math.floor(G.rd() * (W - 48)), -12, 0, 4.5); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 0); }   // a rain of gems
   // shooting
   G.fireCd -= G.jinx > 0 ? 0.5 : 1; if (G.fireCd <= 0) { fire(G, false); G.fireCd += Math.max(1.1, (G.pw.coffee > 0 || G.hyper > 0 ? Math.max(1.25, G.U.cd * 0.5) : G.U.cd) * (G.env === 'medusa' ? 1 + 1.0 * G.es : 1) * WL_RATE[G.wl] / (1 + 0.06 * G.charm)); }   // coffee: twice the fire rate (and a little more damage and piercing); Freezing Air slows shooting          // (the remainder carries over, so an upgraded rate like 3.7 steps is exact on average)   // coffee: an energy boost, you shoot faster
@@ -1402,7 +1404,9 @@ let cfg = Object.assign({}, DEF, LS.get('us_cfg', {}));
 function autoQuality() {                                          // a sensible first choice for this phone: weaker phones start on Low
   try { const mem = navigator.deviceMemory || 4, cores = navigator.hardwareConcurrency || 4, small = Math.min(screen.width || 400, screen.height || 800) < 380; return mem <= 2 || cores <= 4 && small ? 'low' : mem <= 4 || cores <= 6 ? 'med' : 'high'; } catch (e) { return 'med'; }
 }
-if (!['low', 'med', 'high'].includes(cfg.quality)) cfg.quality = autoQuality();
+const qWasChosen = ['low', 'med', 'high'].includes(cfg.quality);   // a player who already picked a setting keeps it
+if (!qWasChosen) cfg.quality = autoQuality();
+if (cfg.qauto === undefined) cfg.qauto = qWasChosen ? 0 : 1;      // 1 = "Auto": the game chooses for this phone
 cfg.sens = Math.max(.5, Math.min(2, +cfg.sens || 1));
 const QUAL = { low: { dpr: 1, part: .25, shake: 0, layers: 1, glow: 0 }, med: { dpr: 1.5, part: .6, shake: .5, layers: 2, glow: 1 }, high: { dpr: 2, part: 1, shake: .6, layers: 3, glow: 1 } };
 let dprCap = +LS.get('us_dprcap', 0) || 9;   // Graphics: particles, screen shake, scenery layers and resolution
@@ -2945,9 +2949,70 @@ const POW_COL = { coffee: '#ffb347', triple: '#7fe0ff', helpers: '#d7a8ff', shie
 let introQ = 0, phaseQ = 0;
 function phaseIntro(g) {                                             // "PHASE 1: PUMPKINS!": every phase announces its creatures before they arrive
   const n = ((g.level - 1) % BOSS_EVERY) + 1, kinds = levelKinds(g).map(k => (KIND_NAME[k] || k).toUpperCase()).join(' & ');
-  /* the HUD already shows "PHASE n · creatures", so there is no big banner for it any more (n and kinds stay for reference) */
+  say('The ' + levelKinds(g).map(k => (KIND_NAME[k] || k).toLowerCase()).join(' and ') + ' are coming!', 2.4, 'front');   // a short warning in the same place as the ice-shard warning (ice never arrives in a phase's first five seconds, so the two never share the screen)
 }
-const KIND_NAME = { ghost: 'Ghosts', bat: 'Bats', pumpkin: 'Pumpkins', witch: 'Witches', puff: 'Puffs', storm: 'Storm clouds', spark: 'Sparks', jelly: 'Jellies', crab: 'Crabs', puffer: 'Pufferfish', ember: 'Embers', golem: 'Golems', imp: 'Imps', firefly: 'Fireflies', frog: 'Frogs', mush: 'Mushrooms', gembug: 'Gem bugs', crystal: 'Crystals', gemwisp: 'Gem wisps', ashling: 'Ashlings', magma: 'Magma blobs', fireimp: 'Fire imps', scarab: 'Scarabs', mummy: 'Mummies', sorcerer: 'Sorcerers' };
+/* ---------- seven more creatures: the third creature of each world, so no phase ever repeats one that has already come ---------- */
+ART.swirl = (g, f) => {                                            // a foam swirl: a curl of latte foam
+  const w = Math.sin(f * 6.283) * 3;
+  g.beginPath(); g.moveTo(-14, 26); g.quadraticCurveTo(-4 + w, 42, 8, 35); g.quadraticCurveTo(16 - w, 30, 9, 21); g.strokeStyle = DARK; g.lineWidth = 10; g.lineCap = 'round'; g.stroke(); g.strokeStyle = '#f3dcc0'; g.lineWidth = 5.5; g.stroke();
+  blob(g, 0, 4, 28, 24, ['#fffaf0', '#f0d6b4', '#b88a60'], 2.8);
+  g.beginPath(); for (let i = 0; i < 32; i++) { const a = i * .45, r = 1.2 + i * .3, x = Math.cos(a) * r, y = -10 + Math.sin(a) * r * .8; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.strokeStyle = 'rgba(120,70,40,.55)'; g.lineWidth = 2.2; g.lineCap = 'round'; g.stroke();
+  eyePair(g, 0, 9, 9, 4.4, '#4a2a18'); mouthP(g, 0, 19, 4, 4); for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 17, 15, 4.5, 3, 0, 0, 6.283); g.fillStyle = 'rgba(255,140,140,.5)'; g.fill(); }
+};
+ART.seahorse = (g, f) => {                                         // a seahorse: an S-shaped body, a snout, a fan fin
+  const w = Math.sin(f * 6.283) * 3; g.save(); g.translate(-6, 0);
+  g.beginPath(); g.ellipse(-14, 8, 8, 12 + w, -.3, 0, 6.283); g.fillStyle = 'rgba(255,205,232,.85)'; g.fill(); ink(g, 1.8);
+  const path = () => { g.beginPath(); g.moveTo(6, -30); g.quadraticCurveTo(-10, -22, -4, -6); g.quadraticCurveTo(10, 8, -2, 22); g.quadraticCurveTo(-12, 34, 2, 40 + w * .3); g.quadraticCurveTo(14, 44, 16, 32); };
+  g.lineCap = 'round'; g.lineJoin = 'round'; path(); g.strokeStyle = DARK; g.lineWidth = 24; g.stroke(); path(); g.strokeStyle = '#ff9ac0'; g.lineWidth = 19; g.stroke(); path(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 5; g.stroke();
+  g.strokeStyle = 'rgba(170,40,110,.55)'; g.lineWidth = 2; for (const [x, y] of [[-1, -2], [3, 10], [-3, 24]]) { g.beginPath(); g.moveTo(x - 7, y); g.quadraticCurveTo(x, y + 4, x + 7, y); g.stroke(); }
+  blob(g, 8, -32, 13, 12, ['#ffe0ee', '#ff9ac0', '#b03a78'], 2.4);
+  g.beginPath(); g.moveTo(17, -35); g.lineTo(36, -32); g.lineTo(36, -27); g.lineTo(17, -26); g.closePath(); g.fillStyle = '#ff9ac0'; g.fill(); ink(g, 2);
+  spikeP(g, 3, -41, -Math.PI / 2 - .4, 13, 4, '#ffe27a', '#b8881a', 1.6); spikeP(g, 9, -43, -Math.PI / 2, 12, 4, '#ffe27a', '#b8881a', 1.6);
+  g.beginPath(); g.arc(9, -34, 4.6, 0, 6.283); g.fillStyle = '#fffdf0'; g.fill(); ink(g, 1.6); g.beginPath(); g.arc(10, -34, 2.5, 0, 6.283); g.fillStyle = '#3a1850'; g.fill(); g.restore();
+};
+ART.drip = (g, f) => {                                             // a caramel drip: a glossy drop with a face and two small drips under it
+  const w = Math.sin(f * 6.283) * 2;
+  for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * 14, 44 + w * s, 4, 6, 0, 0, 6.283); g.fillStyle = '#e8902a'; g.fill(); ink(g, 1.6); }
+  g.beginPath(); g.moveTo(0, -40); g.bezierCurveTo(10, -22, 28, -4, 28, 12 + w); g.bezierCurveTo(28, 32, 14, 42, 0, 42); g.bezierCurveTo(-14, 42, -28, 32, -28, 12 + w); g.bezierCurveTo(-28, -4, -10, -22, 0, -40); g.closePath();
+  g.fillStyle = lg(g, -20, -20, 24, 40, ['#ffd68a', '#e8902a', '#8a4a10']); g.fill(); ink(g, 2.8);
+  g.beginPath(); g.ellipse(-12, 2, 4, 10, .4, 0, 6.283); g.fillStyle = 'rgba(255,255,255,.65)'; g.fill(); eyePair(g, 0, 11, 8, 4.6, '#4a2408'); mouthP(g, 0, 23, 5, 5);
+};
+ART.dragonfly = (g, f) => {                                        // a dragonfly: four see-through wings, a long striped body and big green eyes
+  const w = Math.sin(f * 6.283 * 3) * 5;
+  for (const s of [-1, 1]) for (const k of [0, 1]) { g.beginPath(); g.ellipse(s * (22 + k * 2), -8 + k * 14, 22, 7 + w * .5, s * (-.25 + k * .4), 0, 6.283); g.fillStyle = 'rgba(210,245,255,.62)'; g.fill(); ink(g, 1.6, '#3a7a8a'); g.beginPath(); g.moveTo(s * 6, -8 + k * 14); g.lineTo(s * 40, -10 + k * 14); g.strokeStyle = 'rgba(58,122,138,.5)'; g.lineWidth = 1.2; g.stroke(); }
+  g.lineCap = 'round'; g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 44); g.strokeStyle = DARK; g.lineWidth = 13; g.stroke(); g.strokeStyle = '#4aa0e8'; g.lineWidth = 9; g.stroke();
+  g.fillStyle = '#123a78'; for (let i = 0; i < 5; i++) g.fillRect(-4.5, 2 + i * 9, 9, 3);
+  blob(g, 0, -24, 11, 10, ['#9fe8ff', '#2f86d0', '#123a78'], 2.4);
+  for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 8, -27, 7, 0, 6.283); g.fillStyle = '#7fffb8'; g.fill(); ink(g, 1.8); g.beginPath(); g.arc(s * 8 - 1.5, -29, 2.4, 0, 6.283); g.fillStyle = 'rgba(255,255,255,.8)'; g.fill(); }
+};
+ART.moth = (g, f) => {                                             // a frost moth: big minty wings with eye spots, a fuzzy body and feathery feelers
+  const w = Math.sin(f * 6.283 * 2) * 7;
+  for (const s of [-1, 1]) {
+    g.beginPath(); g.moveTo(s * 6, 2); g.bezierCurveTo(s * 30, 6, s * 38, 32, s * 18, 36 + w * .2); g.bezierCurveTo(s * 10, 34, s * 6, 18, s * 6, 2); g.closePath(); g.fillStyle = lg(g, s * 6, 2, s * 36, 34, ['#bff5e4', '#4fcfae']); g.fill(); ink(g, 2);
+    g.beginPath(); g.moveTo(s * 6, -8); g.bezierCurveTo(s * 34, -40 - w * .5, s * 56, -12, s * 40, 12 + w * .3); g.bezierCurveTo(s * 28, 18, s * 14, 10, s * 6, 2); g.closePath(); g.fillStyle = lg(g, s * 6, -20, s * 50, 10, ['#e8fff6', '#7fe8c8', '#2a9a82']); g.fill(); ink(g, 2.4);
+    g.beginPath(); g.arc(s * 30, -6, 6.5, 0, 6.283); g.fillStyle = '#fffdf0'; g.fill(); ink(g, 1.4); g.beginPath(); g.arc(s * 30, -6, 3.2, 0, 6.283); g.fillStyle = '#1a6a58'; g.fill();
+    g.beginPath(); g.moveTo(s * 3, -18); g.quadraticCurveTo(s * 10, -34, s * 20, -36); g.strokeStyle = DARK; g.lineWidth = 2.2; g.lineCap = 'round'; g.stroke();
+  }
+  blob(g, 0, 10, 7, 22, ['#fff8e8', '#d8c8a8', '#8a7050'], 2.4); blob(g, 0, -12, 9, 8, ['#fff8e8', '#d8c8a8', '#8a7050'], 2.2); eyePair(g, 0, -13, 4, 2.8, '#0a3a30');
+};
+ART.salamander = (g, f) => {                                       // a lava salamander: a glowing red lizard with a curling tail
+  const w = Math.sin(f * 6.283) * 4; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(0, 20); g.quadraticCurveTo(-18 + w, 36, -4, 46); g.quadraticCurveTo(8, 50, 14 + w, 44); g.strokeStyle = DARK; g.lineWidth = 12; g.stroke(); g.strokeStyle = '#c8401a'; g.lineWidth = 8; g.stroke();
+  for (const s of [-1, 1]) for (const y of [-6, 18]) { g.beginPath(); g.moveTo(s * 12, y); g.lineTo(s * 28, y + (y < 0 ? -6 : 8) + w * s * .5); g.strokeStyle = DARK; g.lineWidth = 8; g.stroke(); g.strokeStyle = '#d85a22'; g.lineWidth = 4.5; g.stroke(); }
+  blob(g, 0, 6, 17, 28, ['#ffb070', '#e04a18', '#6a1404'], 2.8);
+  for (const [x, y] of [[-6, -4], [6, 10], [-5, 20], [5, -12]]) { glowDot(g, x, y, 9, '#ffd24a', .75); g.beginPath(); g.arc(x, y, 2.6, 0, 6.283); g.fillStyle = '#fff2b0'; g.fill(); }
+  blob(g, 0, -26, 13, 12, ['#ffb888', '#e04a18', '#6a1404'], 2.6); eyePair(g, 0, -28, 7, 3.6, '#ffe14a'); mouthP(g, 0, -19, 5, 3);
+};
+ART.cobra = (g, f) => {                                            // a rearing cobra: a flared hood with a pattern, red eyes and a forked tongue
+  const sw = Math.sin(f * 6.283) * 3; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(0, 44); g.quadraticCurveTo(-24 + sw, 28, 0, 8); g.strokeStyle = DARK; g.lineWidth = 22; g.stroke(); g.strokeStyle = '#c89a38'; g.lineWidth = 16; g.stroke();
+  blob(g, 0, 42, 32, 11, ['#f0d078', '#c89a38', '#6a4a10'], 2.6);
+  g.beginPath(); g.moveTo(0, -36); g.bezierCurveTo(38, -36, 50, -2, 15, 20); g.lineTo(-15, 20); g.bezierCurveTo(-50, -2, -38, -36, 0, -36); g.closePath(); g.fillStyle = lg(g, -20, -26, 24, 14, ['#ffe6a0', '#d8a030', '#6a4a10']); g.fill(); ink(g, 2.8);
+  for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 15, 2, 7, 0, 6.283); g.fillStyle = 'rgba(70,36,0,.55)'; g.fill(); g.beginPath(); g.arc(s * 15, 2, 3.4, 0, 6.283); g.fillStyle = '#fff0c0'; g.fill(); }
+  blob(g, 0, -20, 12, 10, ['#ffe6a0', '#d8a030', '#6a4a10'], 2.4); eyePair(g, 0, -22, 6, 3.2, '#c82a1a');
+  g.beginPath(); g.moveTo(0, -13); g.lineTo(0, -6 + sw * .5); g.moveTo(0, -6 + sw * .5); g.lineTo(-3, -2); g.moveTo(0, -6 + sw * .5); g.lineTo(3, -2); g.strokeStyle = '#e8283a'; g.lineWidth = 2; g.stroke();
+};
+const KIND_NAME = { swirl: 'Foam swirls', seahorse: 'Seahorses', drip: 'Caramel drips', dragonfly: 'Dragonflies', moth: 'Frost moths', salamander: 'Salamanders', cobra: 'Cobras', ghost: 'Ghosts', bat: 'Bats', pumpkin: 'Pumpkins', witch: 'Witches', puff: 'Puffs', storm: 'Storm clouds', spark: 'Sparks', jelly: 'Jellies', crab: 'Crabs', puffer: 'Pufferfish', ember: 'Embers', golem: 'Golems', imp: 'Imps', firefly: 'Fireflies', frog: 'Frogs', mush: 'Mushrooms', gembug: 'Gem bugs', crystal: 'Crystals', gemwisp: 'Gem wisps', ashling: 'Ashlings', magma: 'Magma blobs', fireimp: 'Fire imps', scarab: 'Scarabs', mummy: 'Mummies', sorcerer: 'Sorcerers' };
 const POW_NAME = { coffee: 'RAINBREW BOOST', triple: 'BEAM UP', helpers: 'LITTLE HELPERS', shield: 'SHIELD', spread: 'FAN SHOT', pierce: 'PIERCING', charm: 'RAINBREW CHARM', core: 'STAR CORE' };
 /* ---------- the eight magical places: you TRAVEL through them (the scenery scrolls past in layers) ---------- */
 const UIFONT = '\"Segoe UI\", \"Trebuchet MS\", system-ui, -apple-system, Roboto, \"Helvetica Neue\", Arial, sans-serif';   // clean sans-serif letters only (no serif, handwriting or script)
@@ -3011,7 +3076,7 @@ function withFade(a, fn) {                                          // draws fn(
 const introBusy = () => placeCard.l > 0 || bossCard.l > 0;           // while an intro card is up, no other message is drawn (they wait, or are dropped): texts never layer over each other
 const ease = x => x * x * (3 - 2 * x);
 function placeCardA() { if (!(placeCard.l > 0)) return 0; const age = placeCard.l0 - placeCard.l; return ease(Math.max(0, Math.min(1, age / .5, placeCard.l / .7))); }
-function showPlaceCard(i) { const P = PLACES[i % PLACES.length]; placeCard = { n: i + 1, name: P.name, tag: P.tag, l: 3.6, l0: 3.6 }; }
+function showPlaceCard(i) { cafeDrop.l = 0;  const P = PLACES[i % PLACES.length]; placeCard = { n: i + 1, name: P.name, tag: P.tag, l: 3.6, l0: 3.6 }; }
 function drawIntroCards() {                                         // a quiet place card when you arrive somewhere new, a gentle dim and the boss's name and one line when it appears, and the café ingredient it leaves behind
   if (placeCard.l > 0) {
     const c = placeCard, al = placeCardA(), y = FH * .42;
@@ -3024,7 +3089,7 @@ function drawIntroCards() {                                         // a quiet p
     ctx.globalAlpha = al * .3; ctx.fillStyle = '#10001c'; ctx.fillRect(-FW, -400, FW * 3, FH + 800);
     ctx.globalAlpha = al; T(c.name, FW / 2, y, { size: fit(c.name, 30, FW - 30), fill: '#ffe27a', stroke: '#6a1030', w: 8 }); TW('“' + c.taunt + '”', FW / 2, y + 34, { size: 14, max: FW - 44, fill: 'rgba(255,255,255,.95)', w: 4 }); ctx.globalAlpha = 1;
   }
-  if (cafeDrop.l > 0) {
+  if (cafeDrop.l > 0 && !introBusy()) {
     const c = cafeDrop, age = c.l0 - c.l, e = Math.min(1, age * 3), al = Math.max(0, Math.min(e, c.l * 1.5)), y = FH * .62;
     ctx.globalAlpha = al; ctx.fillStyle = 'rgba(30,14,60,.8)'; ctx.strokeStyle = 'rgba(255,226,122,.7)'; ctx.lineWidth = 1.6; rrect(ctx, FW / 2 - 112, y - 32, 224, 64, 18); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(FW / 2 - 78, y, 22, 0, 6.283); ctx.fill(); ingDraw(ctx, c.id, FW / 2 - 78, y, 30);
@@ -3193,8 +3258,12 @@ function drawHaunt(a, Q) {                                         // HAUNTED ME
 let bossHit = 0, menuT = 0, bossCharge = 0, bossLean = 0, bossSquash = 0, lastBossX = null, lastBossY = null, bombFlash = 0, slowmo = 0, sparks = [], trail = [], thunderT = 0, magicFx = { t: 0 }, bossShow = 0, ps = [], pops = [], flash = '', flashT = 0, shake = 0, hurtT = 0, bossBanner = { txt: '', l: 0 }, banner = { txt: '', sub: '', l: 0 }, bombFx = { t: 0, x: 0, y: 0 };
 function burst(x, y, c, n) { const Q = QUAL[cfg.quality] || QUAL.med; n = Math.ceil((n || 12) * Q.part * .75); for (let i = 0; i < n && ps.length < (Q.part >= 1 ? 260 : Q.part >= .6 ? 150 : 70); i++) { const a = Math.random() * 6.283, v = 40 + Math.random() * 170; ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, l: .5 + Math.random() * .4, c: c || COL[i % 7], s: 1.5 + Math.random() * 2.5 }); } }
 function pop(x, y, txt, col) { if (pops.length < 16) pops.push({ x, y, txt, l: .9, col: col || '#ffffff' }); }
-let sayPend = null;
-function say(s, d) { if (typeof introBusy === 'function' && introBusy()) { sayPend = { s, d, t: 5 }; return; } flash = s; flashT = d || 1.3; }   // a message that arrives during an intro card waits for it to end
+let sayQ = [];
+function say(s, d, how) {                                           // one line at a time: a message that arrives while another is showing (or an intro card is up) waits its turn; 'now' is for warnings that cannot wait, 'front' goes first
+  const busy = typeof introBusy === 'function' && introBusy();
+  if (busy || (flashT > 0 && how !== 'now' && flash !== s)) { if (sayQ.some(q => q.s === s)) return; const it = { s, d, t: 8 }; if (how === 'front') sayQ.unshift(it); else sayQ.push(it); if (sayQ.length > 4) sayQ.pop(); return; }
+  flash = s; flashT = d || 1.3;
+}
 function bsay(txt, d) { bossBanner = { txt, l: d || 3 }; }
 function fit(txt, size, max) { ctx.font = 'bold ' + size * 1.06 + 'px ' + UIFONT; const w = ctx.measureText(txt).width; return w > max && w > 0 ? Math.max(12, size * max / w) : size; }   // shrinks long text so it always fits the screen
 function T(txt, x, y, o) {
@@ -3794,6 +3863,31 @@ const STEP = 1 / SPS, clamp2 = (v, a, b) => v < a ? a : v > b ? b : v;
 let skillQ = 0, skillSteps = [], anchor = null, runUp = '', demoVx = 0, demoVy = 0;
 let rbQ = 0, rbSteps = [], rbRel = { t: 0 }, demoRbT = 0, ocWas = 0;   // Rainbrew Power: a tap (queued), the taps recorded for the server, the release effect
 const rbStr = () => rbSteps.map(a => a[0] + '-' + a[1]).join(',');
+/* ---------- the right graphics for each phone: the first time the game is opened, it times a small typical scene at three sharpness levels and looks at the phone's memory and cores, then "Auto" uses the best setting that stays smooth. (Settings can still override it; the game also steps down by itself if a phone runs slowly.) ---------- */
+let devTier = LS.get('us_devtier', '');
+function benchScene(d, W, H) {                                      // times a scene about as heavy as the game's own backdrop (gradients, glows, many small shapes), in ms per frame
+  const c = document.createElement('canvas'), g = c.getContext('2d'); c.width = Math.round(W * d); c.height = Math.round(H * d); g.setTransform(d, 0, 0, d, 0, 0);
+  const t0 = performance.now();
+  for (let k = 0; k < 5; k++) {
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#223'); gr.addColorStop(1, '#a76'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let j = 0; j < 4; j++) { const rg = g.createRadialGradient(W / 2, H * .8, 0, W / 2, H * .8, 300); rg.addColorStop(0, 'rgba(255,200,120,.4)'); rg.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+    g.fillStyle = 'rgba(255,255,255,.3)'; for (let j = 0; j < 120; j++) { g.beginPath(); g.arc((j * 37) % W, (j * 91) % H, 6 + j % 9, 0, 6.283); g.fill(); }
+  }
+  g.getImageData(0, 0, 1, 1);                                       // makes the phone finish drawing, so the time is real
+  return (performance.now() - t0) / 5;
+}
+function detectDevice(force) {
+  if (!force && (devTier || cfg.qauto !== 1)) return;
+  try {
+    const W = Math.max(240, innerWidth || 360), H = Math.max(320, innerHeight || 640), dm = Math.min((typeof devicePixelRatio === 'number' && devicePixelRatio) || 1, 2);
+    const ms = { high: benchScene(dm, W, H), med: benchScene(Math.min(dm, 1.5), W, H), low: 0 };
+    let t = ms.high < 5 ? 'high' : ms.med < 8 ? 'med' : 'low';
+    const cores = navigator.hardwareConcurrency || 8, mem = navigator.deviceMemory || 8;
+    if (t === 'high' && (cores <= 4 || mem <= 3)) t = 'med'; if (cores <= 2 || mem <= 1) t = 'low';   // a small phone is never given the heaviest setting
+    LS.set('us_devtier', t); devTier = t; if (cfg.qauto === 1) { cfg.quality = t; saveCfg(); } resize();
+  } catch (e) {}
+}
+setTimeout(function again() { if (devTier || cfg.qauto !== 1) return; if (st === 'menu') detectDevice(); else setTimeout(again, 4000); }, 2500);
 let perfAcc = 0, perfN = 0, perfDown = 0, backFn = null;
 let G = null, trajD = [], accT = 0, lastTs = 0, tgt = { x: FW / 2, y: FH - 150 }, pressed = false;
 let st = 'menu', session = null, ranked = false, run = null, runSeed = 0, runSeq = 0, sessDone = true, waitT = 0, cd = 3, cdN = 0, noteUnranked = '', rankClosed = false, idleN = 0, lbTimer = 0, bossWarnN = 0;
@@ -3804,7 +3898,7 @@ function decodeTraj(tr) { const a = []; for (let i = 0; i < tr.length; i++) a.pu
 function startGame(m) {
   if (demo && !demoStarting) { demo = false; skipBtn.hidden = true; }         // any real game start ends a demo
   auInit(); mode = m; if (!demo) LS.set('wg_mode', m); const M = MODES[m]; if (!demo) clearCkpt();
-  phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
+  phaseQ = 0; sayQ = []; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; puFx = []; anchor = null; warnFx.t = 0; skillFx.t = 0; ultFx.t = 0; boostFx.t = 0; scrollNow = 1; bombFx.t = 0; accT = 0; ps = []; pops = []; flash = ''; flashT = 0; shake = 0; hurtT = 0; bossBanner = { txt: '', l: 0 }; banner = { txt: '', sub: '', l: 0 }; pwCard = { l: 0 }; overloadFx = { t: 0 }; bossWarnN = 0;
   session = null; ranked = false; run = null; waitT = 0; cdN = 0; noteUnranked = ''; tgt = { x: FW / 2, y: FH - 150 }; pressed = false; clearInterval(lbTimer);
   G = newGame(1, m, demo ? 'frost' : uniOf()); G.keepEv = true; placeFrom = placeTo = 0; placeMix = 1;     // (a preview while the countdown runs)
   st = 'count'; cd = 3; ov.style.display = 'none'; musicStop(); ++runSeq; sessDone = true;
@@ -3827,9 +3921,8 @@ function begin() {
     runSeed = (Math.random() * 4294967296) >>> 0; ranked = false;
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
-  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
-  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; showPlaceCard(0);   // every flight starts already firing fast, then Phase 1 is introduced
-  if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
+  runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); phaseQ = 0; sayQ = []; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
+  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; showPlaceCard(0); phaseQ = placeCard.l + .3;   // every flight starts already firing fast, then Phase 1 is introduced
 }
 function endRun(reason) {
   if (st === 'over' || !G) return; const g = G;
@@ -3878,13 +3971,13 @@ function handleEvents() {
     else if (n === 'regen') { sfx('shield'); }
     else if (n === 'bosswarn') { warnFx = { t: 3, kind: a }; }                       // a plain, static warning sign (the music keeps building)
     else if (n === 'levelup') { sfx('levelup'); uniMood.hop = 1; }
-    else if (n === 'hurt') { uniMood.sad = 1; shake = .4; hurtT = .5; sfx('hit'); vib(120); say(a < 0 ? '−100 points' : a > 0 ? a + (a === 1 ? ' heart' : ' hearts') + ' left!' : '', 1.1); }
+    else if (n === 'hurt') { uniMood.sad = 1; shake = .4; hurtT = .5; sfx('hit'); vib(120); say(a < 0 ? '−100 points' : a > 0 ? a + (a === 1 ? ' heart' : ' hearts') + ' left!' : '', 1.1, 'now'); }
     else if (n === 'shield') { sfx('shield'); shake = .1; }
     else if (n === 'power') { sfx('p_' + a, MKEYS[g.stage % 8] || 0); const pi = PW_INFO[a]; if (pi) { puFx.push({ k: a, t: 1, c: pi.c }); if (puFx.length > 3) puFx.shift(); burst(g.px, g.py, pi.c, 6); if (a === 'triple' && !b) say('BEAMS MAXED! +10 GEMS', 1.2); } if (a === 'coffee') { boostFx = { t: 1 }; burst(g.px, g.py, '#ffb347', 20); vib(40); } else if (!pi) say(POW_NAME[a] || 'Power-up!', 1.4); }
     else if (n === 'hzwarn') { if (now - lastWarn > 450) { lastWarn = now; sfx('hzwarn'); } }
     else if (n === 'boom') {                                         // every creature the ULT wipes out explodes with its own pop and points
       burst(a, b, c === 'orb' ? '#ffffff' : ROLE_COL[(ENEMIES[c] || { role: 'b' }).role], c === 'orb' ? 3 : 14); if (c !== 'orb') { if (ENEMIES[c].role !== 'a') pop(a, b - 10, '+' + ENEMIES[c].pts * mult(g), '#ffe27a'); for (let k = 0; k < 2; k++) spark(a, b, (Math.random() - .5) * 220, (Math.random() - .5) * 220, .6, COL[k % 7], 5); } }
-    else if (n === 'icewarn') { say(b + ' ' + shardTheme().name + '! Move!', 1.4); sfx('icewarn', SHARD_THEMES[viewPlace()]); }
+    else if (n === 'icewarn') { say(b + ' ' + shardTheme().name + '! Move!', 1.4, 'now'); sfx('icewarn', SHARD_THEMES[viewPlace()]); }
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
     else if (n === 'rbrel') { rbRel = { t: 1 }; sfx('rbrel', MKEYS[g.stage % 8] || 0); duckMusic(1.5); setTimeout(() => magicVoice(false), 120); shake = Math.max(shake, .5); vib([40, 30, 80]); banner = { txt: 'RAINBREW POWER!', sub: '', l: 1.4 }; award('magic'); burst(g.px, g.py, '#ffe27a', 16); if (g.boss) { bossSquash = Math.min(.06, bossSquash + .04); burst(g.boss.x, g.boss.y, '#ffffff', 14); } }
@@ -3945,7 +4038,7 @@ function update(dt) {
   if (G && G.boss) { if (!bossShow || bossShow > G.boss.max) bossShow = G.boss.max; bossShow += (G.boss.hp - bossShow) * Math.min(1, dt * 7); if (G.boss.dying && Math.random() < .6) spark(G.boss.x + (Math.random() - .5) * 90, G.boss.y + (Math.random() - .5) * 70, (Math.random() - .5) * 60, -20 - Math.random() * 40, .6, COL[Math.floor(Math.random() * 7)], 5); } else bossShow = 0;
   if (G && G.magic > 0 && st === 'play') { trail.push({ x: G.px - G.pdx * .5, y: G.py + 30 }); if (trail.length > 28) trail.shift(); if (Math.random() < .3) spark(G.px + (Math.random() - .5) * 26, G.py + 22, (Math.random() - .5) * 50, 20 + Math.random() * 60, .7, COL[Math.floor(Math.random() * 7)], 4 + Math.random() * 4); } else if (trail.length) trail.shift();
   if (bombFx.t > 0) bombFx.t -= dt; if (flashT > 0) flashT -= dt; if (shake > 0) shake -= dt; if (hurtT > 0) hurtT -= dt; if (bossBanner.l > 0) bossBanner.l -= dt; if (banner.l > 0) banner.l -= dt; if (overloadFx.t > 0) overloadFx.t -= dt * .9; if (pwCard.l > 0) pwCard.l -= dt;
-  if (sayPend) { sayPend.t -= dt; if (sayPend.t <= 0) sayPend = null; else if (!introBusy()) { const q = sayPend; sayPend = null; say(q.s, q.d); } }
+  if (sayQ.length) { for (const q of sayQ) q.t -= dt; sayQ = sayQ.filter(q => q.t > 0); if (sayQ.length && !introBusy() && !(flashT > 0)) { const q = sayQ.shift(); flash = q.s; flashT = q.d || 1.3; } }
   if (placeCard.l > 0) placeCard.l -= dt; if (bossCard.l > 0) bossCard.l -= dt; if (cafeDrop.l > 0) cafeDrop.l -= dt; if (uniMood.hop > 0) uniMood.hop = Math.max(0, uniMood.hop - dt * 2.2); if (uniMood.sad > 0) uniMood.sad = Math.max(0, uniMood.sad - dt * 1.1);
   if (G) { rfx.x += (G.px - rfx.x) * Math.min(1, dt * 1.8); rfx.y += (G.py - rfx.y) * Math.min(1, dt * 1.8); }
   for (let i = ps.length - 1; i >= 0; i--) { const p = ps[i]; p.l -= dt; if (p.l <= 0) { ps.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 420 * dt; }
@@ -4306,7 +4399,7 @@ function menu() {
 }
 function toggle(k, label) { return `<label class="set"><span>${label}</span><input type="checkbox" data-k="${k}" ${cfg[k] ? 'checked' : ''}></label>`; }
 function slider(k, label, min, max, step) { return `<label class="set"><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${cfg[k]}"></label>`; }
-function opts(k, label, list) { return `<div class="set"><span>${label}</span><div class="chips">${list.map(([v, n]) => `<button class="chip${cfg[k] === v ? ' on' : ''}" data-a="cfg:${k}:${v}">${n}</button>`).join('')}</div></div>`; }
+function opts(k, label, list) { return `<div class="set"><span>${label}</span><div class="chips">${list.map(([v, n]) => `<button class="chip${(k === 'quality' ? (v === 'auto' ? cfg.qauto === 1 : cfg.qauto !== 1 && cfg[k] === v) : cfg[k] === v) ? ' on' : ''}" data-a="cfg:${k}:${v}">${n}</button>`).join('')}</div></div>`; }
 
 /* ---------- leaderboard: podium for the top 3, then everyone else ---------- */
 function ago(ms) { const s = Math.max(0, Math.round((Date.now() - ms) / 1000)); return s < 60 ? s + 's ago' : Math.round(s / 60) + 'm ago'; }
@@ -4697,7 +4790,7 @@ box.addEventListener('click', e => {
   else if (a === 'tog') { cfg[x] = cfg[x] ? 0 : 1; saveCfg(); settings(); }
   else if (a === 'vol') { cfg[x] = cfg[x] ? 0 : DEF[x]; saveCfg(); settings(); }
   else if (a === 'setuni') { prof.name = ($('nm0') ? $('nm0').value : prof.name); LS.set('us_prof', prof); cfg.uni = x; saveCfg(); setupScreen(); }
-  else if (a === 'cfg') { cfg[x] = y; saveCfg(); if (x === 'quality') resize(); settings(); }
+  else if (a === 'cfg') { if (x === 'quality') { if (y === 'auto') { cfg.qauto = 1; cfg.quality = devTier || autoQuality(); } else { cfg.qauto = 0; cfg.quality = y; } } else cfg[x] = y; saveCfg(); if (x === 'quality') resize(); settings(); }
   else if (ACT[a]) ACT[a](b);
 });
 box.addEventListener('input', e => {
@@ -4748,7 +4841,7 @@ function settings() {
   const sw = (k, label) => `<button class="tg${cfg[k] ? ' on' : ''}" data-a="tog:${k}"><span>${label}</span><i></i></button>`;
   screen(`<div class="sethead"><h1>Settings</h1><button class="x" data-a="back" aria-label="Close">${ico('close')}</button></div>
   <div class="setsec"><h3>Audio</h3>${sl('sfx', 'Sound effects', 0, 1, .05, 'p')}${sl('music', 'Music', 0, 1, .05, 'p')}${sw('voice', 'Voice')}</div>
-  <div class="setsec"><h3>Graphics</h3>${opts('quality', 'Quality', [['low', 'Low'], ['med', 'Medium'], ['high', 'High']])}<p class="meta">Low keeps older phones and iPads smooth. High shows every effect.</p>${sw('shake', 'Screen shake')}</div>
+  <div class="setsec"><h3>Graphics</h3>${opts('quality', 'Quality', [['auto', 'Auto'], ['low', 'Low'], ['med', 'Medium'], ['high', 'High']])}<p class="meta">Auto picks the best setting for your phone${devTier ? ' (now ' + ({ low: 'Low', med: 'Medium', high: 'High' }[devTier] || '') + ')' : ''}. Low keeps older phones and iPads smooth. High shows every effect.</p>${sw('shake', 'Screen shake')}</div>
   <div class="setsec"><h3>Controls</h3>${opts('ctrl', 'Style', [['drag', 'Drag'], ['touch', 'Follow finger']])}<p class="meta">${cfg.ctrl === 'touch' ? 'The unicorn flies to where you touch, just above your finger.' : 'Slide anywhere: the unicorn moves as far as your finger does.'}</p>${sl('sens', 'Sensitivity', .5, 2, .1, 'x')}${sw('vib', 'Vibration')}</div>
   <div class="setsec"><h3>Unicorn</h3><input type="text" maxlength="12" placeholder="Unicorn name" data-p="name" value="${esc(prof.name)}" autocomplete="nickname"><input type="tel" maxlength="16" placeholder="Phone (for prizes)" data-p="contact" value="${esc(prof.contact)}" autocomplete="tel"></div>
   <div class="row"><button class="sec" data-a="reset">Reset</button><button class="sec" data-a="checksrv">Check server</button><button class="sec" data-a="update">Update</button></div>
