@@ -61,6 +61,10 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 - **The Rainbrew Café notice** never shows while an intro card is up.
 - **Graphics chosen for each phone.** The first time the game is opened it times a small typical scene at three sharpness levels and looks at the phone's memory and cores, then sets Low, Medium or High (saved on the phone). Settings > Graphics has an **Auto** chip to go back to this choice; a player who picks Low, Medium or High keeps it. The game still steps down by itself if a phone runs slowly.
 
+## Winner notice in the game (no rules change, no Code.gs redeploy)
+
+After a competition's deadline and its short late-upload window, a player who finished **1st, 2nd or 3rd** on that competition's verified leaderboard sees a pop-up the next time the game's home screen opens: "You won 2nd place!", the competition name, their best score, their verification code, and the claim steps (show the code and a valid ID at the counter; staff may also text; a prize that is not claimed in time **lapses**). It is shown once per winner and competition (they tap *Got it*). Nothing else is sent from the game: texting and handing over the prize are still done by staff on the staff page. Unclaimed prizes simply lapse and go to nobody else.
+
 ## Sim version 37: a calm opening for every new world, smoother play on phones (**redeploy Code.gs**)
 
 - **No creatures while a world is introduced.** A new world now opens with a short quiet: nothing spawns for 4 seconds (the length of the title card), and the level clock waits. At the start of a run, and after each boss and Wild Card in the first round of eight worlds, the quiet is 4 seconds; when the bosses come round again there is no title card and the quiet is only about 1 second. This is a **rules change** (`quiet` in the shared SIM block), so `SIM_VERSION` is now **37**: merge the pull request and deploy `Code.gs` as a **New version** straight away, otherwise Ranked scores are refused. The benchmark flight (`BENCH`) was regenerated for version 37.

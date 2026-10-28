@@ -211,6 +211,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .pfhead{display:flex;align-items:center;gap:12px;margin:2px 0 10px;justify-content:center}.avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:1.6rem;font-weight:800;color:#fff;background:#7b3fe4;box-shadow:0 0 18px rgba(170,130,255,.6)}.pfwho{display:flex;flex-direction:column;text-align:left}.pfwho b{font-size:1.15rem}.pfwho span{font-size:.78rem;opacity:.7}
 .pstats{display:flex;gap:8px;margin:6px 0}.pst{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.1);border-radius:14px;padding:8px 4px}.pst i{display:grid;width:24px;height:24px}.pst svg{width:24px;height:24px}.pst b{font-size:1.05rem}
 .bdgcount{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0 4px;font-size:.95rem}.bdgcount svg{width:22px;height:22px}
+.winbox{text-align:center}.winmedal{width:92px;height:92px;margin:8px auto;border-radius:50%;display:grid;place-items:center;font-size:2.6rem;font-weight:900;color:#fff;background:linear-gradient(135deg,#ffd86a,#e8a820);box-shadow:0 6px 18px rgba(232,168,32,.45)}.winmedal.m2{background:linear-gradient(135deg,#eef1f7,#98a4bb);box-shadow:0 6px 18px rgba(120,136,170,.4)}.winmedal.m3{background:linear-gradient(135deg,#f3c79a,#b0662a);box-shadow:0 6px 18px rgba(176,102,42,.4)}.winc{margin:6px 0}.winc b{display:block;font-size:1.5rem;letter-spacing:.06em}
 .cfbar{height:10px;border-radius:6px;background:rgba(120,80,160,.2);margin:8px 6px 0;overflow:hidden}.cfbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd86a,#ff9ad5,#6a7aff);border-radius:6px}.cfgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.cfcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px dashed rgba(120,80,160,.3);border-radius:14px;text-align:center}.cfcell.on{border:2px solid #e8a820;background:rgba(255,216,106,.2)}.cfic svg{width:46px;height:46px}.cfcell b{font-size:.88rem}.cfcell span{font-size:.72rem;opacity:.8}
 .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;margin:4px 0 8px}.bdgcell{display:flex;flex-direction:column;align-items:center;gap:2px}.bdgcell svg{width:58px;height:58px}.bdgcell.on svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}.bdgcell span{font-size:.62rem;opacity:.9;min-height:1em;text-align:center;line-height:1.05}
 #box[data-s="prof"] .topbar{background:rgba(26,12,60,.96);color:#fff;border-bottom:1px solid rgba(255,255,255,.18)}#box[data-s="prof"] .topbar .back{background:rgba(255,255,255,.14);color:#fff}#box[data-s="prof"] .topbar .ttl{color:#fff}
@@ -4311,12 +4312,24 @@ function compBanner() {
   if (c.state === 'closing') return `<div class="note comp"> <b>${nm}</b> has ended. Final results in a moment…</div>`;
   return comp.winners ? `<button class="sec compbtn" data-a="comp"> ${nm}: see who won!</button>` : `<div class="note comp"> <b>${nm}</b> has ended. Loading the winners…</div>`;
 }
+/* ---------- winners: after the contest deadline, a top-three player is told in the game, once ---------- */
+function maybeWin() {
+  if (curScr !== 'menu' || st !== 'menu' || !comp || !comp.winners || !myPid) return;
+  const c = compNow(); if (c.state !== 'ended') return;
+  const key = comp.name + ':' + comp.start; if (LS.get('us_wonseen', '') === key) return;
+  const me = (comp.winners.top || []).find(x => x.p === myPid && x.r >= 1 && x.r <= 3); if (me) winScreen(me, comp);
+}
+function winScreen(r, c) {
+  const place = ['1st', '2nd', '3rd'][r.r - 1], rk = tickets.filter(t => t.mode === 'rank'), tk = rk.find(t => t.score === r.s) || rk.slice().sort((a, b) => b.score - a.score)[0];
+  screen(`<div class="winbox"><div class="winmedal m${r.r}" aria-hidden="true">${r.r}</div><h1>You won ${place} place!</h1><p class="big">${esc(c.name)}</p><p class="meta">Your best score: <b>${r.s}</b></p>${tk ? `<p class="winc">Your code<b>${esc(tk.code)}</b></p>` : ''}
+  <p class="meta">Show your code and a valid ID at the Rainbrew counter to claim your prize. Staff may also text you on your registered number. A prize that is not claimed in time lapses.</p><button data-a="winok">Got it</button></div>`, 'win');
+}
 function compScreen() {
   const c = compNow(), w = comp && comp.winners;
   if (!comp || !w) { screen(`<h1> Winners</h1><p class="meta">${c.state === 'none' ? 'There is no competition right now.' : 'Results are not ready yet. Check back soon.'}</p>`, 'comp', 'menu'); return; }
   const rows = w.top.map(x => ({ r: x.r, n: x.n, s: x.s, p: x.p, u: x.u || x.uni, bp: x.bp }));
   screen(`<h1> ${esc(comp.name)}</h1><p class="meta">${esc(fmtWhen(comp.start))} to ${esc(fmtWhen(comp.end))} · ${w.players} player${w.players === 1 ? '' : 's'}</p><p class="big">Congratulations to our winners! </p>
-  ${podium(rows)}${restRows(rows)}<p class="meta">Winners: show your verification code and a valid ID at the Rainbrew counter to claim your prize. Staff will also text you.</p>`, 'comp', 'menu');
+  ${podium(rows)}${restRows(rows)}<p class="meta">Winners: show your verification code and a valid ID at the Rainbrew counter to claim your prize. Staff will also text you. A prize that is not claimed in time lapses.</p>`, 'comp', 'menu');
 }
 
 /* ---------- install as an app (Android, iPhone/iPad, desktop) ---------- */
@@ -4374,7 +4387,7 @@ function homeStep(d) {
 function homeRefresh() { const t = document.createElement('div'); t.innerHTML = ownedStrip(); [['.usel'], ['.ubar']].forEach(([q]) => { const n = t.querySelector(q), o = document.querySelector(q); if (n && o) o.replaceWith(n); }); }
 (function () { let x0 = null; document.addEventListener('touchstart', e => { x0 = e.target.closest && e.target.closest('.usel') ? e.touches[0].clientX : null; }, { passive: true }); document.addEventListener('touchend', e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) homeStep(dx < 0 ? 1 : -1); }, { passive: true }); })();
 function menu() {
-  homeIdx = -1; st = 'menu'; musicStart(); G = null; maybeInstallSheet();
+  homeIdx = -1; st = 'menu'; musicStart(); G = null; maybeInstallSheet(); setTimeout(maybeWin, 700);
   const relb = srv.release && relCmp(srv.release, BUILD) !== 0 ? (relCmp(srv.release, BUILD) > 0 ? `<div class="note warn"> A newer version is available. <button class="sec" data-a="update">Update now</button></div>` : `<div class="note warn"> This game and its server are out of step. Ask the game owner to update <b>Code.gs</b> in Apps Script and deploy a New version.</div>`) : '';
   const bi = (comp && comp.seasons && comp.seasons[mode]) || (LS.get('us_lbc_' + mode, null) || {}).info, boardLn = bi ? `<p class="meta"> Board: <b>${esc(bi.label)}</b>${bi.resetAt ? ' · resets in ' + fmtCount(bi.resetAt - serverNow()) : bi.kind === 'competition' ? ' · ' + esc(bi.state || '') : ''}</p>` : '';
   const warn = staleRules ? '<div class="note warn"> This copy of the game is out of date. <button class="sec" data-a="update">Update now</button></div>' : (CONFIG.API_URL && /\/dev(\?.*)?$/.test(CONFIG.API_URL) ? '<div class="note warn"> The server address ends in /dev. It must end in /exec.</div>' : '');
@@ -4661,7 +4674,7 @@ function chalLine(r) {                                                          
   return `<p class="note"> <b>${chal.score - r.score + 1}</b> more point${chal.score - r.score ? 's' : ''} to beat <b>${esc(chal.by)}</b>’s ${chal.score}. Try again!</p>`;
 }
 const ACT = {
-  play() { playNow(); }, unis: unicornsScreen, cafe: cafeScreen, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
+  play() { playNow(); }, unis: unicornsScreen, cafe: cafeScreen, winok() { if (comp) LS.set('us_wonseen', comp.name + ':' + comp.start); menu(); }, setgo() { const nm = String(($('nm0') || {}).value || '').trim().replace(/\s+/g, ' '); if (nm.length < 2) { setupScreen('Enter your name (at least 2 letters)'); return; } prof.name = nm; LS.set('us_prof', prof); startGame(mode); }, again() { startGame(run ? run.mode : mode); }, menu, how, prof: profile, set() { backFn = st === 'pause' ? pauseScreen : menu; settings(); }, back() { (backFn || menu)(); backFn = null; },
   compclose() { const c = compNow(); if (comp) compHideKey = comp.name + ':' + c.state; menu(); }, lb() { lbScreen('rank'); }, lbplayed() { lbScreen(run && MODES[run.mode] && MODES[run.mode].ranked ? run.mode : 'rank'); }, menumore() { menuMore = true; menu(); }, menuclose() { menuMore = false; menu(); }, demo() { startDemo(); }, lbr() { lbScreen(null, true); }, more: moreLb, submit: submitScore, local: saveLocal,
   resume() { ov.style.display = 'none'; st = 'ready'; cd = 3; cdN = 0; },
   regok() { const nm = String(($('rgn') || {}).value || '').trim().replace(/\s+/g, ' '), ph = cleanPhone(($('rgp') || {}).value); if (nm.length < 2) return registerScreen('Please enter your name (at least 2 letters).', nm, ph); if (nameBlocked(nm)) return registerScreen(NAME_BAD, nm, ph); if (!validPhone(ph)) return registerScreen('Please enter a valid mobile number (9 to 15 digits, for example 09171234567).', nm, ph); const cs = readConsent(); if (!cs.ok) return registerScreen(cs.err, nm, ph); prof.name = nm.slice(0, 20); prof.contact = ph; LS.set('us_prof', prof); saveConsent(cs.a); rememberPlayer(); menu(); setTimeout(maybeInvite, 300); if (pendingPlay) { pendingPlay = false; startGame(mode); } },
