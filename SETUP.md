@@ -53,6 +53,13 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 - **The 3-2-1 countdown** teaches one thing per number: 3 "Drag to fly", 2 "Collect gems", 1 "Defeat the enemies". Nothing else is on screen except the number.
 - **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
 
+## Sim version 37: a calm opening for every new world, smoother play on phones (**redeploy Code.gs**)
+
+- **No creatures while a world is introduced.** A new world now opens with a short quiet: nothing spawns for 4 seconds (the length of the title card), and the level clock waits. At the start of a run, and after each boss and Wild Card in the first round of eight worlds, the quiet is 4 seconds; when the bosses come round again there is no title card and the quiet is only about 1 second. This is a **rules change** (`quiet` in the shared SIM block), so `SIM_VERSION` is now **37**: merge the pull request and deploy `Code.gs` as a **New version** straight away, otherwise Ranked scores are refused. The benchmark flight (`BENCH`) was regenerated for version 37.
+- **The title card is a clean screen.** While it shows, the world, the unicorn and the HUD fade away behind a dim, so only the place name and its line remain.
+- **Bosses remember you.** Each world is introduced once. When the bosses come round again there is no second introduction, and each boss says a different line (first meeting, second, then every time after). The lines are in `BOSS_TAUNT`.
+- **Smoother play.** The game now draws at most 60 times a second (a 120 Hz phone was doing double the work), the picture is rendered at a lighter sharpness (Medium 1.5x, High 2x instead of 2x and 3x), the game steps the sharpness down by itself if a phone runs slowly, and the music is scheduled further ahead so a slow frame no longer makes it stutter.
+
 ## Sound and music: the epic cinematic direction (new, first step)
 * **All sounds and music are still made live by the game (no audio files except the two voice-overs)**, so nothing was added to download. This step upgrades them to a more cinematic feel, starting with Rainbrew Power and Overload.
 * **Building blocks** (in `index.html`, next to `tone` and `noise`): `stab` (a brass-like hit), `cinPad` (a slowly swelling string pad), `boom` (a deep cinematic hit), `bells` (the bright notes).

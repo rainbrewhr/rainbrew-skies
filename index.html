@@ -759,7 +759,7 @@ html,body{background:#1a1040!important}
 <script>
 'use strict';
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 36;
+var SIM_VERSION = 37;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
@@ -842,7 +842,7 @@ function newGame(seed, mode, uni, up) {
   return { v: SIM_VERSION, mode: MODES[mode] ? mode : 'classic', uni: u, M: M, U: kit, rs: rs, rd: mkRng((seed ^ 0x9E3779B9) >>> 0), keepEv: false, ev: [],
     t: 0, over: 0, reason: '', px: W / 2, py: H - 150, pdx: 0, pdy: 0, lives: M.inf ? 0 : M.lives, score: 0, combo: 0, comboT: 0, maxCombo: 0,
     inv: 0, shield: kit.shield0 ? 1 : 0, star: 0, magic: 0, pw: { coffee: 300, triple: 0, helpers: 0, spread: 0, pierce: 0 }, fireCd: 1, hz: [], stone: 0, usedPow: 0, elem: 0, magnetT: 0, hyper: 0, env: '', freeze: 0, ultK: '', ultT: 0, es: 1, wc: { move: 0, magnet: 0, crit: 0, life: 0, resist: 0, regen: 0, fan: 0, beam: 0, ult: 0, boost2: 0 }, pwBeams: 0, regenT: 0, wv: 0, wvLv: 0, lull: 0, charm: 0, revives: 0, rvLog: [], wcN: 0, wcOff: 0, maxL: M.lives, cards: [], cardRe: 0, cdLog: [], cdCur: '', cm: null, cometDone: -1, cometLv: 2 + (rs() < 0.5 ? 0 : 1), comets: 0, skillsUsed: 0, hype: 0, warnT: 0,
-    level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, boss: null, bossT: 0, powGiven: 0,
+    level: 1, levelT: 0, stage: 0, phase: 'wave', clearT: 0, waveT: 6, quiet: 120, boss: null, bossT: 0, powGiven: 0,
     wl: 0, coreOwed: 0, nh: 0, oc: 0, ocs: 0, cc: 0, bp: 0, boxes: 0, jinx: 0, bossHit: 0, flaw: 0, flawless: 0,       // streak (kills without a hit), Overcharged, close calls, most beams at once, mystery boxes, risk debuff, flawless boss wins
     nextIce: SPS * (22 + Math.floor(rs() * 8)),
     en: [], bl: [], sh: [], it: [], ice: [], hitsDealt: 0, kills: 0, hits: 0, bosses: 0, surges: 0, gems: 0, caught: 0, rbReady: 0, rbUsed: 0 };
@@ -974,7 +974,7 @@ function cometBurst(G) {                                           // a shower o
   for (i = 0; i < n; i++) mkItem(G, 'gem', x0 + Math.floor(i / 3) * 36, c.y - 10 - (i % 3) * 50, 0, 5 + (i % 4) * 0.3);   // three rows, spaced so no two diamonds overlap
   G.pw.coffee = COFFEE_STEPS * (G.wc.boost2 ? 2 : 1); E(G, 'cmkill', c.x, c.y);
 }
-function nextStage(G) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.waveT = 40; G.cometLv = 2 + (G.rs() < 0.5 ? 0 : 1); G.cm = null; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
+function nextStage(G) { G.phase = 'wave'; G.level++; G.levelT = 0; G.stage++; G.quiet = G.stage < PLACE_KINDS.length ? 120 : 36; G.waveT = 40; G.cometLv = 2 + (G.rs() < 0.5 ? 0 : 1); G.cm = null; E(G, 'stage', G.stage, 0); E(G, 'level', G.level, 0); }
 function bossHP(s) { s = Math.max(0, s); var i = s % 8, c = Math.floor(s / 8); return 900 + 120 * i + c * (700 + 90 * i); }   // base health: Matcha Dragon 900, then 1600 on the second run (must match the game)
 function startBoss(G) {
   var kind = BOSS_KINDS[G.stage % BOSS_KINDS.length], hp = Math.ceil(bossHP(G.stage) * (G.M && G.M.easy ? 0.6 : 1) * (1 + 1.5 * wcPower(G)));   // endurance fights: bosses have 2.6 times their old life
@@ -1221,7 +1221,7 @@ function stepGame(G, dx, dy, skill, rb) {
   var rp = ramp(G), fast = (G.magic > 0 ? 2.2 : 1) * (1 + 0.45 * G.hype);                 // Rainbrew Magic: the world rushes past 2.2x faster; before a boss (Ranked) it speeds up too
   // levels and bosses
   if (G.phase === 'wave') {
-    G.levelT++;
+    if (G.quiet > 0) G.quiet--; else G.levelT++;                  // a new world opens with a short calm: nothing spawns while its title card is up, and the level clock waits
     if (!bossLevel(G) && G.levelT === 300 && !(G.magic > 0)) givePower(G);
     if (!bossLevel(G) && G.levelT === 120 && G.coreOwed && G.wl < WL_MAX && G.it.every(function (o) { return o.k !== 'core'; })) { mkItem(G, 'core', 90 + Math.floor(G.rd() * 180), -20, 0, 1.5); E(G, 'capsule', 'core', 0); }   // the Star Core you earned by beating the boss of every second Level falls in the next Level's phases (each phase again until you catch it)
     G.hype = M.hype && !bossLevel(G) && levelIn(G) === BOSS_EVERY - 1 ? clamp((G.levelT - (LEVEL_STEPS - 360)) / 360, 0, 1) : 0;     // Ranked: the last 12 seconds before a boss build up tension
@@ -1232,7 +1232,7 @@ function stepGame(G, dx, dy, skill, rb) {
         if (M.boss && G.level % BOSS_EVERY === BOSS_EVERY - 1) { G.phase = 'warn'; G.warnT = 90; G.hype = M.hype ? 1 : 0; E(G, 'bosswarn', BOSS_KINDS[G.stage % BOSS_KINDS.length], 0); }   // the warning screen: BOSS APPROACHING
         else { G.level++; G.levelT = 0; E(G, 'level', G.level, 0); }
       }
-      if (!bossLevel(G)) {
+      if (!bossLevel(G) && G.quiet <= 0) {
         G.waveT--; if (G.magic > 0) G.waveT--; if (G.levelT < LEVEL_STEPS && G.en.length < 3 && G.waveT > 8 && G.magic <= 0 && G.ultT <= 0 && G.hyper <= 0 && !G.noRefill) G.waveT = 8; if (G.waveT <= 0 && G.levelT < LEVEL_STEPS) spawnWave(G);   // no new creatures once the phase's last group is out
       }   // the screen is never left empty: the next group comes within a quarter of a second whenever almost nobody is left
     }
@@ -1249,7 +1249,7 @@ function stepGame(G, dx, dy, skill, rb) {
   }
   if (G.phase !== 'wave') G.cm = null; else if (!G.cm && G.cometDone !== G.stage && levelIn(G) === G.cometLv && G.levelT >= 240 && G.magic === 0 && !bossLevel(G)) spawnComet(G);
   if (G.cm) updateComet(G);
-  if (G.t >= G.nextIce && G.magic === 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
+  if (G.t >= G.nextIce && G.magic === 0 && G.quiet <= 0 && G.phase === 'wave' && G.level + G.stage >= 2) spawnIce(G);
   if (G.magic > 0) { if (G.magic % 8 === 0) mkItem(G, 'gem', 24 + Math.floor(G.rd() * (W - 48)), -12, 0, 4.5); if (G.magic % 15 === 0) E(G, 'sparkle', G.px, G.py, 0); }   // a rain of gems
   // shooting
   G.fireCd -= G.jinx > 0 ? 0.5 : 1; if (G.fireCd <= 0) { fire(G, false); G.fireCd += Math.max(1.1, (G.pw.coffee > 0 || G.hyper > 0 ? Math.max(1.25, G.U.cd * 0.5) : G.U.cd) * (G.env === 'medusa' ? 1 + 1.0 * G.es : 1) * WL_RATE[G.wl] / (1 + 0.06 * G.charm)); }   // coffee: twice the fire rate (and a little more damage and piercing); Freezing Air slows shooting          // (the remainder carries over, so an upgraded rate like 3.7 steps is exact on average)   // coffee: an energy boost, you shoot faster
@@ -1404,7 +1404,8 @@ function autoQuality() {                                          // a sensible 
 }
 if (!['low', 'med', 'high'].includes(cfg.quality)) cfg.quality = autoQuality();
 cfg.sens = Math.max(.5, Math.min(2, +cfg.sens || 1));
-const QUAL = { low: { dpr: 1, part: .25, shake: 0, layers: 1, glow: 0 }, med: { dpr: 2, part: .6, shake: .5, layers: 2, glow: 1 }, high: { dpr: 3, part: 1, shake: .6, layers: 3, glow: 1 } };   // Graphics: particles, screen shake, scenery layers and resolution
+const QUAL = { low: { dpr: 1, part: .25, shake: 0, layers: 1, glow: 0 }, med: { dpr: 1.5, part: .6, shake: .5, layers: 2, glow: 1 }, high: { dpr: 2, part: 1, shake: .6, layers: 3, glow: 1 } };
+let dprCap = +LS.get('us_dprcap', 0) || 9;   // Graphics: particles, screen shake, scenery layers and resolution
 if (LS.get('us_cfg', null) === null && typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) cfg.shake = 0;
 let prof = Object.assign({ name: '', contact: '' }, LS.get('us_prof', {}));
 let stats = Object.assign({ games: 0, foods: 0, kills: 0, bosses: 0, surges: 0, maxStage: 0, shards: 0 }, LS.get('us_stats', {})); stats.best = Object.assign({ rank: 0, classic: 0, rush: 0, infinite: 0 }, stats.best || {});
@@ -1822,7 +1823,7 @@ function ambience(place, st, d, beat, key, ch, B) {                 // the sound
 }
 function musTick() {
   const a = AU.ctx; if (!a || !AU.on || AU.hold) return;                                 // (on hold: a boss is arriving or has just been beaten)
-  while (AU.nt < a.currentTime + .4) {
+  while (AU.nt < a.currentTime + .7) {
     const m = musicCtx(), L = m.lv, B = AU.musG, OP = m.place; let key = MKEYS[OP], pl = MPLACE[OP];
     if (m.menu) AU.bm = false; else if (m.warn || (m.boss && !AU.bm) || AU.bm === undefined || AU.step % 16 === 0) AU.bm = m.boss || m.warn;      // the boss theme kicks in the instant the warning appears; it ends at a bar line      // the boss layers switch on at a bar line: no clash, no gap
     const bossM = !m.menu && !!AU.bm; if (bossM) { key = MKEYS[0]; pl = MPLACE[0]; }
@@ -2892,7 +2893,7 @@ const FW = 360, FH = 640;                                                       
 let cssW = 360, cssH = 640, DPR = 1, K = 1, OXp = 0, OYp = 0, now = 0, bgT = 0;
 const SPR = new Map();
 function resize() {
-  cssW = Math.max(240, innerWidth || 360); cssH = Math.max(320, innerHeight || 640); DPR = Math.min((typeof devicePixelRatio === 'number' && devicePixelRatio) || 1, (QUAL[cfg.quality] || QUAL.med).dpr);
+  cssW = Math.max(240, innerWidth || 360); cssH = Math.max(320, innerHeight || 640); DPR = Math.min((typeof devicePixelRatio === 'number' && devicePixelRatio) || 1, (QUAL[cfg.quality] || QUAL.med).dpr, dprCap);
   cv.width = Math.round(cssW * DPR); cv.height = Math.round(cssH * DPR); cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
   K = Math.min(cssW / FW, cssH / FH); { const Kx = Math.max(cssW / FW, cssH / FH); if (Math.max(FW * Kx - cssW, FH * Kx - cssH) / 2 <= 12) K = Kx; }   // a thin strip of edge is cropped rather than leaving a border
   OXp = (cssW - FW * K) / 2; OYp = (cssH - FH * K) / 2; SPR.clear();
@@ -2962,7 +2963,16 @@ const PLACES = [                                                    // eight mag
 ];
 let placeFrom = 0, placeTo = 0, placeMix = 1;
 /* ---------- immersion: place cards, boss entrances, a living unicorn, weather that notices you, and the Rainbrew Café (all visual or kept on this phone: nothing here touches the rules or the score) ---------- */
-const BOSS_TAUNT = { dragon: 'Who dares wake me from my tea nap?', griffin: 'I am the foam on top of every storm!', kraken: 'My pearls are many, and so are my arms!', phoenix: 'Caramel-sweet and fire-hot. Try not to melt!', hydra: 'Pop one berry and two more roll in!', medusa: 'One cold look and you will be minty fresh!', cerberus: 'Three noses can smell your cocoa from afar!', cyclops: 'I see every crumb you drop!' };
+const BOSS_TAUNT = {                                                // what each boss says: the first time, when you come back, and every time after (so they remember you)
+  dragon:   ['Who dares wake me from my tea nap?', 'You again?! I only just went back to sleep!', 'Fine, fine. Let us finish this before my tea gets cold!'],
+  griffin:  ['I am the foam on top of every storm!', 'You came back! My foam is even fluffier now!', 'No more mister nice griffin. Hold on to your wings!'],
+  kraken:   ['My pearls are many, and so are my arms!', 'Back so soon? I grew a few more arms!', 'I have been practising all week. Ready?'],
+  phoenix:  ['Caramel-sweet and fire-hot. Try not to melt!', 'You again? I am even hotter this time!', 'Third time is the charm... for my flames!'],
+  hydra:    ['Pop one berry and two more roll in!', 'Back for more berries? I have extra heads now!', 'You keep popping them, and they keep coming back!'],
+  medusa:   ['One cold look and you will be minty fresh!', 'Back again? My stare got colder!', 'Do not look at me like that. Oh wait, you must!'],
+  cerberus: ['Three noses can smell your cocoa from afar!', 'I smelled you coming. Again!', 'Three heads, three times as grumpy about it!'],
+  cyclops:  ['I see every crumb you drop!', 'I remember you! You dropped even more crumbs!', 'One eye on you, always. Let us settle this!']
+};
 const ING = {                                                       // one café ingredient per boss, drawn (no emoji) so it looks the same on every phone
   dragon:   { name: 'Matcha leaf',    boss: 'Matcha Dragon',   col: '#7fc96a', d: 'M4 20C4 11 9 5 20 4c0 10-6 16-16 16z', ln: 'M5 19C9 14 13 10 17 7' },
   griffin:  { name: 'Latte foam',     boss: 'Latte Griffin',   col: '#f1dcc0', d: 'M4 8h13v5a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6zM17 9.5h1.5a2.5 2.5 0 0 1 0 5H17v-1.6h1.5a.9.9 0 0 0 0-1.8H17z', ln: 'M7 11.5c2 1.4 5 1.4 7 0' },
@@ -3742,13 +3752,13 @@ function draw() {
   if (G && (st === 'play' || st === 'pause' || st === 'cards' || st === 'ready' || st === 'count' || st === 'over' || demo)) {
     const al = st === 'play' ? Math.min(1, accT * SPS) : 0;
     ctx.save(); if (ultFx.t > 0) { const z = 1 + .03 * ultFx.t * ultFx.t; ctx.translate(FW / 2, FH / 2); ctx.scale(z, z); ctx.translate(-FW / 2, -FH / 2); }   // the ULT punches the screen in
-    safe(() => {
+    withFade(1 - placeCardA(), () => safe(() => {
       drawEnvFx(G); drawWorld(al); drawPlayer(al); drawOcAura(G); drawWeaponFx(G); drawSkillFx(G); drawBoostFx(G); drawPuFx(G); drawCardFx(G);
       for (const p of ps) { ctx.globalAlpha = Math.max(0, Math.min(1, p.l * 2)); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); } ctx.globalAlpha = 1;
       if (!introBusy()) for (const p of pops) { ctx.globalAlpha = Math.min(1, p.l * 2); T(p.txt, p.x, p.y, { size: 13, w: 4, fill: p.col }); } ctx.globalAlpha = 1;
       drawMagic(); drawRbFx(G);
       if (hurtT > 0) { ctx.fillStyle = 'rgba(255,40,70,' + (hurtT * .22).toFixed(2) + ')'; ctx.fillRect(-FW, -400, FW * 3, FH + 800); }
-    });
+    }));
     ctx.restore();
     withFade(1 - placeCardA(), () => { safe(drawHud); safe(drawOverlays); safe(drawBossWarning); });   // the HUD is drawn separately and first of the overlays: nothing can hide it (it only fades away while a place card has the whole screen)
     safe(drawIntroCards);
@@ -3818,7 +3828,7 @@ function begin() {
     if (M.ranked) say(noteUnranked === 'closed' ? 'The competition is over: practice flight' : noteUnranked === 'offline' ? (netWhy === 'html' ? 'The scoreboard is not available yet: practice flight' : phoneSaysOffline() ? 'Offline: practice flight' : 'Can’t reach the scoreboard: practice flight') : noteUnranked === 'practice' ? 'Practice flight' : 'The scoreboard is slow right now: practice flight', 2.6);
   }
   runUp = !demo && mode === 'classic' ? upStr() : ''; G = newGame(runSeed, mode, demo ? 'frost' : uniOf(), runUp); G.keepEv = true; SPR.clear(); phaseQ = 0; placeCard.l = bossCard.l = cafeDrop.l = 0; uniMood.hop = uniMood.sad = 0; rfx = { x: FW / 2, y: FH - 150 }; trajD = []; skillSteps = []; skillQ = 0; rbSteps = []; rbQ = 0; rbRel = { t: 0 }; demoRbT = 0; accT = 0; if (demo) { G.nextIce = 12 * SPS; }
-  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; banner = { txt: 'GO!', sub: '', l: 1.2 }; introQ = 1.3;   // every flight starts already firing fast, then Phase 1 is introduced
+  placeFrom = placeTo = 0; placeMix = 1; st = 'play'; sfx('go'); musicStart(); boostFx = { t: 1 }; showPlaceCard(0);   // every flight starts already firing fast, then Phase 1 is introduced
   if (!demo && stats.games < 3) say(' Drag your finger to fly. Your unicorn shoots by itself!', 3.4);
 }
 function endRun(reason) {
@@ -3878,7 +3888,7 @@ function handleEvents() {
     else if (n === 'iceshard') sfx('iceshard', SHARD_THEMES[viewPlace()]);
     else if (n === 'crash') burst(a, b, '#ff9a8a', 10);
     else if (n === 'rbrel') { rbRel = { t: 1 }; sfx('rbrel', MKEYS[g.stage % 8] || 0); duckMusic(1.5); setTimeout(() => magicVoice(false), 120); shake = Math.max(shake, .5); vib([40, 30, 80]); banner = { txt: 'RAINBREW POWER!', sub: '', l: 1.4 }; award('magic'); burst(g.px, g.py, '#ffe27a', 16); if (g.boss) { bossSquash = Math.min(.06, bossSquash + .04); burst(g.boss.x, g.boss.y, '#ffffff', 14); } }
-    else if (n === 'boss') { bossCard = { name: BOSS_NAME[a], taunt: BOSS_TAUNT[a] || '', l: 3.2, l0: 3.2 }; sfx('b_' + a); musicBossIn(); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
+    else if (n === 'boss') { bossCard = { name: BOSS_NAME[a], taunt: (BOSS_TAUNT[a] || [''])[Math.min(2, Math.floor(b / PLACES.length))], l: 3.2, l0: 3.2 }; sfx('b_' + a); musicBossIn(); if (!demo && !LS.get('us_rbhint', 0)) { LS.set('us_rbhint', 1); setTimeout(() => { if (G === g) say('Boss fight! TAP the glowing Rainbrew button!', 3.4); }, 2800); } }
     else if (n === 'bossatk') { if (now - lastAtk > 250) { lastAtk = now; sfx('a_' + a); } }
     else if (n === 'angry' || n === 'enraged') { bsay(n === 'angry' ? 'IT IS ANGRY!' : 'FINAL PUSH!', 2); sfx('b_' + a); shake = .35; vib(100); }
     else if (n === 'thunder') { thunderT = .4; shake = .3; sfx('thunder'); }
@@ -3886,7 +3896,7 @@ function handleEvents() {
     else if (n === 'bossdying') { bsay(BOSS_NAME[a] + ' IS FALLING!', 1.6); sfx('bossdying'); shake = .5; vib(120); }
     else if (n === 'bossdead') { award('boss'); if (b >= 7) award('all8'); bsay(BOSS_NAME[a] + ' DEFEATED!', 3); sfx('victory'); musicVictory(); if (!demo && ING[a]) { const nw = cafeAdd(a), all = cafeTotal() >= 8; cafeDrop = { id: a, isNew: nw, n: cafe[a], done: all && !ach.barista, l: 4, l0: 4 }; if (all) award('barista'); } for (let k = 0; k < 60; k++) { const an = k * .37, v = 60 + (k % 6) * 35; spark(FW / 2, 150, Math.cos(an) * v, Math.sin(an) * v, .9 + (k % 4) * .2, COL[k % 7], 5 + (k % 3) * 2); } placeFrom = placeTo; placeTo = (b + 1) % PLACES.length; placeMix = 0; }   // the next place starts fading in right away
     else if (n === 'bossflee') bsay('The ' + BOSS_NAME[a].toLowerCase() + ' flew away!', 2.6);
-    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } showPlaceCard(a); sfx('stage'); if (a >= 2) award('place3'); }
+    else if (n === 'stage') { if (placeTo !== a % PLACES.length) { placeFrom = placeTo; placeTo = a % PLACES.length; placeMix = 0; } if (a < PLACES.length) showPlaceCard(a); /* each world is introduced once: when the bosses come round again there is no second introduction */ sfx('stage'); if (a >= 2) award('place3'); }
     else if (n === 'level') { if (!(g.M.boss && a % BOSS_EVERY === 0)) { if (placeCard.l > 0) phaseQ = placeCard.l + .3; else phaseIntro(g); } }   // the place is introduced first, then its creatures (never both at once)   // each level is its own creature
   }
   g.ev.length = 0;
@@ -3967,9 +3977,9 @@ function update(dt) {
 const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : f => setTimeout(() => f(Date.now()), 16);
 function loop(ts) {                                               // (a bomb brings a moment of slow motion)
   raf(loop);
-  const dtMs = ts - lastTs; if (cfg.fps && dtMs < 1000 / cfg.fps - 3) return;
+  const dtMs = ts - lastTs; if (dtMs < 1000 / (cfg.fps || 60) - 3) return;   // never draw more than 60 times a second: a 120 Hz phone would do twice the work for nothing you can see
   lastTs = ts; now = ts; const dt = Math.min(.1, Math.max(0, dtMs / 1000 || .016));
-  if (st === 'play' && dtMs > 0) { perfAcc += Math.min(dtMs, 100); perfN++; if (perfN >= 150) { const avg = perfAcc / perfN; perfAcc = 0; perfN = 0; if (avg > 25 && cfg.quality !== 'low' && perfDown < 2) { perfDown++; cfg.quality = cfg.quality === 'high' ? 'med' : 'low'; saveCfg(); resize(); say('Graphics set to ' + (cfg.quality === 'low' ? 'Low' : 'Medium') + ' for smoother play', 2.4); } } }   // a slow phone is switched to a lighter setting automatically
+  if (st === 'play' && dtMs > 0) { perfAcc += Math.min(dtMs, 100); perfN++; if (perfN >= 150) { const avg = perfAcc / perfN; perfAcc = 0; perfN = 0; if (avg > 22 && perfDown < 5) { perfDown++; const cur = DPR, nx = [2, 1.75, 1.5, 1.25, 1].find(v => v < cur - .01); if (nx) { dprCap = nx; LS.set('us_dprcap', nx); resize(); } else if (cfg.quality !== 'low') { cfg.quality = 'low'; saveCfg(); resize(); } } } }   // a slow phone is switched to a lighter setting automatically
   try { update(slowmo > 0 ? dt * .35 : dt); if (st !== 'pause' || ++idleN % 6 === 0) draw(); } catch (e) { window.__errs = (window.__errs || 0) + 1; }
 }
 /* ---------- finger, mouse and keyboard ---------- */
