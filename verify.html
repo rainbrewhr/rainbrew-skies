@@ -128,7 +128,7 @@ function closeModal(result) { const r = modalResolve; modalResolve = null; S.mod
 /* ---------- actions ---------- */
 const norm = c => String(c || '').toUpperCase().replace(/\s/g, '');
 function patchRow(row) { const i = S.rows.findIndex(r => r.code === row.code); if (i >= 0) S.rows[i] = row; if (S.found && S.found.code === row.code) S.found = row; }
-function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Rainbrew Sky (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' at the cashier to claim your prize.'; }
+function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Rainbrew Sky (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' and a valid ID at the cashier to claim your prize.'; }
 function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') { renderComp(); loadEvents(); } if (v === 'tools') renderTools(); }
 async function act(a, code, extra) {
   try {
