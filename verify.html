@@ -161,9 +161,9 @@ async function act(a, code, extra) {
       const j = await call({ action: 'a_rename', code, name: n.value }); flash('Renamed to ' + j.name + ' (' + j.changed + ' score' + (j.changed === 1 ? '' : 's') + ')'); return load();
     }
     if (a === 'erase') {
-      const n = await ask({ title: 'Erase a player’s data', body: 'Use this only when the player (or their parent or guardian) asks us to delete their data. Type their <b>mobile number</b>, or one of their score codes. Their name and number are removed from every score, their scores leave the boards, they leave all circles, and circles they own are hidden. <b>This cannot be undone.</b>', input: { label: 'Mobile number or score code', value: '', placeholder: '09…  or RB-XXXX-XXXX' }, ok: 'Erase', danger: true });
+      const n = await ask({ title: 'Erase a player’s data', body: 'Use this only when the player (or their parent or guardian) asks us to delete their data. Type their <b>mobile number</b>, or one of their score codes. Their name and number are removed from every score, their scores leave the boards, they leave all circles, and circles they own are hidden. <b>This cannot be undone.</b>', input: { label: 'Mobile number or score code', value: '', placeholder: '09…  or 482913' }, ok: 'Erase', danger: true });
       if (!n.ok) return; const v = String(n.value).trim(); if (!v) return;
-      const j = await call(Object.assign({ action: 'a_erase' }, /^RB-/i.test(v) ? { code: v.toUpperCase() } : { contact: v }));
+      const j = await call(Object.assign({ action: 'a_erase' }, /^(RB-|\d{3}[\s-]?\d{3}$)/i.test(v) ? { code: v.toUpperCase() } : { contact: v }));
       flash('Erased: ' + j.scores + ' score' + (j.scores === 1 ? '' : 's') + ', ' + j.members + ' circle membership' + (j.members === 1 ? '' : 's') + ', ' + j.circles + ' circle' + (j.circles === 1 ? '' : 's') + ' hidden'); return load();
     }
     if (a === 'compsave') return saveComp();
@@ -195,8 +195,9 @@ function onSearch(v) {
   S.q = v; S.found = null; renderList();
   clearTimeout(lookupT);
   const c = norm(v);
-  if (/^(RB-?)?[0-9A-F]{4}-?[0-9A-F]{4}$/.test(c) && !visible().length) {                      // a full code that isn't in the list: ask the server
-    const full = c.replace(/^RB-?/, '').replace('-', ''), code = 'RB-' + full.slice(0, 4) + '-' + full.slice(4, 8);
+  const six = /^\d{3}-?\d{3}$/.test(c);                                                       // the new 6-digit codes
+  if ((six || /^(RB-?)?[0-9A-F]{4}-?[0-9A-F]{4}$/.test(c)) && !visible().length) {              // a full code that isn't in the list: ask the server
+    const full = c.replace(/^RB-?/, '').replace('-', ''), code = six ? full : 'RB-' + full.slice(0, 4) + '-' + full.slice(4, 8);
     lookupT = setTimeout(async () => { try { const j = await call({ action: 'a_lookup', code }); S.found = j.row; S.error = ''; } catch (e) { S.error = e.message; } renderList(); renderBanner(); }, 250);
   }
 }

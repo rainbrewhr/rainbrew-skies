@@ -9,7 +9,7 @@
  *  4. This script replays the log against the same seed and rules. The score must match exactly,
  *     every event must refer to a real item at a possible time, and the run cannot be longer than the
  *     real time elapsed since the session was issued.
- *  5. Each accepted run gets a verification code (RB-XXXX-XXXX) that staff can look up in verify.html.
+ *  5. Each accepted run gets a 6-digit verification code (for example 482913) that staff can look up in verify.html.
  * Scores can never exceed a "perfect game" for that seed; runs close to perfect are flagged REVIEW.
  */
 var CONFIG = {
@@ -31,7 +31,7 @@ var CONFIG = {
 };
 
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 38;
+var SIM_VERSION = 39;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
@@ -55,7 +55,7 @@ var UNICORNS = {                                                  // the full ki
   solar:   { tier: 2, cd: 3, lanes: 1, dmg: 0.9, pierce: 0, helpers: 0, shield0: 0 },
   void:    { tier: 3, cd: 7, lanes: 1, dmg: 4,   pierce: 3, helpers: 0, shield0: 0 },
   emerald: { tier: 4, cd: 8, lanes: 3, dmg: 2,   pierce: 0, helpers: 0, shield0: 0 },
-  golden:  { tier: 5, cd: 6, lanes: 3, dmg: 2,   pierce: 1, helpers: 1, shield0: 1 }
+  golden:  { tier: 5, cd: 5, lanes: 3, dmg: 2.6, pierce: 1, helpers: 1, shield0: 1 }
 };
 var UP_MAX = { d: 5, r: 5, t: 3 };                                // weapon upgrades bought with gems: damage, fire rate and projectile tier (Classic only)
 function parseUp(u) { var m = /^d([0-5])r([0-5])t([0-3])$/.exec(String(u || '')); return m ? { d: +m[1], r: +m[2], t: +m[3] } : { d: 0, r: 0, t: 0 }; }
@@ -406,7 +406,8 @@ function useSkill(G) {                                           // RAINBREW POW
     for (i = 0; i < G.bl.length; i++) E(G, 'boom', G.bl[i].x, G.bl[i].y, 'orb');
     G.en = []; G.bl = []; G.ice = []; G.hz = []; G.stone = 0;
     if (b && b.hp > 0 && b.y > 20) { b.hp -= Math.ceil(b.max * 0.35); b.cd += 60; b.hf = 8; G.hitsDealt++; if (b.hp < 0) b.hp = 0; }
-    G.hyper = 240; G.inv = Math.max(G.inv, 150); if (G.lives < G.maxL) G.lives++; G.shield = 1; G.ultT = 12;
+    var sun = !G.M.fair;                                                                           // Classic (the full kit): 12 s of hyper-fire, 11 s untouchable and 6 s of Sunfire waves; Ranked keeps the equal, shorter version
+    G.hyper = sun ? 360 : 240; G.inv = Math.max(G.inv, sun ? 330 : 150); if (G.lives < G.maxL) G.lives++; G.shield = 1; G.ultT = sun ? 180 : 12;
   }
   if (u !== 'golden') { n += rainbrewBlast(G); hitBoss(G, 0.1); if (b) b.cd += 30; }   // ...and a screen-clearing blast on top of its own show
   E(G, 'skill', u, n);
@@ -439,6 +440,8 @@ function ultStep(G) {
     for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp <= 0) continue; e.x += (cx - e.x) * 0.07; e.y += (cy - e.y) * 0.07; if (t % 3 === 0 && Math.hypot(e.x - cx, e.y - cy) < 80) damage(G, e, 3); }
     var ob = []; for (i = 0; i < G.bl.length; i++) { if (Math.hypot(G.bl[i].x - cx, G.bl[i].y - cy) >= 170) ob.push(G.bl[i]); } G.bl = ob;
     if (t === 1) { for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) < 300) damage(G, e, 999); } G.bl = []; G.ice = []; hitBoss(G, 0.3); if (b) b.cd += 45; for (i = 0; i < 6; i++) mkItem(G, 'gem', cx + (i - 3) * 22, cy, 0, 5); E(G, 'implode', cx, cy); }
+  } else if (u === 'golden' && !G.M.fair) {                         // SUNFIRE (Dawn Break in Classic): for 6 seconds a wave of golden light sweeps the whole screen five times a second, hurting every creature, clearing every shot and chipping the boss
+    if (t % 6 === 0) { for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp > 0 && e.y > 0) damage(G, e, 5); } G.bl = []; G.ice = []; G.hz = []; hitBoss(G, 0.007); if (b && b.hp > 0) b.cd += 2; E(G, 'sunpulse', px, py); }
   } else if (u === 'emerald') {                                     // a band of astral beasts charges from your feet to the top of the screen
     var by = py - (60 - t) * (py / 60);
     wipe(G, function (x, y, r) { return Math.abs(y - by) < r + 45; }, 999);
@@ -699,9 +702,37 @@ function doPost(e) {
       case 'a_erase': return out(admin(b, adminErase));
       case 'a_circle_status': return out(admin(b, adminCircleStatus));
       case 'a_circle_kick': return out(admin(b, adminCircleKick));
+      case 'x_put': return out(actXput(b));
+      case 'x_get': return out(actXget(b));
     }
     return out({ ok: false, err: 'action' });
   } catch (err) { noteFail('doPost', err); return out({ ok: false, err: 'server' }); }
+}
+
+/* ---------- moving progress to another phone: the old phone sends its progress (the game makes it; it has no name or number in it) and gets a one-time 6-digit code; the new phone enters the code within 15 minutes. Nothing is kept afterwards. ---------- */
+function actXput(b) {
+  var did = cleanId(b.did), data = String(b.data || '');
+  if (!did) return { ok: false, err: 'device' };
+  if (!/^RB1-[A-Za-z0-9+\/=]+-[0-9a-z]+$/.test(data) || data.length > 6000) return { ok: false, err: 'format' };
+  var c = CacheService.getScriptCache(), k = 'xp_' + did, n = +(c.get(k) || 0);
+  if (n >= 8) return { ok: false, err: 'rate' };
+  c.put(k, String(n + 1), 3600);
+  for (var i = 0; i < 30; i++) {
+    var code = String(100000 + Math.floor(Math.random() * 900000));
+    if (!c.get('xf_' + code)) { c.put('xf_' + code, data, 900); return { ok: true, code: code, ttl: 900 }; }
+  }
+  return { ok: false, err: 'busy' };
+}
+function actXget(b) {
+  var did = cleanId(b.did), code = String(b.code || '').replace(/\D/g, '');
+  if (!did) return { ok: false, err: 'device' };
+  if (!/^\d{6}$/.test(code)) return { ok: false, err: 'code' };
+  var c = CacheService.getScriptCache(), k = 'xg_' + did, n = +(c.get(k) || 0);
+  if (n >= 8 || +(c.get('xfail') || 0) >= 400) return { ok: false, err: 'rate' };      // a device that keeps guessing is slowed down, and so is guessing from many devices at once
+  var data = c.get('xf_' + code);
+  if (!data) { c.put(k, String(n + 1), 900); c.put('xfail', String((+c.get('xfail') || 0) + 1), 600); return { ok: false, err: 'notfound' }; }
+  c.remove('xf_' + code);                                                                // one use only
+  return { ok: true, data: data };
 }
 
 function out(o) {
@@ -907,8 +938,9 @@ function submitCore(b) {
   // counted (see buildList / adminTop), so even two requests racing each other can never credit one run twice.
   var dup = false, prev = c.get('sid_' + tok.sid);
   if (!prev && now - tok.iat > 5 * 3600 * 1000) prev = codeForSid(tok.sid);   // the cache only remembers 6 hours; older sessions are looked up in the sheet
-  if (prev) { if (prev === code) dup = true; else return { ok: false, err: 'used' }; }
-  else c.put('sid_' + tok.sid, code, 21600);
+  if (prev) { if (isChainCode(tok.sid, v.score, mode, pid, prev)) { dup = true; code = prev; } else return { ok: false, err: 'used' }; }
+  else { code = uniqueCode(tok.sid, v.score, mode, pid); c.put('sid_' + tok.sid, code, 21600); }
+  reply.code = code;
   if (dup) { reply.dup = true; return reply; }                         // the same run sent again (e.g. the first reply was lost): same code, no new row
 
   var rowVals = [now, Utilities.formatDate(new Date(now), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), season, mode, name, contact, pid, v.score, code, risk, isTest ? 'TEST' : 'OK', tok.sid, v.maxCombo, v.catches, v.secs, capEvents(b.tr), '', '', note, UNICORNS[b.uni] ? b.uni : 'frost', UNAMES[UNICORNS[b.uni] ? b.uni : 'frost'] || '', /^v\d{1,3}:[AM]$/.test(String(b.cv || '')) ? String(b.cv) : ''];   // the last column records which privacy notice the player agreed to (v1) and whether they are an adult (A) or a minor with a guardian's agreement (M)
@@ -988,7 +1020,9 @@ function adminTop(b) {
   return { ok: true, season: season, info: seasonInfo(mode), auto: !prop('SEASON'), mode: mode, players: list.length, rows: list.slice(0, Math.min(100, +b.limit || 25)) };
 }
 
+function normCode(code) { code = String(code || '').toUpperCase().trim(); return /^\d{3}[\s-]?\d{3}$/.test(code) ? code.replace(/\D/g, '') : code; }
 function findByCode(code) {
+  code = normCode(code);
   var sh = sheet(), last = sh.getLastRow();
   if (last < 2) return null;
   var f = sh.getRange(2, COL.CODE, last - 1, 1).createTextFinder(code).matchEntireCell(true).findNext();
@@ -1532,7 +1566,10 @@ function readToken(t) {
   if (p.length !== 2 || !safeEq(Utilities.base64EncodeWebSafe(hmacRaw(p[0])), p[1])) return null;
   try { return JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(p[0])).getDataAsString()); } catch (e) { return null; }
 }
-function makeCode(sid, score, mode, pid) { var h = hmacHex('code|' + sid + '|' + score + '|' + mode + '|' + pid).slice(0, 8).toUpperCase(); return 'RB-' + h.slice(0, 4) + '-' + h.slice(4); }
+function codeN(sid, score, mode, pid, salt) { var h = hmacHex('code|' + sid + '|' + score + '|' + mode + '|' + pid + (salt ? '|' + salt : '')).slice(0, 10); return String(100000 + parseInt(h, 16) % 900000); }   // six digits, 100000 to 999999
+function makeCode(sid, score, mode, pid) { return codeN(sid, score, mode, pid, 0); }
+function uniqueCode(sid, score, mode, pid) { for (var s = 0; s < 10; s++) { var c = codeN(sid, score, mode, pid, s); if (!findByCode(c)) return c; } return codeN(sid, score, mode, pid, 9); }   // never hand two players the same code
+function isChainCode(sid, score, mode, pid, code) { for (var s = 0; s < 10; s++) if (codeN(sid, score, mode, pid, s) === code) return true; return false; }
 function cleanId(s) { s = String(s || ''); return /^[A-Za-z0-9_-]{8,40}$/.test(s) ? s : ''; }
 function cleanName(s) { return String(s || '').replace(/[\u0000-\u001f<>&"'`\\\/]/g, '').replace(/^[=+\-@\s]+/, '').replace(/\s+/g, ' ').trim().slice(0, 12); }
 /* ---------- name filter: player names, circle names ----------
