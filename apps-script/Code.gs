@@ -31,7 +31,7 @@ var CONFIG = {
 };
 
 /* ===== SIM v31 — Rainbrew Sky: the whole game world. The SAME code runs in the game (index.html) and on the server (Code.gs), so every score can be re-played and verified. Change both or neither. ===== */
-var SIM_VERSION = 38;
+var SIM_VERSION = 39;
 var W = 360, H = 640, SPS = 30;                                   // the field is always 360 x 640 "units"; 30 steps a second
 var MAXBEAMS = 5;                                                // no matter how they stack (shop, power-ups), you never fire more than 5 beams
 var MAXSTEP = 46;                                                 // the fastest the unicorn can move in one step: nobody can teleport
@@ -55,7 +55,7 @@ var UNICORNS = {                                                  // the full ki
   solar:   { tier: 2, cd: 3, lanes: 1, dmg: 0.9, pierce: 0, helpers: 0, shield0: 0 },
   void:    { tier: 3, cd: 7, lanes: 1, dmg: 4,   pierce: 3, helpers: 0, shield0: 0 },
   emerald: { tier: 4, cd: 8, lanes: 3, dmg: 2,   pierce: 0, helpers: 0, shield0: 0 },
-  golden:  { tier: 5, cd: 6, lanes: 3, dmg: 2,   pierce: 1, helpers: 1, shield0: 1 }
+  golden:  { tier: 5, cd: 5, lanes: 3, dmg: 2.6, pierce: 1, helpers: 1, shield0: 1 }
 };
 var UP_MAX = { d: 5, r: 5, t: 3 };                                // weapon upgrades bought with gems: damage, fire rate and projectile tier (Classic only)
 function parseUp(u) { var m = /^d([0-5])r([0-5])t([0-3])$/.exec(String(u || '')); return m ? { d: +m[1], r: +m[2], t: +m[3] } : { d: 0, r: 0, t: 0 }; }
@@ -406,7 +406,8 @@ function useSkill(G) {                                           // RAINBREW POW
     for (i = 0; i < G.bl.length; i++) E(G, 'boom', G.bl[i].x, G.bl[i].y, 'orb');
     G.en = []; G.bl = []; G.ice = []; G.hz = []; G.stone = 0;
     if (b && b.hp > 0 && b.y > 20) { b.hp -= Math.ceil(b.max * 0.35); b.cd += 60; b.hf = 8; G.hitsDealt++; if (b.hp < 0) b.hp = 0; }
-    G.hyper = 240; G.inv = Math.max(G.inv, 150); if (G.lives < G.maxL) G.lives++; G.shield = 1; G.ultT = 12;
+    var sun = !G.M.fair;                                                                           // Classic (the full kit): 12 s of hyper-fire, 11 s untouchable and 6 s of Sunfire waves; Ranked keeps the equal, shorter version
+    G.hyper = sun ? 360 : 240; G.inv = Math.max(G.inv, sun ? 330 : 150); if (G.lives < G.maxL) G.lives++; G.shield = 1; G.ultT = sun ? 180 : 12;
   }
   if (u !== 'golden') { n += rainbrewBlast(G); hitBoss(G, 0.1); if (b) b.cd += 30; }   // ...and a screen-clearing blast on top of its own show
   E(G, 'skill', u, n);
@@ -439,6 +440,8 @@ function ultStep(G) {
     for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp <= 0) continue; e.x += (cx - e.x) * 0.07; e.y += (cy - e.y) * 0.07; if (t % 3 === 0 && Math.hypot(e.x - cx, e.y - cy) < 80) damage(G, e, 3); }
     var ob = []; for (i = 0; i < G.bl.length; i++) { if (Math.hypot(G.bl[i].x - cx, G.bl[i].y - cy) >= 170) ob.push(G.bl[i]); } G.bl = ob;
     if (t === 1) { for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) < 300) damage(G, e, 999); } G.bl = []; G.ice = []; hitBoss(G, 0.3); if (b) b.cd += 45; for (i = 0; i < 6; i++) mkItem(G, 'gem', cx + (i - 3) * 22, cy, 0, 5); E(G, 'implode', cx, cy); }
+  } else if (u === 'golden' && !G.M.fair) {                         // SUNFIRE (Dawn Break in Classic): for 6 seconds a wave of golden light sweeps the whole screen five times a second, hurting every creature, clearing every shot and chipping the boss
+    if (t % 6 === 0) { for (i = 0; i < G.en.length; i++) { e = G.en[i]; if (e.hp > 0 && e.y > 0) damage(G, e, 5); } G.bl = []; G.ice = []; G.hz = []; hitBoss(G, 0.007); if (b && b.hp > 0) b.cd += 2; E(G, 'sunpulse', px, py); }
   } else if (u === 'emerald') {                                     // a band of astral beasts charges from your feet to the top of the screen
     var by = py - (60 - t) * (py / 60);
     wipe(G, function (x, y, r) { return Math.abs(y - by) < r + 45; }, 999);
