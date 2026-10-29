@@ -78,7 +78,7 @@ table.lb tr.me td{background:var(--soft)}
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:12px 0 8px}
 .pod{flex:1;min-width:0;border-radius:18px 18px 8px 8px;padding:8px 4px 8px;border:2px solid var(--soft);background:var(--soft)}
 .pod .medal{font-size:1.7rem;line-height:1.1}.pod .crown{font-size:1.25rem;line-height:1}
-.pod .pn{font-weight:800;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}.pod .ps{font-weight:800;font-size:1.15rem}
+.pod .pn{font-weight:800;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}.pod .ps{font-weight:800;font-size:1.15rem;white-space:nowrap;overflow:hidden;max-width:100%;min-width:0;font-variant-numeric:tabular-nums}
 .pod.p1{min-height:136px;padding-top:10px;border-color:#f5b700;background:rgba(255,205,60,.42);box-shadow:0 0 18px rgba(255,200,40,.35)}
 .pod.p1 .medal{font-size:2.4rem}.pod.p1 .ps{font-size:1.5rem}
 .pod.p2{min-height:108px;border-color:#aab4c4;background:rgba(190,200,215,.45)}
@@ -211,6 +211,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .pfhead{display:flex;align-items:center;gap:12px;margin:2px 0 10px;justify-content:center}.avatar{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:1.6rem;font-weight:800;color:#fff;background:#7b3fe4;box-shadow:0 0 18px rgba(170,130,255,.6)}.pfwho{display:flex;flex-direction:column;text-align:left}.pfwho b{font-size:1.15rem}.pfwho span{font-size:.78rem;opacity:.7}
 .pstats{display:flex;gap:8px;margin:6px 0}.pst{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.1);border-radius:14px;padding:8px 4px}.pst i{display:grid;width:24px;height:24px}.pst svg{width:24px;height:24px}.pst b{font-size:1.05rem}
 .bdgcount{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0 4px;font-size:.95rem}.bdgcount svg{width:22px;height:22px}
+.shopask{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(10,4,30,.62);animation:ovIn .25s ease-out backwards}.shopcard{width:100%;max-width:340px;box-sizing:border-box;background:var(--card);color:var(--ink);border-radius:24px;padding:20px 18px 16px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45);backdrop-filter:blur(6px)}.shopcard h2{margin:6px 0 4px;font-size:1.35rem}.shopcard p{margin:4px 0}.skico svg{width:44px;height:44px;stroke:var(--btn);stroke-width:1.8;fill:none}.skl{list-style:none;padding:0;margin:10px 0}.skl li{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:12px;background:var(--soft);margin:5px 0;font-size:.92rem}.shopcard button{display:block;width:100%;margin:8px 0 0}
 .winbox{text-align:center}.winmedal{width:92px;height:92px;margin:8px auto;border-radius:50%;display:grid;place-items:center;font-size:2.6rem;font-weight:900;color:#fff;background:linear-gradient(135deg,#ffd86a,#e8a820);box-shadow:0 6px 18px rgba(232,168,32,.45)}.winmedal.m2{background:linear-gradient(135deg,#eef1f7,#98a4bb);box-shadow:0 6px 18px rgba(120,136,170,.4)}.winmedal.m3{background:linear-gradient(135deg,#f3c79a,#b0662a);box-shadow:0 6px 18px rgba(176,102,42,.4)}.winc{margin:6px 0}.winc b{display:block;font-size:1.5rem;letter-spacing:.06em}
 .xcode{font-size:2.6rem;font-weight:900;letter-spacing:.14em;text-align:center;margin:12px 0 4px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--p-ink,#3a1a60)}.pnum{width:100%;box-sizing:border-box;font:700 1.6rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-align:center;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0}
 .pcode{width:100%;box-sizing:border-box;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:8px;margin:8px 0;resize:none;word-break:break-all}
@@ -4299,7 +4300,7 @@ function screen(h, name, back) {
   curScr = name || ''; curBack = back || ''; box.dataset.s = curScr; ov.classList.toggle('menuov', curScr === 'menu'); ov.classList.toggle('cardsov', curScr === 'cards'); if (name !== 'lb') clearInterval(lbTimer); if (name !== 'menu') menuMore = false;
   const ttl = ((/<h1>(.*?)<\/h1>/.exec(h) || [])[1] || '').replace(/<[^>]+>/g, '');
   box.innerHTML = (back ? `<div class="topbar"><button class="back" data-a="${back}" aria-label="Back">← Back</button><span class="ttl">${ttl}</span></div>` : '') + `<div class="pane">${h}${name === 'menu' || name === 'set' ? FOOT : ''}</div>`;   // the Back bar stays fixed at the top while the page scrolls
-  ov.style.display = 'flex'; box.scrollTop = keep ? sc : 0;
+  ov.style.display = 'flex'; box.scrollTop = keep ? sc : 0; fitPods();
 }
 function chip(m) { return `<button class="chip${mode === m ? ' on' : ''}" data-a="mode:${m}" role="radio" aria-checked="${mode === m}">${m === 'rank' ? ' ' : ''}${MODE_NAME[m]}</button>`; }
 /* ---------- competition: staff set the dates; everyone sees the countdown and, after the deadline, who won ---------- */
@@ -4458,7 +4459,7 @@ function mvHtml(r, rank) {                                           // a small 
 }
 function podium(rows) {
   if (!rows.length) return '';
-  const pod = (r, c, medal, crown) => { if (!r) return ''; const f = lbBits(r); return `<div class="pod ${c}${r.p && r.p === myPid ? ' me' : ''}">${crown ? '<div class="crown"></div>' : ''}<div class="medal">${c.slice(1)}</div>${f.face}<div class="pn">${esc(r.n)}</div>${f.cn ? `<div class="pc">${f.cn}</div>` : ''}<div class="ps">${r.s}</div>${mvHtml(r, +c.slice(1))}</div>`; };
+  const pod = (r, c, medal, crown) => { if (!r) return ''; const f = lbBits(r); return `<div class="pod ${c}${r.p && r.p === myPid ? ' me' : ''}">${crown ? '<div class="crown"></div>' : ''}<div class="medal">${c.slice(1)}</div>${f.face}<div class="pn">${esc(r.n)}</div>${f.cn ? `<div class="pc">${f.cn}</div>` : ''}<div class="ps">${Number(r.s).toLocaleString()}</div>${mvHtml(r, +c.slice(1))}</div>`; };
   return `<div class="podium" aria-label="Top three">${pod(rows[1], 'p2', '')}${pod(rows[0], 'p1', '', 1)}${pod(rows[2], 'p3', '')}</div>`;
 }
 function restRows(rows) {
@@ -4471,9 +4472,14 @@ function lbChase(rows) {                                          // a rivalry n
   if (i > 0) { const t = rows[i - 1]; return `<div class="chase">You are #${rows[i].r || i + 1}. Only <b>${fmt(t.s - rows[i].s + 1)}</b> pts to pass ${esc(t.n)}!</div>`; }
   return `<div class="chase">Can you beat ${esc(rows[0].n)}'s <b>${fmt(rows[0].s)}</b>? Grab the crown!</div>`;
 }
+function fitText(el) {                                              // makes a number fit its container: the font shrinks until the whole number is inside (8-digit scores on the podium)
+  if (!el || !el.clientWidth) return; el.style.fontSize = ''; let sz = parseFloat(getComputedStyle(el).fontSize) || 16;
+  while (el.scrollWidth > el.clientWidth + 0.5 && sz > 8) { sz -= 0.5; el.style.fontSize = sz + 'px'; }
+}
+function fitPods() { document.querySelectorAll('.pod .ps').forEach(fitText); }
 function lbPop() {                                                 // scores count up on the podium
   if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion:reduce)').matches) return;
-  document.querySelectorAll('.pod .ps').forEach((el, k) => { const to = parseInt(el.textContent.replace(/\D/g, ''), 10); if (!to) return; const t0 = performance.now() + 250 + k * 120; el.textContent = '0'; const f = t => { const u = Math.max(0, Math.min(1, (t - t0) / 900)); el.textContent = Math.round(to * (1 - Math.pow(1 - u, 3))).toLocaleString(); if (u < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+  fitPods(); document.querySelectorAll('.pod .ps').forEach((el, k) => { const to = parseInt(el.textContent.replace(/\D/g, ''), 10); if (!to) return; const t0 = performance.now() + 250 + k * 120; el.textContent = '0'; const f = t => { const u = Math.max(0, Math.min(1, (t - t0) / 900)); el.textContent = Math.round(to * (1 - Math.pow(1 - u, 3))).toLocaleString(); if (u < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); });
 }
 function recentMissing(m) { const rc = LS.get('us_recent', null); return !!(rc && rc.mode === m && Date.now() - rc.at < 120000 && !lbRows.some(x => x.p === myPid) && !lbMe); }
 function paintLb(loading) {
@@ -4536,6 +4542,24 @@ function unsentDel(r) { LS.set('us_unsent', unsentList().filter(x => x.token !==
 const rejectedList = () => LS.get('us_rejected', []) || [];
 function rejectAdd(p, err) { const q = rejectedList(); q.push({ mode: p.mode, score: p.score, err, at: Date.now() }); LS.set('us_rejected', q.slice(-10)); }
 const HEAD = { lives: 'Out of lives ', time: 'Time’s up! ', quit: 'Run ended', cap: 'Time cap reached ' };
+/* ---------- after a flight: if the player can afford an upgrade or a unicorn, ask once whether to go to the shop ---------- */
+function shopOffer(r) {
+  if (demo || !r || r.shopAsked) return; r.shopAsked = true;
+  const items = [];
+  for (const k of ['d', 'r', 't']) { const l = shop.up[k]; if (l < UPG[k].max && shop.gems >= UPG[k].cost[l]) items.push({ n: UPG[k].name, c: UPG[k].cost[l], w: 1 }); }
+  for (const c of CHARACTERS) if (!shop.owned.includes(c.id) && shop.gems >= c.price) items.push({ n: c.name, c: c.price, w: 0 });
+  if (!items.length) return;
+  items.sort((a, b) => a.c - b.c);
+  setTimeout(() => {
+    if (st !== 'over' || run !== r || document.getElementById('shopask')) return;
+    const el = document.createElement('div'); el.id = 'shopask'; el.className = 'shopask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Upgrade in the shop?');
+    el.innerHTML = '<div class="shopcard"><div class="skico">' + ico('shop') + '</div><h2>Upgrade in the shop?</h2><p>You have <b><i class="gem"></i> ' + fmt(shop.gems) + ' gems</b>.</p><ul class="skl">' + items.slice(0, 3).map(i => '<li><span>' + esc(i.n) + '</span><b><i class="gem"></i> ' + fmt(i.c) + '</b></li>').join('') + '</ul><p class="meta">Upgrades make your Classic flights stronger. In Ranked everyone keeps equal power.</p><button id="skgo">Go to the shop</button><button class="sec" id="skno">Not now</button></div>';
+    document.body.appendChild(el); sfx('badge');
+    const close = () => { el.remove(); };
+    el.querySelector('#skno').onclick = () => { sfx('click'); close(); };
+    el.querySelector('#skgo').onclick = () => { sfx('click'); close(); shopTab = items.some(i => i.w) ? 'w' : 'u'; shopFocus = ''; unicornsScreen(); };
+  }, 1300);
+}
 function overScreen() {
   const r = run; let h = `<h1>${HEAD[r.reason] || 'Great job!'}</h1><p class="big">You scored <b>${r.score}</b></p>
   ${r.unlocked && r.unlocked.length ? `<p class="note"> New unicorn unlocked: <b>${r.unlocked.map(id => UNI_INFO[id].n).join(', ')}</b>. Pick it in  Unicorns.</p>` : ''}
@@ -4557,6 +4581,7 @@ function overScreen() {
   h += '<p class="meta">Come sip magic at Rainbrew Coffee Shop </p>';
   screen(h);
   if (autoRun) autoRecord(r);
+  shopOffer(r);
 }
 function formInner(r, errMsg) {
   return `<p>Enter your unicorn name to join the leaderboard:</p>

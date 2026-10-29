@@ -53,6 +53,11 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 - **The 3-2-1 countdown** teaches one thing per number: 3 "Drag to fly", 2 "Collect gems", 1 "Defeat the enemies". Nothing else is on screen except the number.
 - **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
 
+## After a flight: a shop pop-up; and big scores on the podium (client only, no Code.gs change)
+
+- **Shop pop-up:** when a flight ends and the player has enough gems to buy an upgrade or a unicorn, a pop-up asks "Upgrade in the shop?", shows the gem balance and the (up to three) cheapest things they can afford, and offers *Go to the shop* or *Not now*. It appears once per flight, about a second after the score screen, and never when the player cannot afford anything (so it does not nag new players). *Go to the shop* opens the Weapons tab if an upgrade is affordable (the Unicorns tab otherwise); the score still uploads in the background and the code stays in *My scores and codes* in the profile.
+- **Podium numbers:** scores now show with commas and always fit inside their own podium card, even 7 to 8 digits on a small phone (the text shrinks just enough to fit). This also applies to the circle, event and winners podiums.
+
 ## Simple 6-digit codes (Code.gs only: **redeploy Code.gs**, rules stay at version 39)
 
 - **Prize codes are now 6 digits** (for example `482 913`). Each accepted Ranked or Classic run gets one, shown on the score screen and in *My scores and codes*; a winner's pop-up shows it too. The server makes sure no two runs ever get the same code (a rare clash moves to the next code in a fixed chain), and a run sent twice gets the same code back. Staff can type it with or without a space or dash in the staff page's search box, the erase tool and the lookup. **Old codes (`RB-XXXX-XXXX`) still work** for lookups.
