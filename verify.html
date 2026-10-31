@@ -54,10 +54,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,.btn:focus-visible
     <div id="found"></div><div id="list"></div>
   </section>
   <section id="v-comp" hidden><div id="boards"></div><div id="compcard"></div><div id="evcard"></div></section>
+  <section id="v-feedback" hidden><div id="fbbox"></div></section>
   <section id="v-tools" hidden><div id="diag"></div><div id="tools"></div></section>
   <nav class="bottom" id="nav" aria-label="Sections">
     <button data-act="view" data-code="winners" id="n-winners"><b>🏆</b>Winners</button>
     <button data-act="view" data-code="comp" id="n-comp"><b>🏁</b>Contest</button>
+    <button data-act="view" data-code="feedback" id="n-feedback"><b>💬</b>Feedback</button>
     <button data-act="view" data-code="tools" id="n-tools"><b>🛠</b>Tools</button>
   </nav>
 </div>
@@ -129,7 +131,7 @@ function closeModal(result) { const r = modalResolve; modalResolve = null; S.mod
 const norm = c => String(c || '').toUpperCase().replace(/\s/g, '');
 function patchRow(row) { const i = S.rows.findIndex(r => r.code === row.code); if (i >= 0) S.rows[i] = row; if (S.found && S.found.code === row.code) S.found = row; }
 function msgFor(r, rank) { return 'Hi ' + r.name + '! 🎉 Congrats from Rainbrew Coffee Shop. You’re ' + (rank ? '#' + rank + ' ' : '') + 'in Rainbrew Sky (' + r.mode + ') with ' + r.score + ' pts. Please show your code ' + r.code + ' and a valid ID at the cashier to claim your prize.'; }
-function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') { renderComp(); loadEvents(); } if (v === 'tools') renderTools(); }
+function setView(v) { S.view = v; renderView(); window.scrollTo && window.scrollTo(0, 0); if (v === 'comp') { renderComp(); loadEvents(); } if (v === 'tools') renderTools(); if (v === 'feedback') loadFeedback(); }
 async function act(a, code, extra) {
   try {
     if (a === 'view') { try { history.pushState({ rbv: 1 }, ''); } catch (e) {} return setView(code); }
@@ -137,6 +139,8 @@ async function act(a, code, extra) {
     if (a === 'mcancel') return closeModal({ ok: false });
     if (a === 'mode') { S.mode = code; S.found = null; S.q = ''; if ($('q')) $('q').value = ''; S.rows = []; S.loaded = false; S.busy = false; return load(); }
     if (a === 'refresh') { S.busy = false; return load(); }
+    if (a === 'fbf') { S.fbFilter = code; return renderFeedback(); }
+    if (a === 'fbmark') { await call({ action: 'a_feedback_mark', row: +code, status: extra }); await loadFeedback(); return flash(extra === 'DONE' ? 'Marked as done' : extra === 'NEW' ? 'Marked as new' : 'Hidden'); }
     if (a === 'toggle') { S.open[code] = !S.open[code]; return renderList(); }
     if (a === 'prizes') { S.prizes = Math.max(1, Math.min(20, S.prizes + (+code))); LS.set('wg_staff_prizes', S.prizes); return renderList(); }
     if (a === 'disconnect') { const r = await ask({ title: 'Disconnect this device?', body: 'You will need the staff link or code again to connect.', ok: 'Disconnect', danger: true }); return r.ok && disconnect(); }
@@ -189,6 +193,22 @@ async function act(a, code, extra) {
     if (a === 'repair') { const j = await call({ action: 'a_repair' }); flash('Repaired ' + j.fixed + ' cells'); return act('diag'); }
     if (a === 'testconn') { S.busy = false; await load(); if (!S.error) flash('Connected ✓'); return; }
   } catch (e) { flash(e.message, true); }
+}
+/* ---------- feedback from players ---------- */
+const FBCAT = { suggestion: '💡 Suggestion', problem: '🐞 Problem', praise: '💖 Praise', other: '💬 Comment' };
+async function loadFeedback() { try { S.fb = await call({ action: 'a_feedback' }); S.error = ''; } catch (e) { S.fb = null; S.error = e.message; } renderFeedback(); }
+function renderFeedback() {
+  const el = $('fbbox'); if (!el) return; const f = S.fb;
+  if (!f) { el.innerHTML = `<div class="card center">${S.error ? esc(S.error) : 'Loading feedback…'}</div>`; return; }
+  const flt = S.fbFilter || 'all', rows = f.rows.filter(r => flt === 'all' ? true : flt === 'new' ? r.status === 'NEW' : r.cat === flt);
+  const chip = (k, n, l) => `<button class="tab${flt === k ? ' on' : ''}" role="tab" data-act="fbf" data-code="${k}">${l}${n != null ? ' ' + n : ''}</button>`;
+  el.innerHTML = `<div class="card"><h2>Player feedback</h2><p class="meta">${f.total} message${f.total === 1 ? '' : 's'} · ${f.counts.NEW || 0} new${f.avg ? ' · average rating ' + f.avg + ' / 5' : ''}</p>
+  <div class="tabs">${chip('all', null, 'All')}${chip('new', f.counts.NEW || 0, 'New')}${chip('suggestion', f.cats.suggestion, '💡')}${chip('problem', f.cats.problem, '🐞')}${chip('praise', f.cats.praise, '💖')}${chip('other', f.cats.other, '💬')}</div></div>
+  ${rows.length ? rows.map(r => `<div class="card" style="text-align:left${r.status === 'NEW' ? ';border-color:var(--btn2)' : ''}"><div class="meta"><b>${FBCAT[r.cat] || r.cat}</b>${r.rating ? ' · ' + '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''} · ${esc(r.when)}${r.status === 'DONE' ? ' · ✅ done' : ''}</div>
+    <p style="white-space:pre-wrap;margin:6px 0">${esc(r.msg)}</p>
+    ${r.name || r.contact ? `<div class="meta">Reply to <b>${esc(r.name || 'the player')}</b>${r.contact ? ' · ' + esc(r.contact) + ` · <a href="sms:${esc(r.contact)}">Text</a>` : ''}</div>` : '<div class="meta">Anonymous</div>'}
+    ${r.where ? `<div class="meta" style="opacity:.7">${esc(r.where)}</div>` : ''}
+    <div class="acts"><button class="alt" data-act="fbmark" data-code="${r.row}" data-extra="${r.status === 'DONE' ? 'NEW' : 'DONE'}">${r.status === 'DONE' ? 'Mark as new' : '✓ Mark as done'}</button><button class="alt" data-act="fbmark" data-code="${r.row}" data-extra="HIDDEN">Hide</button></div></div>`).join('') : '<div class="card center">Nothing here yet.</div>'}`;
 }
 let lookupT = 0;
 function onSearch(v) {
@@ -312,7 +332,7 @@ function renderView() {
     <p class="meta" style="color:var(--bad)">${esc(S.error)}</p><div class="acts"><button data-act="connect">Sign in</button></div>
     ${location.protocol === 'file:' ? '<div class="banner bad" style="text-align:left">⚠️ You opened this page from a <b>downloaded file</b> on your phone. It cannot reach the server that way. Open it from your website address instead (the GitHub page where you uploaded it).</div>' : ''}
     <div class="card" style="text-align:left"><h2>Where do I get the PIN?</h2><p class="meta">The game owner chooses it once: in Apps Script, edit the PIN on the marked line of <b>setMyStaffPin</b>, choose that function and press <b>Run</b>. The same PIN then works on every phone and computer. (A staff link or code from <b>showStaffLink</b> also still works: paste it in the box.)</p></div></div>`; return; }
-  ['winners', 'comp', 'tools'].forEach(v => { $('v-' + v).hidden = S.view !== v; $('n-' + v).classList.toggle('on', S.view === v); });
+  ['winners', 'comp', 'feedback', 'tools'].forEach(v => { $('v-' + v).hidden = S.view !== v; $('n-' + v).classList.toggle('on', S.view === v); });
 }
 function renderHeader() {
   const sub = $('hsub'); if (!sub) return;
