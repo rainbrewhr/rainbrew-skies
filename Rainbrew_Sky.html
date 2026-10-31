@@ -217,6 +217,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .pcode{width:100%;box-sizing:border-box;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:8px;margin:8px 0;resize:none;word-break:break-all}
 .fbcats{display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;margin:10px 0}.fbcats .chip{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;white-space:nowrap;font-size:.86rem}.fbstars{display:flex;justify-content:center;gap:6px;margin:8px 0 2px}button.fbstar{background:none!important;border:0!important;box-shadow:none!important;font-size:2.3rem;line-height:1;padding:0 5px;color:rgba(120,80,160,.28)!important;cursor:pointer;width:auto!important;min-width:0;margin:0!important;height:auto}button.fbstar.on{color:#f5b700!important;text-shadow:0 2px 6px rgba(245,183,0,.5)}.fbmsg{width:100%;box-sizing:border-box;font:inherit;border-radius:14px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0 0;resize:vertical;min-height:110px}.fbcount{text-align:right;margin:2px 4px 8px}.fbrep{display:flex;align-items:flex-start;gap:10px;text-align:left;margin:6px 0}.fbrep input{margin-top:3px}
 .modenote{margin:6px 8px 2px;font-size:.82rem;line-height:1.3;text-align:center;color:#fff;opacity:.92;text-shadow:0 1px 4px rgba(20,6,50,.7)}.shopnote{margin:8px 0;font-size:.85rem;text-align:center}
+.fbgift{margin:8px 0;font-size:.88rem;text-align:center}
 .cfbar{height:10px;border-radius:6px;background:rgba(120,80,160,.2);margin:8px 6px 0;overflow:hidden}.cfbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd86a,#ff9ad5,#6a7aff);border-radius:6px}.cfgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.cfcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px dashed rgba(120,80,160,.3);border-radius:14px;text-align:center}.cfcell.on{border:2px solid #e8a820;background:rgba(255,216,106,.2)}.cfic svg{width:46px;height:46px}.cfcell b{font-size:.88rem}.cfcell span{font-size:.72rem;opacity:.8}
 .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;margin:4px 0 8px}.bdgcell{display:flex;flex-direction:column;align-items:center;gap:2px}.bdgcell svg{width:58px;height:58px}.bdgcell.on svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}.bdgcell span{font-size:.62rem;opacity:.9;min-height:1em;text-align:center;line-height:1.05}
 #box[data-s="prof"] .topbar{background:rgba(26,12,60,.96);color:#fff;border-bottom:1px solid rgba(255,255,255,.18)}#box[data-s="prof"] .topbar .back{background:rgba(255,255,255,.14);color:#fff}#box[data-s="prof"] .topbar .ttl{color:#fff}
@@ -4409,7 +4410,7 @@ function homeStep(d) {
 function homeRefresh() { const t = document.createElement('div'); t.innerHTML = ownedStrip(); [['.usel'], ['.ubar']].forEach(([q]) => { const n = t.querySelector(q), o = document.querySelector(q); if (n && o) o.replaceWith(n); }); }
 (function () { let x0 = null; document.addEventListener('touchstart', e => { x0 = e.target.closest && e.target.closest('.usel') ? e.touches[0].clientX : null; }, { passive: true }); document.addEventListener('touchend', e => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) homeStep(dx < 0 ? 1 : -1); }, { passive: true }); })();
 function menu() {
-  homeIdx = -1; st = 'menu'; musicStart(); G = null; maybeInstallSheet(); setTimeout(maybeWin, 700);
+  homeIdx = -1; st = 'menu'; musicStart(); G = null; maybeInstallSheet(); setTimeout(maybeWin, 700); setTimeout(() => fbMenuAsk(0), 3500);
   const relb = srv.release && relCmp(srv.release, BUILD) !== 0 ? (relCmp(srv.release, BUILD) > 0 ? `<div class="note warn"> A newer version is available. <button class="sec" data-a="update">Update now</button></div>` : `<div class="note warn"> This game and its server are out of step. Ask the game owner to update <b>Code.gs</b> in Apps Script and deploy a New version.</div>`) : '';
   const bi = (comp && comp.seasons && comp.seasons[mode]) || (LS.get('us_lbc_' + mode, null) || {}).info, boardLn = bi ? `<p class="meta"> Board: <b>${esc(bi.label)}</b>${bi.resetAt ? ' · resets in ' + fmtCount(bi.resetAt - serverNow()) : bi.kind === 'competition' ? ' · ' + esc(bi.state || '') : ''}</p>` : '';
   const warn = staleRules ? '<div class="note warn"> This copy of the game is out of date. <button class="sec" data-a="update">Update now</button></div>' : (CONFIG.API_URL && /\/dev(\?.*)?$/.test(CONFIG.API_URL) ? '<div class="note warn"> The server address ends in /dev. It must end in /exec.</div>' : '');
@@ -4567,19 +4568,23 @@ function shopOffer(r) {
     el.querySelector('#skgo').onclick = () => { sfx('click'); close(); shopTab = items.some(i => i.w) ? 'w' : 'u'; shopFocus = ''; unicornsScreen(); };
   }, 1300);
 }
-/* ---------- once, after a player's third flight: a friendly ask for feedback (never twice, never on top of the shop pop-up) ---------- */
+/* ---------- one friendly ask for feedback, with a thank-you of free gems: after a player's third flight, and once on the home screen for players who already play and have never sent any (never twice, never on top of another pop-up) ---------- */
+function fbPromo(where) {
+  if (demo || !ONLINE || isOffline() || LS.get('us_fbask', 0) || LS.get('us_fbsent', 0)) return;
+  if (document.getElementById('shopask') || document.getElementById('fbask') || document.querySelector('.pwabox, .comppop')) return 'wait';   // another question is up: try again in a moment
+  if (where === 'menu' && (curScr !== 'menu' || st !== 'menu' || stats.games < 1)) return;
+  LS.set('us_fbask', 1);
+  const el = document.createElement('div'); el.id = 'fbask'; el.className = 'shopask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Tell us what you think');
+  el.innerHTML = '<div class="shopcard"><div class="skico">' + ico('chat') + '</div><h2>Tell us what you think!</h2><p>Help us make Rainbrew Sky better. Send your feedback and get <b><i class="gem"></i> ' + FB_GEMS + ' free gems</b>.</p><button id="fbgo">Give feedback</button><button class="sec" id="fbno">Maybe later</button></div>';
+  document.body.appendChild(el);
+  el.querySelector('#fbno').onclick = () => { sfx('click'); el.remove(); };
+  el.querySelector('#fbgo').onclick = () => { sfx('click'); el.remove(); fb.cat = 'praise'; feedbackScreen(); };
+}
+function fbMenuAsk(n) { if (fbPromo('menu') === 'wait' && n < 8) setTimeout(() => fbMenuAsk(n + 1), 4000); }   // waits for the install sheet or any other pop-up to be closed
 function feedbackOffer(r) {
   if (demo || !r || r.fbAsked) return; r.fbAsked = true;
-  if (stats.games < 3 || LS.get('us_fbask', 0) || !ONLINE) return;
-  setTimeout(() => {
-    if (st !== 'over' || run !== r || r.shopPop || document.getElementById('shopask') || document.getElementById('fbask')) return;   // the shop question had its turn: ask next time
-    LS.set('us_fbask', 1);
-    const el = document.createElement('div'); el.id = 'fbask'; el.className = 'shopask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Tell us what you think');
-    el.innerHTML = '<div class="shopcard"><div class="skico">' + ico('chat') + '</div><h2>Enjoying Rainbrew Sky?</h2><p>Tell us what you love, what to fix or what we should add. It takes about 20 seconds.</p><button id="fbgo">Give feedback</button><button class="sec" id="fbno">Maybe later</button></div>';
-    document.body.appendChild(el);
-    el.querySelector('#fbno').onclick = () => { sfx('click'); el.remove(); };
-    el.querySelector('#fbgo').onclick = () => { sfx('click'); el.remove(); fb.cat = 'praise'; feedbackScreen(); };
-  }, 1700);
+  if (stats.games < 3) return;
+  setTimeout(() => { if (st === 'over' && run === r && !r.shopPop) fbPromo('over'); }, 1700);   // the shop question had its turn first
 }
 function overScreen() {
   const r = run; let h = `<h1>${HEAD[r.reason] || 'Great job!'}</h1><p class="big">You scored <b>${r.score}</b></p>
@@ -4938,7 +4943,7 @@ function howOld() {
 const sixfmt = c => /^\d{6}$/.test(String(c)) ? String(c).slice(0, 3) + ' ' + String(c).slice(3) : String(c);   // 482913 reads as 482 913
 async function xferCall(action, extra) { try { return await api('POST', null, Object.assign({ action, did }, extra), 20000); } catch (e) { return { ok: false, err: 'net' }; } }
 function progressCode() {
-  const d = { v: 1, g: shop.gems, o: shop.owned, u: shop.up, a: ach, c: cafe, n: cfg.uni, s: { games: stats.games, foods: stats.foods, kills: stats.kills, bosses: stats.bosses, surges: stats.surges, maxStage: stats.maxStage, shards: stats.shards, best: stats.best } };
+  const d = { v: 1, g: shop.gems, o: shop.owned, u: shop.up, a: ach, c: cafe, n: cfg.uni, f: LS.get('us_fbgems', 0) ? 1 : 0, s: { games: stats.games, foods: stats.foods, kills: stats.kills, bosses: stats.bosses, surges: stats.surges, maxStage: stats.maxStage, shards: stats.shards, best: stats.best } };
   const b = btoa(unescape(encodeURIComponent(JSON.stringify(d)))); let h = 0; for (let i = 0; i < b.length; i++) h = (h * 31 + b.charCodeAt(i)) >>> 0;
   return 'RB1-' + b + '-' + h.toString(36);
 }
@@ -4956,20 +4961,23 @@ function applyProgress(code) {                                       // merges a
   if (d.a && typeof d.a === 'object') for (const k of Object.keys(ACH)) if (+d.a[k] > 0 && !ach[k]) ach[k] = +d.a[k];
   if (d.c && typeof d.c === 'object') for (const k of ING_ORDER) cafe[k] = Math.max(cafe[k] || 0, num(d.c[k], 9999));
   if (d.s && typeof d.s === 'object') { for (const k of ['games', 'foods', 'kills', 'bosses', 'surges', 'maxStage', 'shards']) stats[k] = Math.max(stats[k] || 0, num(d.s[k], 1e9)); if (d.s.best && typeof d.s.best === 'object') for (const k of Object.keys(stats.best)) stats.best[k] = Math.max(stats.best[k] || 0, num(d.s.best[k], 1e9)); }
+  if (d.f) { LS.set('us_fbgems', 1); LS.set('us_fbsent', 1); LS.set('us_fbask', 1); }   // the feedback gift was already taken on the other phone
   if (charById(d.n) && shop.owned.includes(d.n)) cfg.uni = d.n;
   saveShop(); LS.set('wg_ach', ach); LS.set('us_cafe', cafe); LS.set('us_stats', stats); saveCfg();
   return { ok: true, msg: 'Welcome back! You now have ' + shop.owned.length + ' unicorn' + (shop.owned.length === 1 ? '' : 's') + ' and ' + fmt(shop.gems) + ' gems' + (shop.owned.length > before ? '.' : ' (nothing new to add, you were already up to date).') };
 }
 /* ---------- feedback: suggestions, problems, praise and comments, sent to the staff ---------- */
-let fb = { cat: 'suggestion', rating: 0, msg: '', reply: false, busy: false };
+let fb = { cat: 'praise', rating: 0, msg: '', reply: false, busy: false };
+const FB_GEMS = 100;   // a thank-you for the first feedback (at least 10 characters), once per phone
 const FB_HINT = { suggestion: 'What should we add or change? New unicorns, worlds, powers…', problem: 'What went wrong? What were you doing when it happened?', praise: 'What do you like about Rainbrew Sky?', other: 'Write anything you would like to tell us.' };
 function feedbackScreen() {
-  const cats = [['suggestion', 'Idea'], ['problem', 'Problem'], ['praise', 'Praise'], ['other', 'Other']], canReply = validPH(cleanPhone(prof.contact || '')) && String(prof.name || '').trim().length >= 2;
+  const cats = [['praise', 'Praise'], ['suggestion', 'Idea'], ['problem', 'Issue'], ['other', 'Other']], canReply = validPH(cleanPhone(prof.contact || '')) && String(prof.name || '').trim().length >= 2;
   screen(`<h1>Your feedback</h1><p class="meta" style="text-align:center">Tell us what you love, what to fix or what to add. We read every message.</p>
   <div class="chips fbcats" role="radiogroup" aria-label="Type of feedback">${cats.map(([k, n]) => `<button class="chip${fb.cat === k ? ' on' : ''}" data-a="fbcat:${k}" role="radio" aria-checked="${fb.cat === k}">${n}</button>`).join('')}</div>
   <div class="fbstars" role="radiogroup" aria-label="How much do you like the game?">${[1, 2, 3, 4, 5].map(i => `<button class="fbstar${fb.rating >= i ? ' on' : ''}" data-a="fbstar:${i}" aria-label="${i} star${i > 1 ? 's' : ''}">★</button>`).join('')}</div><p class="meta" style="text-align:center">How much do you like the game? (optional)</p>
   <textarea id="fbmsg" class="fbmsg" rows="5" maxlength="600" placeholder="${esc(FB_HINT[fb.cat])}" aria-label="Your message">${esc(fb.msg)}</textarea><p class="meta fbcount" id="fbcount">${fb.msg.length}/600</p>
   ${canReply ? `<label class="set fbrep"><input type="checkbox" id="fbrep" ${fb.reply ? 'checked' : ''}><span>You may contact me about this (uses my name and mobile number)</span></label>` : ''}
+  ${LS.get('us_fbgems', 0) ? '' : `<p class="note fbgift"><i class="gem"></i> Send your first feedback (at least 10 characters) and get <b>${FB_GEMS} free gems</b>.</p>`}
   <p class="meta" id="fbnote"></p><button data-a="fbsend">Send feedback</button>
   <p class="meta">Your message is anonymous unless you tick the box. It also sends your game version and screen size, to help us fix problems.</p>`, 'fb', 'menu');
 }
@@ -4981,7 +4989,8 @@ async function sendFeedback() {
   fb.busy = true; say2('Sending…', true);
   try {
     const r = await api('POST', null, { action: 'fb', did, cat: fb.cat, rating: fb.rating, msg: fb.msg, reply: fb.reply ? 1 : 0, name: fb.reply ? String(prof.name || '').trim().slice(0, 12) : '', contact: fb.reply ? cleanPhone(prof.contact || '') : '', where: BUILD + ' | ' + mode + ' | ' + cssW + 'x' + cssH + ' | ' + cfg.quality + ' | v' + SIM_VERSION }, 20000);
-    if (r && r.ok) { fb = { cat: 'suggestion', rating: 0, msg: '', reply: false, busy: false }; screen('<div class="winbox"><div class="winmedal m1" aria-hidden="true">♥</div><h1>Thank you!</h1><p>Your feedback was sent. It helps us make Rainbrew Sky better.</p><button data-a="menu">Back to the menu</button></div>', 'fbok'); sfx('badge'); return; }
+    if (r && r.ok) { const long = fb.msg.trim().length >= 10, reward = long && !LS.get('us_fbgems', 0); LS.set('us_fbsent', 1); LS.set('us_fbask', 1); if (reward) { shop.gems += FB_GEMS; saveShop(); LS.set('us_fbgems', 1); }
+      fb = { cat: 'praise', rating: 0, msg: '', reply: false, busy: false }; screen('<div class="winbox"><div class="winmedal m1" aria-hidden="true">♥</div><h1>Thank you!</h1><p>Your feedback was sent. It helps us make Rainbrew Sky better.</p>' + (reward ? '<p class="note okc"><i class="gem"></i> <b>+' + FB_GEMS + ' gems</b> were added to your shop. Use them on upgrades in Classic!</p>' : '') + '<button data-a="menu">Back to the menu</button></div>', 'fbok'); sfx(reward ? 'gem' : 'badge'); return; }
     say2(r && r.err === 'rate' ? 'You have sent a few already. Please try again in a while.' : r && r.err === 'short' ? 'Please write a little more first.' : 'Could not send it right now. Please try again.', false);
   } catch (e) { say2('Could not reach the server. Your message is still here: try again.', false); }
   fb.busy = false;
