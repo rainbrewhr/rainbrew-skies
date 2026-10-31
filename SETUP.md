@@ -53,6 +53,13 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 - **The 3-2-1 countdown** teaches one thing per number: 3 "Drag to fly", 2 "Collect gems", 1 "Defeat the enemies". Nothing else is on screen except the number.
 - **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
 
+## One-time feedback ask, honest mode notes, and a click-everything check (client only)
+
+- **One-time feedback prompt:** after a player's **third** flight, a friendly pop-up asks "Enjoying Rainbrew Sky?" with *Give feedback* / *Maybe later*. It is shown **once per phone** (never again), never on a flight that already shows the shop pop-up (it waits for the next flight), and only when the phone is online.
+- **Honest mode notes:** under the Ranked / Classic buttons the home screen says what the selected mode means (*Ranked: equal power for everyone, so prizes are won by skill* / *Classic: full power; your unicorn skills and shop upgrades all count*), the shop says on both tabs that upgrades power up Classic while Ranked is equal for everyone, and the rules page says the same.
+- **Copy buttons** no longer say "Copied" when the phone refused the copy (they show the text to copy instead) and no longer raise an error in in-app browsers; the code that is copied has no space in it.
+- **Before every release, run the click-everything check** (kept with the project notes, not in the game): it opens each of the game's 20 screens, clicks every button on each (119 in all) and fails on any error or any button with no handler. It would have caught the lost-handlers bug.
+
 ## Player feedback (**redeploy Code.gs**; rules unchanged)
 
 - **In the game:** *More > Send feedback*, *Settings > Send feedback* and a small "How was your flight? Tell us" link on the end-of-flight screen open a short form: a type (Idea, Problem, Praise, Other), an optional 1 to 5 star rating of the game, and a message of up to 600 characters. It is **anonymous**. Only if the player ticks *You may contact me about this* does it include their name and registered mobile number. It also sends the game version, mode, screen size and graphics setting (shown to the player), which helps reproduce problems.

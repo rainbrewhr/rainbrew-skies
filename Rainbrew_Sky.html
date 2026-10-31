@@ -216,6 +216,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .xcode{font-size:2.6rem;font-weight:900;letter-spacing:.14em;text-align:center;margin:12px 0 4px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--p-ink,#3a1a60)}.pnum{width:100%;box-sizing:border-box;font:700 1.6rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-align:center;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0}
 .pcode{width:100%;box-sizing:border-box;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:8px;margin:8px 0;resize:none;word-break:break-all}
 .fbcats{display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;margin:10px 0}.fbcats .chip{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;white-space:nowrap;font-size:.86rem}.fbstars{display:flex;justify-content:center;gap:6px;margin:8px 0 2px}button.fbstar{background:none!important;border:0!important;box-shadow:none!important;font-size:2.3rem;line-height:1;padding:0 5px;color:rgba(120,80,160,.28)!important;cursor:pointer;width:auto!important;min-width:0;margin:0!important;height:auto}button.fbstar.on{color:#f5b700!important;text-shadow:0 2px 6px rgba(245,183,0,.5)}.fbmsg{width:100%;box-sizing:border-box;font:inherit;border-radius:14px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0 0;resize:vertical;min-height:110px}.fbcount{text-align:right;margin:2px 4px 8px}.fbrep{display:flex;align-items:flex-start;gap:10px;text-align:left;margin:6px 0}.fbrep input{margin-top:3px}
+.modenote{margin:6px 8px 2px;font-size:.82rem;line-height:1.3;text-align:center;color:#fff;opacity:.92;text-shadow:0 1px 4px rgba(20,6,50,.7)}.shopnote{margin:8px 0;font-size:.85rem;text-align:center}
 .cfbar{height:10px;border-radius:6px;background:rgba(120,80,160,.2);margin:8px 6px 0;overflow:hidden}.cfbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd86a,#ff9ad5,#6a7aff);border-radius:6px}.cfgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.cfcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px dashed rgba(120,80,160,.3);border-radius:14px;text-align:center}.cfcell.on{border:2px solid #e8a820;background:rgba(255,216,106,.2)}.cfic svg{width:46px;height:46px}.cfcell b{font-size:.88rem}.cfcell span{font-size:.72rem;opacity:.8}
 .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;margin:4px 0 8px}.bdgcell{display:flex;flex-direction:column;align-items:center;gap:2px}.bdgcell svg{width:58px;height:58px}.bdgcell.on svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}.bdgcell span{font-size:.62rem;opacity:.9;min-height:1em;text-align:center;line-height:1.05}
 #box[data-s="prof"] .topbar{background:rgba(26,12,60,.96);color:#fff;border-bottom:1px solid rgba(255,255,255,.18)}#box[data-s="prof"] .topbar .back{background:rgba(255,255,255,.14);color:#fff}#box[data-s="prof"] .topbar .ttl{color:#fff}
@@ -4303,6 +4304,10 @@ function screen(h, name, back) {
   box.innerHTML = (back ? `<div class="topbar"><button class="back" data-a="${back}" aria-label="Back">← Back</button><span class="ttl">${ttl}</span></div>` : '') + `<div class="pane">${h}${name === 'menu' || name === 'set' ? FOOT : ''}</div>`;   // the Back bar stays fixed at the top while the page scrolls
   ov.style.display = 'flex'; box.scrollTop = keep ? sc : 0; fitPods();
 }
+function modeNote() {                                              // an honest line about what each mode means
+  const t = mode === 'rank' ? '<b>Ranked:</b> equal power for everyone, so prizes are won by skill.' : mode === 'classic' ? '<b>Classic:</b> full power. Your unicorn skills and shop upgrades all count.' : '';
+  return t ? `<p class="modenote">${t}</p>` : '';
+}
 function chip(m) { return `<button class="chip${mode === m ? ' on' : ''}" data-a="mode:${m}" role="radio" aria-checked="${mode === m}">${m === 'rank' ? ' ' : ''}${MODE_NAME[m]}</button>`; }
 /* ---------- competition: staff set the dates; everyone sees the countdown and, after the deadline, who won ---------- */
 let comp = LS.get('us_comp', null), compOff = LS.get('us_compoff', 0), compLast = '';
@@ -4421,7 +4426,7 @@ function menu() {
   ${warn}${relb}${upd}${ckb}${unb}${rjb}${chal ? `<div class="note"> <b>${esc(chal.by)}</b> challenges you: beat <b>${chal.score}</b> in ${MODE_NAME[chal.mode]}!<div class="row"><button data-a="chalplay">Accept and play </button><button class="sec" data-a="chaldrop" aria-label="Dismiss"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>` : ''}
   ${compPopup()}
   ${ownedStrip()}${ck ? `<div class="plsplit"><button data-a="ckres">Resume</button><button data-a="ckfresh">New game</button></div><p class="plnote">Unfinished ${MODE_NAME[ck.mode]} run</p>` : '<button data-a="play">Play</button>'}
-  <div class="chips modes" role="radiogroup" aria-label="Game mode">${MODE_ORDER.map(chip).join('')}</div>
+  <div class="chips modes" role="radiogroup" aria-label="Game mode">${MODE_ORDER.map(chip).join('')}</div>${modeNote()}
   ${homeInstall()}
   ${inAppBrowser() ? '<p class="note">Tip: open this page in Chrome or Safari for the best experience.</p>' : ''}
   ${pend ? `<p class="meta warn"> ${pend} saved score${pend > 1 ? 's' : ''} waiting to upload${isOffline() ? '' : ' (uploading automatically)'}</p>` : ''}${note ? `<p class="meta okc">${esc(note)}</p>` : ''}
@@ -4550,6 +4555,7 @@ function shopOffer(r) {
   for (const k of ['d', 'r', 't']) { const l = shop.up[k]; if (l < UPG[k].max && shop.gems >= UPG[k].cost[l]) items.push({ n: UPG[k].name, c: UPG[k].cost[l], w: 1 }); }
   for (const c of CHARACTERS) if (!shop.owned.includes(c.id) && shop.gems >= c.price) items.push({ n: c.name, c: c.price, w: 0 });
   if (!items.length) return;
+  r.shopPop = true;
   items.sort((a, b) => a.c - b.c);
   setTimeout(() => {
     if (st !== 'over' || run !== r || document.getElementById('shopask')) return;
@@ -4560,6 +4566,20 @@ function shopOffer(r) {
     el.querySelector('#skno').onclick = () => { sfx('click'); close(); };
     el.querySelector('#skgo').onclick = () => { sfx('click'); close(); shopTab = items.some(i => i.w) ? 'w' : 'u'; shopFocus = ''; unicornsScreen(); };
   }, 1300);
+}
+/* ---------- once, after a player's third flight: a friendly ask for feedback (never twice, never on top of the shop pop-up) ---------- */
+function feedbackOffer(r) {
+  if (demo || !r || r.fbAsked) return; r.fbAsked = true;
+  if (stats.games < 3 || LS.get('us_fbask', 0) || !ONLINE) return;
+  setTimeout(() => {
+    if (st !== 'over' || run !== r || r.shopPop || document.getElementById('shopask') || document.getElementById('fbask')) return;   // the shop question had its turn: ask next time
+    LS.set('us_fbask', 1);
+    const el = document.createElement('div'); el.id = 'fbask'; el.className = 'shopask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Tell us what you think');
+    el.innerHTML = '<div class="shopcard"><div class="skico">' + ico('chat') + '</div><h2>Enjoying Rainbrew Sky?</h2><p>Tell us what you love, what to fix or what we should add. It takes about 20 seconds.</p><button id="fbgo">Give feedback</button><button class="sec" id="fbno">Maybe later</button></div>';
+    document.body.appendChild(el);
+    el.querySelector('#fbno').onclick = () => { sfx('click'); el.remove(); };
+    el.querySelector('#fbgo').onclick = () => { sfx('click'); el.remove(); fb.cat = 'praise'; feedbackScreen(); };
+  }, 1700);
 }
 function overScreen() {
   const r = run; let h = `<h1>${HEAD[r.reason] || 'Great job!'}</h1><p class="big">You scored <b>${r.score}</b></p>
@@ -4583,7 +4603,7 @@ function overScreen() {
   h += '<p class="meta">Come sip magic at Rainbrew Coffee Shop </p>';
   screen(h);
   if (autoRun) autoRecord(r);
-  shopOffer(r);
+  shopOffer(r); feedbackOffer(r);
 }
 function formInner(r, errMsg) {
   return `<p>Enter your unicorn name to join the leaderboard:</p>
@@ -4757,10 +4777,10 @@ const ACT = {
   sendunsent() { const u = unsentList()[0]; if (!u) { menu(); return; } run = u; st = 'over'; overScreen(); }, rejclear() { LS.set('us_rejected', []); menu(); },
   ckres() { resumeCkpt(); }, ckfresh() { clearCkpt(); playNow(); }, ckdrop() { clearCkpt(); menu(); },
   share() { const r = run || { score: G ? G.score : 0, mode }; shareScreen(r.score, r.mode); }, invite() { shareScreen(stats.best[mode] || 0, mode); }, sharenative: shareNative, sharecopy: shareCopy, shared() { award('shared'); }, sharebk: shareBack,
-  gateskip() { gateSkipped = true; startFlow(); }, gateopen() {}, gatecopy(b) { try { navigator.clipboard.writeText(gateLinks().plain); if (b) b.textContent = 'Copied  now paste it in Chrome or Safari'; } catch (e) { if (b) b.textContent = 'Press and hold the link above to copy it'; } },
+  gateskip() { gateSkipped = true; startFlow(); }, gateopen() {}, async gatecopy(b) { try { await navigator.clipboard.writeText(gateLinks().plain); if (b) b.textContent = 'Copied  now paste it in Chrome or Safari'; } catch (e) { if (b) b.textContent = 'Press and hold the link above to copy it'; } },
   voicetest() { voiceTest(); },
   chalplay() { if (chal) { mode = chal.mode; LS.set('us_mode', mode); } playNow(); }, chaldrop() { chal = null; LS.set('us_chal', null); menu(); }, install: installSheet, update: hardUpdate, checksrv() { const o = $('srvmsg'); if (o) checkServer(o); }, comp: compScreen,
-  copy(b) { const c = $('code').textContent; try { navigator.clipboard.writeText(c); b.textContent = 'Copied '; } catch (e) { b.textContent = c; } }
+  async copy(b) { const c = $('code').textContent; try { await navigator.clipboard.writeText(c.replace(/\s+/g, '')); b.textContent = 'Copied'; } catch (e) { b.textContent = c; } }
 };
 /* ---------- circles and events: boards for friends, teams and staff events. They are only a filter over the same verified Ranked scores: nothing here can change a score. ---------- */
 const CIRC_ERR = { device: 'Your device could not be identified. Reload the game.', contact: 'Register with your name and mobile number first.', name: 'Register with your name first.', rate: 'Too many tries. Please wait a little.', busy: 'The server is busy. Try again in a moment.', server: 'Something went wrong. Try again.', net: 'Can’t reach the server. Check your connection.', action: 'Circles are not available on the server yet.', notfound: 'No circle with that code. Check the letters.', code: 'A code has 6 letters and numbers.', closed: 'This circle is closed.', ended: 'This event is over.', removed: 'You were removed from this circle.', full: 'This circle is full.', limit: 'You have reached the limit of circles. Leave or close one first.', owner: 'Only the owner can do that.', cname: 'Give the circle a name (at least 2 letters).', pid: 'Could not find that player.', badname: 'Your player name can’t be used. Please register again with a different name.', badcname: 'Please choose a different circle name (no bad words, phone numbers or web addresses).' };
@@ -4881,6 +4901,7 @@ const ICONS = {                                                  // drawn icons 
   unis: '<path d="M12 2.5l2.5 6.3 6.7.6-5.1 4.4 1.6 6.6L12 16.9l-5.7 3.5 1.6-6.6L2.8 9.4l6.7-.6z"/>',
   invite: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.6-6 6-6s6 2.5 6 6M18 7v6M15 10h6"/>',
   share: '<path d="M12 3v12M8 7l4-4 4 4M6 11v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"/>',
+  chat: '<path d="M4 5h16v11h-9l-5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
   dmg: '<circle cx="12" cy="12" r="3"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -5036,12 +5057,13 @@ function weaponsHtml() {
     return `<div class="upg"><div class="ui">${ico(k === 'd' ? 'dmg' : k === 'r' ? 'power' : 'shoot')}</div><div class="ut"><b>${U.name}</b>${pipsH}<span>${U.info(lv)}${maxed ? '' : ' → <em>' + U.info(lv + 1) + '</em>'}</span></div>
       ${maxed ? '<button class="sec" disabled>MAX</button>' : `<button class="${can ? '' : 'poor'}" data-a="upg:${k}"><i class="gem"></i>${fmt(cost)}</button>`}</div>`;
   };
-  return `<p class="meta">Spend gems on permanent weapon upgrades. They apply in <b>Classic</b>; Ranked keeps equal power so prizes stay fair.</p><div class="upglist">${row('d')}${row('r')}${row('t')}</div>`;
+  return `<p class="meta">Spend gems on permanent weapon upgrades.</p><div class="upglist">${row('d')}${row('r')}${row('t')}</div>`;
 }
 function unicornsScreen() {
   screen(`<h1>Shop</h1><div class="wallet"><i class="gem"></i><b>${fmt(shop.gems)}</b></div>
   <div class="tabs2"><button class="${shopTab === 'u' ? 'on' : ''}" data-a="stab:u">Unicorns</button><button class="${shopTab === 'w' ? 'on' : ''}" data-a="stab:w">Weapons</button></div>
-  <p class="meta${shopGood ? ' good' : shopMsg ? ' warn' : ''}">${esc(shopMsg || (shopTab === 'u' ? 'Swipe to compare. In Ranked every unicorn has equal power; in Classic the full kit applies.' : ''))}</p>
+  <div class="note shopnote"><b>Upgrades power up Classic.</b> Ranked gives everyone equal power, so prizes stay fair.</div>
+  <p class="meta${shopGood ? ' good' : shopMsg ? ' warn' : ''}">${esc(shopMsg || (shopTab === 'u' ? 'Swipe to compare the unicorns.' : ''))}</p>
   ${shopTab === 'u' ? carousel('uni') : weaponsHtml()}<div class="pinfoot"><button class="sec" data-a="menu">Home</button></div>`, 'unis', 'menu'); if (shopTab === 'u') carShow(shopFocus || uniOf());
   shopMsg = ''; shopGood = false;
 }
