@@ -53,6 +53,12 @@ None of this changes the shared rules, so **no Apps Script redeploy is needed** 
 - **The 3-2-1 countdown** teaches one thing per number: 3 "Drag to fly", 2 "Collect gems", 1 "Defeat the enemies". Nothing else is on screen except the number.
 - **Music:** the game now has one heroic tune, the Rainbrew theme (`THEME` in `index.html`, 16 bars in four phrases: call, answer, contrast, climax). It follows each place's own chords and key, so every place sounds different but the tune is the same. The music also breathes (the contrast phrase opens with no kick or snare), adds bass pickups into each chord, ghost snares, an open hat, falling-tom fills and a cymbal into the climax. Nothing here touches the rules: **no Apps Script redeploy is needed**.
 
+## Feedback order and a thank-you of 100 free gems (client only)
+
+- **Order of the feedback types:** *Praise* (the default), *Idea*, *Issue* (bugs and problems), *Other*. The staff page lists them in the same order and calls problems "Bug / issue".
+- **Free 100 gems:** the **first** feedback a phone sends with at least 10 characters adds **100 gems** to the shop (once per phone; shown on the thank-you screen and mentioned on the form until it is taken). Gems only help in Classic (Ranked is equal for everyone), so this cannot affect prizes. The "gift taken" flag travels with the phone-transfer code so it cannot simply be repeated on a second phone; a determined person who clears their browser data could take it again, which is low-stakes.
+- **Existing players get asked too:** a player who already plays and has never sent feedback sees the pop-up once on the home screen (it waits until the install sheet or any other pop-up is closed). New players see it once after their third flight. Nobody is asked twice, and the pop-up never appears on top of another pop-up.
+
 ## One-time feedback ask, honest mode notes, and a click-everything check (client only)
 
 - **One-time feedback prompt:** after a player's **third** flight, a friendly pop-up asks "Enjoying Rainbrew Sky?" with *Give feedback* / *Maybe later*. It is shown **once per phone** (never again), never on a flight that already shows the shop pop-up (it waits for the next flight), and only when the phone is online.
