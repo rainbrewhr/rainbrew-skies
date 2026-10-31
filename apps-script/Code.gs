@@ -702,6 +702,9 @@ function doPost(e) {
       case 'a_erase': return out(admin(b, adminErase));
       case 'a_circle_status': return out(admin(b, adminCircleStatus));
       case 'a_circle_kick': return out(admin(b, adminCircleKick));
+      case 'fb': return out(actFeedback(b));
+      case 'a_feedback': return out(admin(b, adminFeedback));
+      case 'a_feedback_mark': return out(admin(b, adminFeedbackMark));
       case 'x_put': return out(actXput(b));
       case 'x_get': return out(actXget(b));
     }
@@ -733,6 +736,42 @@ function actXget(b) {
   if (!data) { c.put(k, String(n + 1), 900); c.put('xfail', String((+c.get('xfail') || 0) + 1), 600); return { ok: false, err: 'notfound' }; }
   c.remove('xf_' + code);                                                                // one use only
   return { ok: true, data: data };
+}
+
+/* ---------- feedback: players send suggestions, problems, praise and comments from the game; they land in the "Feedback" tab of the Sheet and in the staff page. The message is anonymous unless the player ticks the box to be contacted. ---------- */
+var FEEDBACK = { SHEET: 'Feedback', HEAD: ['When', 'Category', 'Rating', 'Message', 'Name', 'Contact', 'Where', 'Status', 'Note'] };
+function fbSheet() { return ctab(FEEDBACK.SHEET, FEEDBACK.HEAD, [2, 4, 5, 6, 7, 8, 9]); }
+function cleanFb(s, max) { s = String(s || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max); return /^[=+\-@]/.test(s) ? "'" + s : s; }   // never a formula in the Sheet
+function actFeedback(b) {
+  var did = cleanId(b.did); if (!did) return { ok: false, err: 'device' };
+  var cat = ['suggestion', 'problem', 'praise', 'other'].indexOf(b.cat) >= 0 ? b.cat : 'other', rating = Math.max(0, Math.min(5, Math.round(+b.rating) || 0));
+  var msg = cleanFb(b.msg, 600); if (msg.replace(/\s/g, '').length < 3) return { ok: false, err: 'short' };
+  var c = CacheService.getScriptCache(), k = 'fb_' + did, n = +(c.get(k) || 0);
+  if (n >= 5) return { ok: false, err: 'rate' };                                         // a few messages an hour from one device
+  var dk = 'fbd_' + Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyyyMMdd'), dn = +(c.get(dk) || 0);
+  if (dn >= 400) return { ok: false, err: 'busy' };                                      // a flood guard for the whole game
+  c.put(k, String(n + 1), 3600); c.put(dk, String(dn + 1), 86400);
+  var name = '', contact = '';
+  if (b.reply) { name = cleanName(b.name); contact = cleanContact(b.contact); if (!/^09\d{9}$/.test(contact)) contact = ''; }   // only when the player ticked "you may contact me"
+  var where = cleanFb(b.where, 80).replace(/[^\w .:|\/x-]/g, '');
+  try { fbSheet().appendRow([Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), cat, rating, msg, name, contact, where, 'NEW', '']); }
+  catch (e) { noteFail('feedback', e); return { ok: false, err: 'server' }; }
+  return { ok: true };
+}
+function fbObj(r, i) { return { row: i + 2, when: String(r[0]), cat: String(r[1]), rating: +r[2] || 0, msg: String(r[3]), name: String(r[4]), contact: String(r[5]), where: String(r[6]), status: String(r[7]) || 'NEW', note: String(r[8]) }; }
+function adminFeedback() {
+  var sh = fbSheet(), last = sh.getLastRow(), rows = last < 2 ? [] : sh.getRange(2, 1, last - 1, FEEDBACK.HEAD.length).getValues().map(fbObj);
+  var counts = { NEW: 0, DONE: 0, HIDDEN: 0 }, cats = { suggestion: 0, problem: 0, praise: 0, other: 0 }, sum = 0, nr = 0;
+  rows.forEach(function (r) { counts[r.status] = (counts[r.status] || 0) + 1; if (cats[r.cat] != null) cats[r.cat]++; if (r.rating) { sum += r.rating; nr++; } });
+  rows.reverse();
+  return { ok: true, total: rows.length, counts: counts, cats: cats, avg: nr ? Math.round(sum / nr * 10) / 10 : 0, rows: rows.filter(function (r) { return r.status !== 'HIDDEN'; }).slice(0, 150) };
+}
+function adminFeedbackMark(b) {
+  var row = Math.round(+b.row), status = String(b.status || ''), sh = fbSheet();
+  if (['NEW', 'DONE', 'HIDDEN'].indexOf(status) < 0) return { ok: false, err: 'status' };
+  if (!(row >= 2 && row <= sh.getLastRow())) return { ok: false, err: 'notfound' };
+  sh.getRange(row, 8).setValue(status); if (b.note) sh.getRange(row, 9).setValue(cleanFb(b.note, 200));
+  return { ok: true };
 }
 
 function out(o) {

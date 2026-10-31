@@ -215,6 +215,7 @@ button.poor{opacity:.55;filter:saturate(.5)}.gem{display:inline-block;width:16px
 .winbox{text-align:center}.winmedal{width:92px;height:92px;margin:8px auto;border-radius:50%;display:grid;place-items:center;font-size:2.6rem;font-weight:900;color:#fff;background:linear-gradient(135deg,#ffd86a,#e8a820);box-shadow:0 6px 18px rgba(232,168,32,.45)}.winmedal.m2{background:linear-gradient(135deg,#eef1f7,#98a4bb);box-shadow:0 6px 18px rgba(120,136,170,.4)}.winmedal.m3{background:linear-gradient(135deg,#f3c79a,#b0662a);box-shadow:0 6px 18px rgba(176,102,42,.4)}.winc{margin:6px 0}.winc b{display:block;font-size:1.5rem;letter-spacing:.06em}
 .xcode{font-size:2.6rem;font-weight:900;letter-spacing:.14em;text-align:center;margin:12px 0 4px;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--p-ink,#3a1a60)}.pnum{width:100%;box-sizing:border-box;font:700 1.6rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;text-align:center;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0}
 .pcode{width:100%;box-sizing:border-box;font:12px/1.35 ui-monospace,Menlo,monospace;border-radius:12px;border:2px solid rgba(120,80,160,.3);padding:8px;margin:8px 0;resize:none;word-break:break-all}
+.fbcats{display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;margin:10px 0}.fbcats .chip{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;white-space:nowrap;font-size:.86rem}.fbstars{display:flex;justify-content:center;gap:6px;margin:8px 0 2px}button.fbstar{background:none!important;border:0!important;box-shadow:none!important;font-size:2.3rem;line-height:1;padding:0 5px;color:rgba(120,80,160,.28)!important;cursor:pointer;width:auto!important;min-width:0;margin:0!important;height:auto}button.fbstar.on{color:#f5b700!important;text-shadow:0 2px 6px rgba(245,183,0,.5)}.fbmsg{width:100%;box-sizing:border-box;font:inherit;border-radius:14px;border:2px solid rgba(120,80,160,.3);padding:10px;margin:8px 0 0;resize:vertical;min-height:110px}.fbcount{text-align:right;margin:2px 4px 8px}.fbrep{display:flex;align-items:flex-start;gap:10px;text-align:left;margin:6px 0}.fbrep input{margin-top:3px}
 .cfbar{height:10px;border-radius:6px;background:rgba(120,80,160,.2);margin:8px 6px 0;overflow:hidden}.cfbar i{display:block;height:100%;background:linear-gradient(90deg,#ffd86a,#ff9ad5,#6a7aff);border-radius:6px}.cfgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}.cfcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:2px dashed rgba(120,80,160,.3);border-radius:14px;text-align:center}.cfcell.on{border:2px solid #e8a820;background:rgba(255,216,106,.2)}.cfic svg{width:46px;height:46px}.cfcell b{font-size:.88rem}.cfcell span{font-size:.72rem;opacity:.8}
 .bdgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;margin:4px 0 8px}.bdgcell{display:flex;flex-direction:column;align-items:center;gap:2px}.bdgcell svg{width:58px;height:58px}.bdgcell.on svg{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}.bdgcell span{font-size:.62rem;opacity:.9;min-height:1em;text-align:center;line-height:1.05}
 #box[data-s="prof"] .topbar{background:rgba(26,12,60,.96);color:#fff;border-bottom:1px solid rgba(255,255,255,.18)}#box[data-s="prof"] .topbar .back{background:rgba(255,255,255,.14);color:#fff}#box[data-s="prof"] .topbar .ttl{color:#fff}
@@ -4413,7 +4414,7 @@ function menu() {
   const rjb = rej.length ? `<div class="note warn"> ${rej.length} saved score${rej.length > 1 ? 's' : ''} could not be accepted: ${esc([...new Set(rej.map(x => ERR[x.err] || x.err))].join(' '))} <button class="sec" data-a="rejclear">OK</button></div>` : '';
   const pend = pendingList().length, [dot, ctext] = connState(), note = menuNote && Date.now() - menuNoteAt < 9000 ? menuNote : '';   // a confirmation stays visible for a few seconds even if the menu redraws menuNoteAt = Date.now();
   const drawer = menuMore ? `<div class="drawer-bg" data-a="menuclose"></div><aside class="drawer" aria-label="Menu"><div class="dhead"><b>Menu</b><button class="sec" style="width:auto;margin:0" data-a="menuclose" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <button class="sec" data-a="cafe"> Rainbrew Café</button><button class="sec" data-a="how"> How to play</button><button class="sec" data-a="demo"> Watch the demo</button><button class="sec" data-a="players">Switch player</button><button class="sec" data-a="recs:me">My records</button><button class="sec" data-a="prof">Profile and badges</button><button class="sec" data-a="set">Settings</button>
+    <button class="sec" data-a="cafe"> Rainbrew Café</button><button class="sec" data-a="how"> How to play</button><button class="sec" data-a="demo"> Watch the demo</button><button class="sec" data-a="players">Switch player</button><button class="sec" data-a="recs:me">My records</button><button class="sec" data-a="prof">Profile and badges</button><button class="sec" data-a="fb">Send feedback</button><button class="sec" data-a="set">Settings</button>
     ${isStandalone() ? '' : '<button class="sec" data-a="install"> Install the app</button>'}
     ${socialLinks()}<p class="meta pill" id="conn">${dot} ${esc(ctext)}</p></aside>` : '';
   screen(`<button class="gear" data-a="set" aria-label="Settings">${ico('gear')}</button><div class="mtop"><img class="logo" src="${LOGO}" alt="Rainbrew Coffee Shop logo"><h1>${esc(CONFIG.GAME_NAME)}</h1><p class="tag">FLY THE CAFÉ SKIES</p></div><div class="mbot">
@@ -4578,6 +4579,7 @@ function overScreen() {
     h += q ? `<div id="sub"><p>Top 10 on this device! Enter your name:</p><input id="nm" type="text" maxlength="12" placeholder="Your name" value="${esc(prof.name)}"><br><button id="subbtn" data-a="local">Save score </button></div><div id="after" style="display:none">${play}</div>` : play;
   } else if (MODES[r.mode].ranked) h += `<p class="meta warn">${noteUnranked === 'closed' ? 'The competition is over: Ranked is practice for now.' : 'Not ranked: no connection. Go online and the next flight can count for prizes.'}</p>${play}`;
   else h += play;
+  h += '<p class="meta"><button class="link" data-a="fb">How was your flight? Tell us</button></p>';
   h += '<p class="meta">Come sip magic at Rainbrew Coffee Shop </p>';
   screen(h);
   if (autoRun) autoRecord(r);
@@ -4715,6 +4717,7 @@ function chalLine(r) {                                                          
 }
 const ACT = {
   play() { playNow(); }, unis: unicornsScreen, cafe: cafeScreen,
+  fb() { feedbackScreen(); }, fbcat(b) { fbKeep(); fb.cat = String(b.dataset.a).split(':')[1]; feedbackScreen(); }, fbstar(b) { fbKeep(); const n = +String(b.dataset.a).split(':')[1]; fb.rating = fb.rating === n ? 0 : n; feedbackScreen(); }, fbsend() { sendFeedback(); },
   async pcode() {
     const b = $('pbox'); if (!b) return; b.innerHTML = '<p class="meta">Making your code…</p>';
     const data = progressCode(), r = ONLINE && !isOffline() ? await xferCall('x_put', { data }) : { ok: false, err: 'net' };
@@ -4869,6 +4872,8 @@ box.addEventListener('input', e => {
   const el = e.target;
   if (el.dataset.k) { const k = el.dataset.k; cfg[k] = el.type === 'checkbox' ? (el.checked ? 1 : 0) : +el.value; saveCfg(); if (k === 'sfx') sfx('gem', 3); { const vEl = el.parentNode && el.parentNode.querySelector ? el.parentNode.querySelector('.val') : null; if (vEl) vEl.textContent = el.dataset.f === 'x' ? (+el.value).toFixed(1) + 'x' : Math.round(el.value * 100) + '%'; } if (k === 'mute' && !cfg.mute) sfx('click'); }
   else if (el.dataset.p) { prof[el.dataset.p] = el.value; LS.set('us_prof', prof); }
+  else if (el.id === 'fbmsg') { fb.msg = el.value; const c = $('fbcount'); if (c) c.textContent = el.value.length + '/600'; }
+  else if (el.id === 'fbrep') { fb.reply = el.checked; }
 });
 const ICONS = {                                                  // drawn icons (no emoji): the same on every phone
   board: '<path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
@@ -4934,6 +4939,32 @@ function applyProgress(code) {                                       // merges a
   saveShop(); LS.set('wg_ach', ach); LS.set('us_cafe', cafe); LS.set('us_stats', stats); saveCfg();
   return { ok: true, msg: 'Welcome back! You now have ' + shop.owned.length + ' unicorn' + (shop.owned.length === 1 ? '' : 's') + ' and ' + fmt(shop.gems) + ' gems' + (shop.owned.length > before ? '.' : ' (nothing new to add, you were already up to date).') };
 }
+/* ---------- feedback: suggestions, problems, praise and comments, sent to the staff ---------- */
+let fb = { cat: 'suggestion', rating: 0, msg: '', reply: false, busy: false };
+const FB_HINT = { suggestion: 'What should we add or change? New unicorns, worlds, powers…', problem: 'What went wrong? What were you doing when it happened?', praise: 'What do you like about Rainbrew Sky?', other: 'Write anything you would like to tell us.' };
+function feedbackScreen() {
+  const cats = [['suggestion', 'Idea'], ['problem', 'Problem'], ['praise', 'Praise'], ['other', 'Other']], canReply = validPH(cleanPhone(prof.contact || '')) && String(prof.name || '').trim().length >= 2;
+  screen(`<h1>Your feedback</h1><p class="meta" style="text-align:center">Tell us what you love, what to fix or what to add. We read every message.</p>
+  <div class="chips fbcats" role="radiogroup" aria-label="Type of feedback">${cats.map(([k, n]) => `<button class="chip${fb.cat === k ? ' on' : ''}" data-a="fbcat:${k}" role="radio" aria-checked="${fb.cat === k}">${n}</button>`).join('')}</div>
+  <div class="fbstars" role="radiogroup" aria-label="How much do you like the game?">${[1, 2, 3, 4, 5].map(i => `<button class="fbstar${fb.rating >= i ? ' on' : ''}" data-a="fbstar:${i}" aria-label="${i} star${i > 1 ? 's' : ''}">★</button>`).join('')}</div><p class="meta" style="text-align:center">How much do you like the game? (optional)</p>
+  <textarea id="fbmsg" class="fbmsg" rows="5" maxlength="600" placeholder="${esc(FB_HINT[fb.cat])}" aria-label="Your message">${esc(fb.msg)}</textarea><p class="meta fbcount" id="fbcount">${fb.msg.length}/600</p>
+  ${canReply ? `<label class="set fbrep"><input type="checkbox" id="fbrep" ${fb.reply ? 'checked' : ''}><span>You may contact me about this (uses my name and mobile number)</span></label>` : ''}
+  <p class="meta" id="fbnote"></p><button data-a="fbsend">Send feedback</button>
+  <p class="meta">Your message is anonymous unless you tick the box. It also sends your game version and screen size, to help us fix problems.</p>`, 'fb', 'menu');
+}
+const fbKeep = () => { const t = $('fbmsg'); if (t) fb.msg = t.value; const r = $('fbrep'); if (r) fb.reply = r.checked; };
+async function sendFeedback() {
+  fbKeep(); const note = $('fbnote'), say2 = (t, ok) => { if (note) { note.textContent = t; note.className = 'meta ' + (ok ? 'okc' : 'warn'); } };
+  if (fb.busy) return; if (fb.msg.replace(/\s/g, '').length < 3) { say2('Please write a little more first.', false); return; }
+  if (!ONLINE || isOffline()) { say2('Feedback needs an internet connection. Your message is still here: try again when you are online.', false); return; }
+  fb.busy = true; say2('Sending…', true);
+  try {
+    const r = await api('POST', null, { action: 'fb', did, cat: fb.cat, rating: fb.rating, msg: fb.msg, reply: fb.reply ? 1 : 0, name: fb.reply ? String(prof.name || '').trim().slice(0, 12) : '', contact: fb.reply ? cleanPhone(prof.contact || '') : '', where: BUILD + ' | ' + mode + ' | ' + cssW + 'x' + cssH + ' | ' + cfg.quality + ' | v' + SIM_VERSION }, 20000);
+    if (r && r.ok) { fb = { cat: 'suggestion', rating: 0, msg: '', reply: false, busy: false }; screen('<div class="winbox"><div class="winmedal m1" aria-hidden="true">♥</div><h1>Thank you!</h1><p>Your feedback was sent. It helps us make Rainbrew Sky better.</p><button data-a="menu">Back to the menu</button></div>', 'fbok'); sfx('badge'); return; }
+    say2(r && r.err === 'rate' ? 'You have sent a few already. Please try again in a while.' : r && r.err === 'short' ? 'Please write a little more first.' : 'Could not send it right now. Please try again.', false);
+  } catch (e) { say2('Could not reach the server. Your message is still here: try again.', false); }
+  fb.busy = false;
+}
 function settings() {
   const sl = (k, label, min, max, step, f) => `<label class="set sl"><span>${label}</span><input type="range" data-k="${k}" data-f="${f}" min="${min}" max="${max}" step="${step}" value="${cfg[k]}"><b class="val">${f === 'x' ? (+cfg[k]).toFixed(1) + 'x' : Math.round(cfg[k] * 100) + '%'}</b></label>`;
   const sw = (k, label) => `<button class="tg${cfg[k] ? ' on' : ''}" data-a="tog:${k}"><span>${label}</span><i></i></button>`;
@@ -4943,6 +4974,7 @@ function settings() {
   <div class="setsec"><h3>Controls</h3>${opts('ctrl', 'Style', [['drag', 'Drag'], ['touch', 'Follow finger']])}<p class="meta">${cfg.ctrl === 'touch' ? 'The unicorn flies to where you touch, just above your finger.' : 'Slide anywhere: the unicorn moves as far as your finger does.'}</p>${sl('sens', 'Sensitivity', .5, 2, .1, 'x')}${sw('vib', 'Vibration')}</div>
   <div class="setsec"><h3>Unicorn</h3><input type="text" maxlength="12" placeholder="Unicorn name" data-p="name" value="${esc(prof.name)}" autocomplete="nickname"><input type="tel" maxlength="16" placeholder="Phone (for prizes)" data-p="contact" value="${esc(prof.contact)}" autocomplete="tel"></div>
   <div class="setsec"><h3>Move to another phone</h3><p class="meta">Your unicorns, upgrades, gems and badges are kept on this phone. To use them on another phone, make a code here and enter it there. The code has no name or phone number in it.</p><div class="row"><button class="sec" data-a="pcode">Make my code</button><button class="sec" data-a="penter">I have a code</button></div><div id="pbox"></div></div>
+  <div class="row"><button class="sec" data-a="fb">Send feedback</button></div>
   <div class="row"><button class="sec" data-a="reset">Reset</button><button class="sec" data-a="checksrv">Check server</button><button class="sec" data-a="update">Update</button></div>
   <p class="meta" id="srvmsg"></p>`, 'set', 'back');
 }
@@ -5206,9 +5238,9 @@ const BI = {                                                         // small ou
   list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.1M4 12h.1M4 18h.1"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
   dl: '<path d="M12 3v12M7 10l5 5 5-5M5 20h14"/>', share: '<circle cx="6" cy="12" r="2.4"/><circle cx="17" cy="6" r="2.4"/><circle cx="17" cy="18" r="2.4"/><path d="M8 11l7-4M8 13l7 4"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>', upload: '<path d="M12 17V5M7 10l5-5 5 5M5 20h14"/>', shuffle: '<path d="M4 7h4l8 10h4M4 17h4l2-2.5M14 9.5L16 7h4M18 5l2 2-2 2M18 15l2 2-2 2"/>',
-  cup: '<path d="M5 9h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.2 2.2 0 0 1 0 4.4H16M8 4v2M12 4v2"/>', trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 20h8"/>', arrow: '<path d="M14 6l-6 6 6 6"/>', arrowr: '<path d="M10 6l6 6-6 6"/>'
+  chat: '<path d="M4 5h16v11H10l-5 4v-4H4z"/>', cup: '<path d="M5 9h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.2 2.2 0 0 1 0 4.4H16M8 4v2M12 4v2"/>', trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 20h8"/>', arrow: '<path d="M14 6l-6 6 6 6"/>', arrowr: '<path d="M10 6l6 6-6 6"/>'
 };
-const BTN_ICO = { play: 'play', regok: 'play', ckres: 'play', chalplay: 'play', resume: 'play', demo: 'play', again: 'refresh', usep: 'user', newp: 'user', players: 'users', recs: 'list', cont: 'heart', endcont: 'flag', endrun: 'flag', endyes: 'flag', quit: 'home', menu: 'home', install: 'dl', how: 'help', cafe: 'cup', prof: 'user', set: 'gear', update: 'refresh', sendunsent: 'upload', share: 'share', sharenative: 'share', sharecopy: 'share', copy: 'share', gatecopy: 'share', invite: 'share', reset: 'refresh', cardre: 'shuffle', checksrv: 'refresh', ckdrop: 'x', rejclear: 'x', chaldrop: 'x', setgo: 'check', submit: 'check', pwaok: 'check', pwano: 'x', comp: 'trophy', hwprev: 'arrow', hwnext: 'arrowr', pausebk: 'arrow' };
+const BTN_ICO = { play: 'play', regok: 'play', ckres: 'play', chalplay: 'play', resume: 'play', demo: 'play', again: 'refresh', usep: 'user', newp: 'user', players: 'users', recs: 'list', cont: 'heart', endcont: 'flag', endrun: 'flag', endyes: 'flag', quit: 'home', menu: 'home', install: 'dl', how: 'help', cafe: 'cup', fb: 'chat', prof: 'user', set: 'gear', update: 'refresh', sendunsent: 'upload', share: 'share', sharenative: 'share', sharecopy: 'share', copy: 'share', gatecopy: 'share', invite: 'share', reset: 'refresh', cardre: 'shuffle', checksrv: 'refresh', ckdrop: 'x', rejclear: 'x', chaldrop: 'x', setgo: 'check', submit: 'check', pwaok: 'check', pwano: 'x', comp: 'trophy', hwprev: 'arrow', hwnext: 'arrowr', pausebk: 'arrow' };
 function bi(k) { return `<svg class="bi" viewBox="0 0 24 24" aria-hidden="true">${BI[k]}</svg>`; }
 function decorate(h) {                                               // a small icon in front of each button's label, matched to what the button does
   return h.replace(/(<button\b(?![^>]*class="[^"]*\b(?:chip|back|arr|tab|link|wcard)\b)[^>]*\bdata-a="(\w+)(?::[^"]*)?"[^>]*>)(?!\s*(?:<svg|<i\b|<span class="gem"|<canvas))/g, (m, open, act) => BTN_ICO[act] ? open + (act === 'hwnext' ? '' : bi(BTN_ICO[act])) : m);
